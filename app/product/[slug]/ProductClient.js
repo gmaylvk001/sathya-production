@@ -34,7 +34,7 @@ import Link from "next/link";
 import { useCart } from '@/context/CartContext';
 import { useModal } from '@/context/ModalContext';
 import { useRegion } from '@/context/RegionContext';
-import { isUniletProduct } from '@/lib/regionHelper';
+import { isUniletProduct, isKarnatakaPincode } from '@/lib/regionHelper';
 import { toast } from 'react-toastify';
 import ProductCard from "@/components/ProductCard";
 import ProductAddtoCart from "@/components/ProductAddtoCart"
@@ -896,15 +896,21 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
         return Number(p?.price || 0);
       };
 
-      const isUnilet = Boolean(
-        product?.isUnilet ||
-        isUniletProduct(product)
+      const isUniletOnly = Boolean(isUniletProduct(product));
+      const isKarnatakaCtx = Boolean(
+        isKarnatakaPincode(deliveryPincode || globalPincode) ||
+        globalRegion === "karnataka" ||
+        deliveryInfo?.assignedVendor === "UNILET"
       );
+      const ctxVendorId = isKarnatakaCtx || isUniletOnly ? "unilet" : (product?.vendor || "sathya");
+      const ctxAssignedVendor = isKarnatakaCtx || isUniletOnly ? "UNILET" : "SATHYA";
+      const ctxRegion = isKarnatakaCtx ? "karnataka" : (globalRegion || "tamilnadu");
 
       // Clean, strictly serializable items array for checkout
       const cleanMainItem = {
         _id: product?._id,
         id: product?._id || product?.id,
+        productId: product?._id,
         product: product?._id,
         name: product?.name || product?.title || "",
         title: product?.title || product?.name || "",
@@ -915,9 +921,11 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
         quantity: Number(quantity) || 1,
         images: Array.isArray(product?.images) ? product.images : [],
         image: (product?.images && product.images[0]) || product?.image || "",
-        isUnilet,
-        vendor: isUnilet ? "unilet" : (product?.vendor || "sathya"),
-        store_owner: isUnilet ? "unilet" : (product?.store_owner || "sathya"),
+        isUnilet: isUniletOnly,
+        vendor: ctxVendorId,
+        store_owner: ctxVendorId,
+        assignedVendor: ctxAssignedVendor,
+        region: ctxRegion,
         warranty: Number(selectedWarranty) || 0,
         extendedWarranty: effectiveWarrantyAmount,
         warrantyData: activeWarranty,
@@ -936,27 +944,41 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
       const cleanFrequentItems = selectedFrequentProducts.map((p) => ({
         _id: p._id,
         id: p._id || p.id,
+        productId: p._id,
         product: p._id,
         name: p.name || p.title || "",
         title: p.title || p.name || "",
         slug: p.slug || "",
+        item_code: p.item_code || "",
         price: resolvePrice(p),
         quantity: 1,
         images: Array.isArray(p.images) ? p.images : [],
         image: (p.images && p.images[0]) || p.image || "",
+        isUnilet: Boolean(isUniletProduct(p)),
+        vendor: ctxVendorId,
+        store_owner: ctxVendorId,
+        assignedVendor: ctxAssignedVendor,
+        region: ctxRegion,
       }));
 
       const cleanRelatedItems = selectedRelatedProducts.map((p) => ({
         _id: p._id,
         id: p._id || p.id,
+        productId: p._id,
         product: p._id,
         name: p.name || p.title || "",
         title: p.title || p.name || "",
         slug: p.slug || "",
+        item_code: p.item_code || "",
         price: resolvePrice(p),
         quantity: 1,
         images: Array.isArray(p.images) ? p.images : [],
         image: (p.images && p.images[0]) || p.image || "",
+        isUnilet: Boolean(isUniletProduct(p)),
+        vendor: ctxVendorId,
+        store_owner: ctxVendorId,
+        assignedVendor: ctxAssignedVendor,
+        region: ctxRegion,
       }));
 
       const items = [cleanMainItem, ...cleanFrequentItems, ...cleanRelatedItems];
@@ -1843,7 +1865,15 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
                 <span className="text-red-600 font-semibold text-sm">✗ Out of Stock</span>
               )}
               <p className="text-xs text-gray-600 mt-1">
-                Sold by <span className="font-semibold">Sathya Stores</span>
+                Sold by{" "}
+                <span className="font-semibold">
+                  {isKarnatakaPincode(deliveryPincode || globalPincode) ||
+                  globalRegion === "karnataka" ||
+                  deliveryInfo?.assignedVendor === "UNILET" ||
+                  product?.isUnilet
+                    ? "Unilet"
+                    : "Sathya Stores"}
+                </span>
               </p>
             </div>
 

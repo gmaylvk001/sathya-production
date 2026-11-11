@@ -36,6 +36,27 @@ const cartItemSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  isUnilet: {
+    type: Boolean,
+    default: false
+  },
+  vendor: {
+    type: String,
+    default: "sathya"
+  },
+  store_owner: {
+    type: String,
+    default: "sathya"
+  },
+  assignedVendor: {
+    type: String,
+    enum: ["UNILET", "SATHYA"],
+    default: "SATHYA"
+  },
+  region: {
+    type: String,
+    default: "tamilnadu"
+  },
   name: {
     type: String,
     required: true

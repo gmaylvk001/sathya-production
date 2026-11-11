@@ -1505,6 +1505,12 @@ const calculateTotalExchange = () => {
 
         discount: item.discount || 0,
 
+        item_code: item.item_code || "",
+        isUnilet: Boolean(item.isUnilet),
+        vendor: item.vendor || "sathya",
+        store_owner: item.store_owner || "sathya",
+        assignedVendor: item.assignedVendor || "SATHYA",
+        region: item.region || "tamilnadu",
         image: item.image,
         warrantyData: item.warrantyData || null,
         variantValues: item.variantValues || null,

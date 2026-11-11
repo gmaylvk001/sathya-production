@@ -264,14 +264,29 @@ const CartItemRow = React.memo(function CartItemRow({
             <p className="text-xs text-gray-400 font-normal">SKU: {item.item_code}</p>
           )}
 
-          {/* Rating & Stock Badge */}
-          <div className="flex items-center gap-2 mt-0.5">
+          {/* Rating, Vendor & Stock Badge */}
+          <div className="flex flex-wrap items-center gap-2 mt-0.5">
             <span className="bg-emerald-700 text-white text-[11px] font-bold px-1.5 py-0.5 rounded flex items-center gap-0.5">
               3.8 ★
             </span>
-            <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              In Stock
+            {item.isDeliverable === false ? (
+              <span className="text-xs text-red-600 font-semibold">
+                {item.deliveryErrorReason || "Unavailable at selected location"}
+              </span>
+            ) : (
+              <span className="text-xs text-emerald-600 font-semibold flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                In Stock
+              </span>
+            )}
+            <span
+              className={`text-[11px] font-semibold px-2 py-0.5 rounded border ${
+                item.assignedVendor === "UNILET" || String(item.vendor || item.store_owner || "").toLowerCase() === "unilet"
+                  ? "bg-amber-50 text-amber-800 border-amber-200"
+                  : "bg-gray-50 text-gray-700 border-gray-200"
+              }`}
+            >
+              Sold by: {item.assignedVendor === "UNILET" || String(item.vendor || item.store_owner || "").toLowerCase() === "unilet" ? "Unilet" : "Sathya Stores"}
             </span>
           </div>
 

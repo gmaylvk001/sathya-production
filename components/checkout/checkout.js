@@ -570,6 +570,7 @@ const DeliveryOptions = ({
   normHeaderPin,
   setPincode,
   uniletDeliveryBlocked,
+  isKarnataka,
 }) => {
   const firstProduct = cartItems?.[0];
   const productLink = firstProduct
@@ -691,7 +692,9 @@ const DeliveryOptions = ({
             <p className={`text-sm font-medium ${formData.deliveryType === 'store' ? 'text-red-700' : 'text-gray-800'}`}>
               Store pickup
             </p>
-            <p className="text-xs text-gray-500 mt-0.5">Pick up from your nearest Sathya Stores showroom</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Pick up from your nearest {isKarnataka ? "Unilet" : "Sathya Stores"} showroom
+            </p>
           </div>
         </label>
       </div>
@@ -1217,7 +1220,16 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [touched, setTouched] = useState({});
   const [shippingMethod, setShippingMethod] = useState('standard');
-  const [ownerAvailability, setOwnerAvailability] = useState({ loading: false, missing: [], failed: false });
+  const [deliveryValidation, setDeliveryValidation] = useState({
+    loading: false,
+    isValid: true,
+    assignedVendor: null,
+    vendorName: null,
+    items: [],
+    unavailableItems: [],
+    failed: false,
+    message: null,
+  });
   const [removingProductId, setRemovingProductId] = useState(null);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
@@ -1393,10 +1405,11 @@ export default function CheckoutPage() {
   const isHeaderKarnataka = isKarnatakaPincode(normHeaderPin);
   const currentSt = currentShipping?.state || formData.state || '';
 
+  const useUniletStoreList = normDeliveryPin.length === 6 ? isKarnatakaPincode(normDeliveryPin) : isHeaderKarnataka;
   const pickupStores = stores.filter((store) => {
     if (Number(store?.approved) !== 1) return false;
     const owner = String(store.store_owner || '').trim().toLowerCase();
-    return isHeaderKarnataka ? owner === 'unilet' : owner === 'sathya';
+    return useUniletStoreList ? owner === 'unilet' : owner === 'sathya';
   });
   const matchesSelectedStore = (s) => isStoreSelected(s, formData.selectedStore);
 
@@ -1407,20 +1420,21 @@ export default function CheckoutPage() {
     if (String(formData.selectedStore).toUpperCase() === 'NULL' || !pickupStores.some(matchesSelectedStore)) {
       setFormData((prev) => ({ ...prev, selectedStore: '' }));
     }
-  }, [isHeaderKarnataka, formData.selectedStore, stores]);
+  }, [useUniletStoreList, formData.selectedStore, stores]);
 
   const isKarnatakaDelivery =
-    isKarnatakaPincode(normDeliveryPin) ||
-    /karnataka/i.test(currentSt);
+    normDeliveryPin.length === 6
+      ? isKarnatakaPincode(normDeliveryPin)
+      : (isKarnatakaPincode(normHeaderPin) || /karnataka/i.test(currentSt));
 
   const isKarnatakaStorePickup =
     formData.deliveryType === 'store' &&
     (
-      isKarnatakaPincode(normHeaderPin) ||
+      String(selectedStoreObj?.store_owner || '').trim().toLowerCase() === 'unilet' ||
       isKarnatakaPincode(selectedStoreObj?.pincode || selectedStoreObj?.zip || '') ||
       /karnataka/i.test(selectedStoreObj?.state || '') ||
       /karnataka/i.test(selectedStoreObj?.city || '') ||
-      isKarnatakaPincode(normDeliveryPin)
+      (normDeliveryPin.length === 6 ? isKarnatakaPincode(normDeliveryPin) : isKarnatakaPincode(normHeaderPin))
     );
 
   const isKarnataka = formData.deliveryType === 'store' ? Boolean(isKarnatakaStorePickup) : Boolean(isKarnatakaDelivery);
@@ -1428,7 +1442,6 @@ export default function CheckoutPage() {
   const hasUniletItems = useMemo(() => {
     return cartItems.some((item) => {
       return (
-        item.isUnilet === true ||
         isUniletProduct(item) ||
         isUniletProduct(item.productId)
       );
@@ -1466,59 +1479,119 @@ export default function CheckoutPage() {
   };
 
   useEffect(() => {
-    if (!isHeaderKarnataka || cartItems.length === 0) {
-      setOwnerAvailability({ loading: false, missing: [], failed: false });
+    if (!isInitialized || cartItems.length === 0) {
+      setDeliveryValidation({
+        loading: false,
+        isValid: true,
+        assignedVendor: isKarnataka ? "UNILET" : "SATHYA",
+        vendorName: isKarnataka ? "Unilet" : "Sathya Stores",
+        items: [],
+        unavailableItems: [],
+        failed: false,
+        message: null,
+      });
       return;
     }
 
+    const effectivePin = normDeliveryPin || normHeaderPin || "";
+    const effectiveState = currentSt || (isKarnataka ? "Karnataka" : "Tamil Nadu");
+
     let cancelled = false;
-    setOwnerAvailability({ loading: true, missing: [], failed: false });
+    setDeliveryValidation((prev) => ({ ...prev, loading: true, failed: false }));
 
     (async () => {
       try {
-        const res = await fetch("/api/owner-product/check", {
+        const res = await fetch("/api/orders/validate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            pincode: effectivePin,
+            state: effectiveState,
+            region: isKarnataka ? "karnataka" : (headerRegion || "tamilnadu"),
+            deliveryType: formData.deliveryType,
+            selectedStore: formData.deliveryType === "store" ? formData.selectedStore : "",
             items: cartItems.map((item) => ({
               productId: resolveCartProductId(item),
               item_code: item.item_code || item.itemCode || "",
               name: item.name || item.product_name || "Product",
+              quantity: Number(item.quantity) || 1,
+              isCombo: Boolean(item.isCombo),
+              comboId: item.comboId ? String(item.comboId) : null,
             })),
           }),
         });
         const data = await res.json();
         if (cancelled) return;
         if (!res.ok || !data.success) {
-          setOwnerAvailability({ loading: false, missing: [], failed: true });
+          setDeliveryValidation((prev) => ({
+            ...prev,
+            loading: false,
+            isValid: false,
+            failed: true,
+            message: data?.message || "Unable to verify delivery availability",
+          }));
           return;
         }
-        const missing = (data.items || []).filter((item) => !item.exists);
-        setOwnerAvailability({ loading: false, missing, failed: false });
+        const itemsList = Array.isArray(data.items) ? data.items : [];
+        const unavailableItems = itemsList.filter((it) => !it.isDeliverable);
+        setDeliveryValidation({
+          loading: false,
+          isValid: Boolean(data.isValid),
+          assignedVendor: data.assignedVendor || (isKarnataka ? "UNILET" : "SATHYA"),
+          vendorName: data.vendorName || (isKarnataka ? "Unilet" : "Sathya Stores"),
+          items: itemsList,
+          unavailableItems,
+          failed: false,
+          message: data.message || unavailableItems[0]?.errorReason || null,
+        });
       } catch {
-        if (!cancelled) setOwnerAvailability({ loading: false, missing: [], failed: true });
+        if (!cancelled) {
+          setDeliveryValidation((prev) => ({
+            ...prev,
+            loading: false,
+            isValid: false,
+            failed: true,
+            message: "Unable to verify delivery availability",
+          }));
+        }
       }
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [isHeaderKarnataka, cartItems]);
+  }, [
+    isInitialized,
+    cartItems,
+    normDeliveryPin,
+    normHeaderPin,
+    currentSt,
+    headerRegion,
+    formData.deliveryType,
+    formData.selectedStore,
+    isKarnataka,
+  ]);
 
-  const karnatakaOrderBlocked = isHeaderKarnataka && (
-    ownerAvailability.loading ||
-    ownerAvailability.failed ||
-    ownerAvailability.missing.length > 0
-  );
+  const checkoutOrderBlocked =
+    deliveryValidation.loading ||
+    deliveryValidation.failed ||
+    deliveryValidation.unavailableItems.length > 0;
 
-  const isItemUnavailableInKarnataka = (item) => {
-    if (!isHeaderKarnataka) return false;
+  const getValidatedItemResult = (item) => {
     const productId = resolveCartProductId(item);
-    const name = item.name || item.product_name || "";
-    return ownerAvailability.missing.some(
-      (missing) => (productId && missing.productId === productId) || (name && missing.name === name)
-    );
+    const code = String(item?.item_code || item?.itemCode || "").trim().toUpperCase();
+    const name = String(item?.name || item?.product_name || "").trim();
+    return deliveryValidation.items.find((v) => {
+      if (productId && v.productId && String(v.productId) === productId) return true;
+      if (code && v.item_code && String(v.item_code).trim().toUpperCase() === code) return true;
+      if (name && v.name && v.name === name) return true;
+      return false;
+    }) || null;
   };
+
+  const resolvedOrderVendorName =
+    deliveryValidation.vendorName ||
+    (isKarnataka ? "Unilet" : "Sathya Stores");
 
   const fetchData = async (skipCartFetch = false) => {
     const token = localStorage.getItem('token');
@@ -1724,7 +1797,7 @@ export default function CheckoutPage() {
     return new Promise((resolve, reject) => {
       const options = {
         key: RAZORPAY_KEY || process.env.NEXT_PUBLIC_RAZORPAY_TEST_KEY,
-        amount: order.amount, currency: 'INR', name: 'Sathya Stores',
+        amount: order.amount, currency: 'INR', name: isKarnataka ? 'Unilet' : 'Sathya Stores',
         description: isEmi ? 'EMI Payment' : 'Product Purchase', order_id: order.id,
         handler: async (response) => {
           try {
@@ -1935,14 +2008,16 @@ export default function CheckoutPage() {
     try {
       const token = localStorage.getItem('token');
       if (!token) { setShowAuthModal(true); return; }
-      if (karnatakaOrderBlocked) {
-        const names = ownerAvailability.missing.map((item) => item.name).filter(Boolean);
+      if (checkoutOrderBlocked) {
+        const errReasons = deliveryValidation.unavailableItems
+          .map((item) => item.errorReason || item.name)
+          .filter(Boolean);
         toast.error(
-          ownerAvailability.loading
-            ? "Checking Karnataka availability. Please wait."
-            : names.length
-              ? `${names.join(", ")} ${names.length === 1 ? "is" : "are"} not available for Karnataka delivery. Remove ${names.length === 1 ? "it" : "them"} to continue.`
-              : "Unable to verify Karnataka availability. Please try again."
+          deliveryValidation.loading
+            ? "Checking delivery availability. Please wait."
+            : errReasons.length
+              ? errReasons[0]
+              : deliveryValidation.message || "Unable to verify delivery availability. Please try again."
         );
         return;
       }
@@ -2064,16 +2139,16 @@ export default function CheckoutPage() {
 
       const isKarnataka = formData.deliveryType === 'store'
         ? (
-            isKarnatakaPincode(normHeaderPin) ||
+            String(selectedStoreObj?.store_owner || '').trim().toLowerCase() === 'unilet' ||
             isKarnatakaPincode(selectedStoreObj?.pincode || selectedStoreObj?.zip || '') ||
             /karnataka/i.test(selectedStoreObj?.state || '') ||
             /karnataka/i.test(selectedStoreObj?.city || '') ||
-            isKarnatakaPincode(normDeliveryPin)
+            (normDeliveryPin.length === 6 ? isKarnatakaPincode(normDeliveryPin) : isKarnatakaPincode(normHeaderPin))
           )
         : (
-            isKarnatakaPincode(normDeliveryPin) ||
-            isKarnatakaPincode(normHeaderPin) ||
-            /karnataka/i.test(currentSt)
+            normDeliveryPin.length === 6
+              ? isKarnatakaPincode(normDeliveryPin)
+              : (isKarnatakaPincode(normHeaderPin) || /karnataka/i.test(currentSt))
           );
 
       if (shippingAddress?.pincode) {
@@ -2081,6 +2156,17 @@ export default function CheckoutPage() {
           setPincode(shippingAddress.pincode);
         } catch {}
       }
+
+      const resolvedShippingState =
+        shippingAddress?.state ||
+        currentSt ||
+        (isKarnataka ? 'Karnataka' : 'Tamil Nadu');
+
+      const toDetailItemCode = (code) => {
+        const raw = code ? String(code).trim() : '';
+        if (!raw || /^(undefined|null)$/i.test(raw)) return null;
+        return raw.startsWith('ITEM') ? raw : `ITEM${raw}`;
+      };
 
       let order_number = buildOrderNumber(isKarnataka);
       let paymentId = '', paymentStatus = '', paymentMode = '';
@@ -2102,6 +2188,10 @@ export default function CheckoutPage() {
               order_item: cartItems.map(item => ({
                 ...item,
                 warrantyData: item.warrantyData || null,
+                vendor: isKarnataka ? 'unilet' : 'sathya',
+                store_owner: isKarnataka ? 'unilet' : 'sathya',
+                assignedVendor: isKarnataka ? 'UNILET' : 'SATHYA',
+                region: isKarnataka ? 'karnataka' : 'tamilnadu',
                 store_id: formData.deliveryType === 'store' ? formData.selectedStore : (isKarnataka ? 'unilet' : null),
                 coupondetails: appliedCoupon
                   ? [{ _id: appliedCoupon._id, offer_code: appliedCoupon.offer_code }]
@@ -2124,8 +2214,9 @@ export default function CheckoutPage() {
               payment_id: '', payment_status: 'payment_initialized',
               order_number: order_number || undefined,
               pincode: normDeliveryPin || normHeaderPin,
+              state: resolvedShippingState,
               order_details: cartItems.map(item => ({
-                item_code: `ITEM${item.item_code}`,
+                item_code: toDetailItemCode(item.item_code),
                 product_id: item.productId || item.id || item._id,
                 product_name: item.name,
                 product_price: item.price,
@@ -2217,6 +2308,10 @@ export default function CheckoutPage() {
           order_item: cartItems.map(item => ({
             ...item,
             warrantyData: item.warrantyData || null,
+            vendor: isKarnataka ? 'unilet' : 'sathya',
+            store_owner: isKarnataka ? 'unilet' : 'sathya',
+            assignedVendor: isKarnataka ? 'UNILET' : 'SATHYA',
+            region: isKarnataka ? 'karnataka' : 'tamilnadu',
             store_id: formData.deliveryType === 'store' ? formData.selectedStore : (isKarnataka ? 'unilet' : null),
             coupondetails: appliedCoupon
               ? [{ _id: appliedCoupon._id, offer_code: appliedCoupon.offer_code }]
@@ -2236,11 +2331,12 @@ export default function CheckoutPage() {
           region: isKarnataka ? 'karnataka' : 'tamilnadu',
           order_owner: isKarnataka ? 'unilet' : 'sathya',
           pincode: normDeliveryPin || normHeaderPin,
+          state: resolvedShippingState,
           gst_number: gstNumber,
           payment_id: paymentData.payment_id, payment_status: paymentData.status,
           order_number: order_number || undefined,
           order_details: cartItems.map(item => ({
-            item_code: `ITEM${item.item_code}`,
+            item_code: toDetailItemCode(item.item_code),
             product_id: item.productId || item.id || item._id,
             product_name: item.name,
             product_price: item.price,
@@ -2270,7 +2366,12 @@ export default function CheckoutPage() {
           })),
         }),
       });
-      if (!orderRes.ok) throw new Error('Order creation failed');
+      if (!orderRes.ok) {
+        const errData = await orderRes.json().catch(() => ({}));
+        toast.error(errData?.message || 'Order creation failed');
+        setIsSubmitting(false);
+        return;
+      }
 
       const cartDelete = await fetch('/api/cart', {
         method: 'DELETE', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('token')}` },
@@ -2427,6 +2528,7 @@ export default function CheckoutPage() {
                 normHeaderPin={normHeaderPin}
                 setPincode={setPincode}
                 uniletDeliveryBlocked={uniletDeliveryBlocked}
+                isKarnataka={isKarnataka}
               />
 
               {/* Address Selection UI (replaces inline form) */}
@@ -2555,9 +2657,9 @@ export default function CheckoutPage() {
                   <button
                     type="button"
                     onClick={handleSubmit}
-                    disabled={isSubmitting || loading || cartItems.length === 0 || karnatakaOrderBlocked || hasPincodeMismatch}
+                    disabled={isSubmitting || loading || cartItems.length === 0 || !isDeliverySaved || checkoutOrderBlocked || hasPincodeMismatch || uniletDeliveryBlocked}
                     className={`w-full h-11 rounded-lg text-sm font-extrabold flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98] cursor-pointer ${
-                      isSubmitting || loading || cartItems.length === 0 || karnatakaOrderBlocked || hasPincodeMismatch
+                      isSubmitting || loading || cartItems.length === 0 || !isDeliverySaved || checkoutOrderBlocked || hasPincodeMismatch || uniletDeliveryBlocked
                         ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
                         : 'bg-[#d72828] text-white hover:bg-red-700'
                     }`}
@@ -2799,7 +2901,12 @@ export default function CheckoutPage() {
 
                   const itemPrice = (item.price > 0 ? item.price : item.actual_price) * item.quantity;
                   const productId = resolveCartProductId(item);
-                  const unavailableInKarnataka = isItemUnavailableInKarnataka(item);
+                  const itemValidation = getValidatedItemResult(item);
+                  const unavailableItem = Boolean(itemValidation && !itemValidation.isDeliverable);
+                  const itemVendorName = itemValidation?.vendorName || resolvedOrderVendorName;
+                  const isUniletVendor =
+                    itemValidation?.assignedVendor === "UNILET" ||
+                    (!itemValidation && isKarnataka);
                   const isRemoving = removingProductId === productId;
                   const itemVariations = getItemVariations(item);
                   const itemWarranty = getItemWarranty(item);
@@ -2808,7 +2915,7 @@ export default function CheckoutPage() {
                     <div
                       key={`oi-${productId || item.name}`}
                       className={`relative flex items-center gap-3.5 p-3 rounded-xl bg-white border shadow-2xs transition-all duration-200 group pr-8 ${
-                        unavailableInKarnataka ? "border-red-300 bg-red-50/20" : "border-gray-200/80 hover:border-red-200/80 hover:shadow-xs"
+                        unavailableItem ? "border-red-300 bg-red-50/20" : "border-gray-200/80 hover:border-red-200/80 hover:shadow-xs"
                       }`}
                     >
                       <button
@@ -2817,7 +2924,7 @@ export default function CheckoutPage() {
                         disabled={isRemoving}
                         onClick={() => handleRemoveCartItem(item)}
                         className={`absolute top-2 right-2 w-5 h-5 rounded-full border flex items-center justify-center disabled:opacity-50 transition-colors ${
-                          unavailableInKarnataka
+                          unavailableItem
                             ? "border-red-300 text-red-600 bg-red-50 hover:text-white hover:bg-[#d72828] hover:border-[#d72828]"
                             : "border-gray-200 text-gray-400 hover:text-white hover:bg-[#d72828] hover:border-[#d72828]"
                         }`}
@@ -2845,6 +2952,17 @@ export default function CheckoutPage() {
                         <h4 className="text-xs font-bold text-gray-900 line-clamp-2 leading-snug group-hover:text-[#d72828] transition-colors">
                           {item.name}
                         </h4>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                          <span
+                            className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                              isUniletVendor
+                                ? "bg-amber-50 text-amber-800 border-amber-200"
+                                : "bg-emerald-50 text-emerald-800 border-emerald-200"
+                            }`}
+                          >
+                            {itemVendorName}
+                          </span>
+                        </div>
                         {itemVariations.length > 0 && (
                           <div className="flex flex-wrap items-center gap-1 mt-1">
                             {itemVariations.map((v, vIdx) => (
@@ -2858,9 +2976,9 @@ export default function CheckoutPage() {
                             ))}
                           </div>
                         )}
-                        {unavailableInKarnataka && (
+                        {unavailableItem && (
                           <p className="mt-1 text-[10px] font-semibold text-red-600 leading-snug">
-                            Not available for Karnataka delivery. Remove this item to continue.
+                            {itemValidation?.errorReason || "Not available for delivery at this location. Remove this item to continue."}
                           </p>
                         )}
 
@@ -2888,14 +3006,14 @@ export default function CheckoutPage() {
                 })}
               </div>
 
-              {/* Sold by Sathya Stores */}
+              {/* Fulfilling Store Badge (Unilet for Karnataka / Sathya Stores for TN & South India) */}
               <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between bg-emerald-50/50">
                 <div className="flex items-center gap-2">
                   <svg className="w-4 h-4 text-emerald-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                   </svg>
                   <span className="text-xs font-bold text-gray-800">
-                    Sathya Stores
+                    {resolvedOrderVendorName}
                   </span>
                 </div>
                 <span className="text-[10px] border px-2.5 py-0.5 rounded-full font-extrabold flex items-center gap-1 text-emerald-800 bg-emerald-100/80 border-emerald-200/80">
@@ -3041,19 +3159,22 @@ export default function CheckoutPage() {
 
               {/* CTA button */}
               <div className="px-5 pb-5">
-                {isHeaderKarnataka && ownerAvailability.loading && (
+                {deliveryValidation.loading && (
                   <p className="mb-2 text-xs text-gray-500 leading-relaxed">
-                    Checking whether each product is available for Karnataka delivery.
+                    Checking delivery availability for your selected location.
                   </p>
                 )}
-                {isHeaderKarnataka && ownerAvailability.missing.length > 0 && (
+                {!deliveryValidation.loading && deliveryValidation.unavailableItems.length > 0 && (
                   <p className="mb-2 text-xs text-red-600 leading-relaxed">
-                    Continue to payment is off because {ownerAvailability.missing.map((item) => item.name).join(", ")} {ownerAvailability.missing.length === 1 ? "is" : "are"} not available for Karnataka. Remove {ownerAvailability.missing.length === 1 ? "that item" : "those items"} with the cancel icon to continue.
+                    Continue to payment is off because{" "}
+                    {deliveryValidation.unavailableItems.map((item) => item.name).join(", ")}{" "}
+                    {deliveryValidation.unavailableItems.length === 1 ? "is" : "are"} not available for delivery at this location. Remove{" "}
+                    {deliveryValidation.unavailableItems.length === 1 ? "that item" : "those items"} with the cancel icon to continue.
                   </p>
                 )}
-                {isHeaderKarnataka && ownerAvailability.failed && (
+                {!deliveryValidation.loading && deliveryValidation.failed && (
                   <p className="mb-2 text-xs text-red-600 leading-relaxed">
-                    Could not verify Karnataka availability, so Continue to payment stays off. Refresh the page and try again.
+                    Could not verify delivery availability, so Continue to payment stays off. Refresh the page and try again.
                   </p>
                 )}
                 {uniletDeliveryBlocked && (
@@ -3063,9 +3184,9 @@ export default function CheckoutPage() {
                 )}
                 <button
                   onClick={handleSubmit}
-                  disabled={isSubmitting || loading || cartItems.length === 0 || !isDeliverySaved || hasPincodeMismatch || karnatakaOrderBlocked || uniletDeliveryBlocked}
+                  disabled={isSubmitting || loading || cartItems.length === 0 || !isDeliverySaved || hasPincodeMismatch || checkoutOrderBlocked || uniletDeliveryBlocked}
                   className={`w-full h-12 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all
-                    ${isSubmitting || loading || cartItems.length === 0 || !isDeliverySaved || hasPincodeMismatch || karnatakaOrderBlocked || uniletDeliveryBlocked
+                    ${isSubmitting || loading || cartItems.length === 0 || !isDeliverySaved || hasPincodeMismatch || checkoutOrderBlocked || uniletDeliveryBlocked
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-red-600 text-white hover:bg-red-700 active:scale-[0.98]'}`}
                 >
@@ -3146,9 +3267,9 @@ export default function CheckoutPage() {
         }`}
         style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))' }}
       >
-        {isHeaderKarnataka && ownerAvailability.missing.length > 0 && (
+        {!deliveryValidation.loading && deliveryValidation.unavailableItems.length > 0 && (
           <p className="mb-2 text-[11px] text-red-600 leading-snug">
-            Not available for Karnataka: {ownerAvailability.missing.map((item) => item.name).join(", ")}. Remove {ownerAvailability.missing.length === 1 ? "it" : "them"} to continue.
+            Not available at this location: {deliveryValidation.unavailableItems.map((item) => item.name).join(", ")}. Remove {deliveryValidation.unavailableItems.length === 1 ? "it" : "them"} to continue.
           </p>
         )}
         {hasPincodeMismatch && (
@@ -3184,9 +3305,9 @@ export default function CheckoutPage() {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={isSubmitting || loading || cartItems.length === 0 || karnatakaOrderBlocked || hasPincodeMismatch}
+              disabled={isSubmitting || loading || cartItems.length === 0 || checkoutOrderBlocked || hasPincodeMismatch || uniletDeliveryBlocked}
               className={`flex-1 max-w-[240px] h-11 rounded-xl text-sm font-extrabold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] cursor-pointer ${
-                isSubmitting || loading || cartItems.length === 0 || karnatakaOrderBlocked || hasPincodeMismatch
+                isSubmitting || loading || cartItems.length === 0 || checkoutOrderBlocked || hasPincodeMismatch || uniletDeliveryBlocked
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
                   : 'bg-[#d72828] text-white hover:bg-red-700 shadow-red-500/25'
               }`}
@@ -3373,10 +3494,13 @@ export default function CheckoutPage() {
               {locationPromptData.matchingSaved ? (
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     setShippingAddressId(locationPromptData.matchingSaved._id);
                     if (billingSameAsShipping) {
                       setBillingAddressId(locationPromptData.matchingSaved._id);
+                    }
+                    if (locationPromptData.matchingSaved.pincode) {
+                      await setPincode(locationPromptData.matchingSaved.pincode);
                     }
                     toast.success("Switched to matching saved address");
                     setLocationPromptData(null);

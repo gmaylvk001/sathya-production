@@ -3,16 +3,18 @@ import OrderNew from "@/models/orders_new";
 import OrderDetailsNew from "@/models/order_details_new";
 import OrderHistoryNew from "@/models/order_history_new";
 import PaymentNewLive from "@/models/payment_new_live";
-import Product from "@/models/product";
-import OwnerProduct from "@/models/OwnerProduct";
+import StoreListing from "@/models/store_listings";
 import mongoose from "mongoose";
 import Notification from "@/models/Notification.js";
 import { sendOrderData } from "@/lib/sendOrderData";
 import { sendOrderConfirmationSms } from "@/lib/orderConfirmSms";
-import { isKarnatakaPincode } from "@/lib/regionHelper";
 import { getAuthUserId } from "@/lib/authRequest";
 import { isInvenzoServiceEnabled } from "@/lib/invenzo";
 import { orderPlacedToStoreInvenzo } from "@/lib/invenzoOrderPlace";
+import {
+  resolveOrderItemsFulfillment,
+  resolveRegionVendorContext,
+} from "@/lib/regionalFulfillment";
 import {
   generateUniqueOrderNumber,
   resolveLinePrice,
@@ -107,8 +109,9 @@ function buildOrderDetailRows(order_item, order_details, savedOrder, userId) {
     // Client order_details is often sparse — pull warranty/variants from full cart line
     const fromItem = items[index] || items[0] || {};
     const rawCode = row.item_code || row.itemCode || fromItem.item_code || fromItem.itemCode || "";
-    const itemCode = rawCode
-      ? (String(rawCode).startsWith("ITEM") ? String(rawCode) : `ITEM${rawCode}`)
+    const cleanRawCode = rawCode && !/^(undefined|null)$/i.test(String(rawCode).trim()) ? String(rawCode).trim() : "";
+    const itemCode = cleanRawCode
+      ? (cleanRawCode.startsWith("ITEM") ? cleanRawCode : `ITEM${cleanRawCode}`)
       : null;
     const productId =
       row.product_id ?? row.productId ?? row.id ??
@@ -334,31 +337,82 @@ export async function POST(req) {
       payment_status = "pending";
     }
 
-    const pinMatch = String(order_deliveryaddress || "").match(/\b\d{6}\b/);
-    const hasKarnatakaPin = pinMatch
-      ? isKarnatakaPincode(pinMatch[0])
-      : body.pincode
-      ? isKarnatakaPincode(body.pincode)
-      : false;
+    let pickupStoreOwner = null;
+    let pickupStoreZipcode = "";
+    if (mappedDeliveryEarly === "store") {
+      const storeLookupKey = String(pickup_store || pickup_type || store_id || "").trim();
+      if (storeLookupKey) {
+        const storeOr = [{ branch_code: storeLookupKey }];
+        if (mongoose.isValidObjectId(storeLookupKey)) {
+          storeOr.push({ _id: new mongoose.Types.ObjectId(storeLookupKey) });
+        }
+        const storeDoc = await StoreListing.findOne({ $or: storeOr })
+          .select("store_owner zipcode branch_code")
+          .lean();
+        if (storeDoc) {
+          pickupStoreOwner = storeDoc.store_owner
+            ? String(storeDoc.store_owner).trim().toLowerCase()
+            : null;
+          pickupStoreZipcode = storeDoc.zipcode ? String(storeDoc.zipcode).trim() : "";
+        }
+      }
+      if (!pickupStoreOwner && store_id === "unilet") {
+        pickupStoreOwner = "unilet";
+      }
+    }
 
-    const isKarnatakaOrder =
-      hasKarnatakaPin ||
-      String(order_number || "").endsWith("-UL") ||
-      /_UL_/i.test(String(order_number || "")) ||
-      body.order_owner === "unilet" ||
-      body.region === "karnataka" ||
-      isKarnatakaPincode(body.pincode) ||
-      /karnataka/i.test(order_deliveryaddress || "") ||
-      /karnataka/i.test(body.region || "") ||
-      /karnataka/i.test(body.pickup_store || "") ||
-      (order_item &&
-        order_item.some((item) => item.store_id === "unilet" || item.isUnilet)) ||
-      store_id === "unilet";
+    const bodyPinClean = String(body.pincode || "").replace(/\D/g, "").trim();
+    const addrPins = String(order_deliveryaddress || "").match(/\b[1-9]\d{5}\b/g);
+    const addrPinClean = addrPins?.length ? addrPins[addrPins.length - 1] : "";
+    const deliveryPincode =
+      bodyPinClean.length === 6
+        ? bodyPinClean
+        : addrPinClean.length === 6
+        ? addrPinClean
+        : pickupStoreZipcode;
 
-    const resolvedRegion = isKarnatakaOrder
-      ? "karnataka"
-      : body.region || "tamilnadu";
-    const resolvedStoreId = isKarnatakaOrder ? "unilet" : store_id || null;
+    const addrLower = String(order_deliveryaddress || "").toLowerCase();
+    const inferredStateFromAddress = addrLower.includes("karnataka")
+      ? "Karnataka"
+      : addrLower.includes("tamil")
+      ? "Tamil Nadu"
+      : addrLower.includes("kerala")
+      ? "Kerala"
+      : addrLower.includes("andhra")
+      ? "Andhra Pradesh"
+      : addrLower.includes("telangana")
+      ? "Telangana"
+      : "";
+    const deliveryState = body.state || inferredStateFromAddress || "";
+
+    const legacyKarnatakaHint =
+      !deliveryPincode &&
+      !deliveryState &&
+      !pickupStoreOwner &&
+      (String(order_number || "").endsWith("-UL") ||
+        /_UL_/i.test(String(order_number || "")) ||
+        body.order_owner === "unilet" ||
+        store_id === "unilet" ||
+        /karnataka/i.test(String(body.pickup_store || "")))
+        ? "karnataka"
+        : "";
+
+    const regionCtx = resolveRegionVendorContext({
+      pincode: deliveryPincode,
+      state: deliveryState,
+      region: legacyKarnatakaHint || body.region || "",
+      deliveryType: mappedDeliveryEarly,
+      storeOwner: pickupStoreOwner,
+    });
+
+    const isKarnatakaOrder = regionCtx.isKarnataka;
+    const resolvedRegion = regionCtx.region || "tamilnadu";
+    const resolvedStoreId =
+      mappedDeliveryEarly === "store"
+        ? store_id || pickup_store || (isKarnatakaOrder ? "unilet" : null)
+        : isKarnatakaOrder
+        ? "unilet"
+        : store_id || null;
 
     const mappedDelivery = mappedDeliveryEarly;
     let mappedStatus = mapOrderStatus(order_status, payment_status);
@@ -397,10 +451,39 @@ export async function POST(req) {
     }
     const detailsList = Array.isArray(order_details) ? order_details : [];
 
+    // Unified pre-order delivery & regional vendor validation for new orders
+    let validatedItemByIndex = [];
+    if (!existingByClientNumber) {
+      const validation = await resolveOrderItemsFulfillment({
+        pincode: deliveryPincode,
+        state: deliveryState,
+        region: legacyKarnatakaHint || body.region || "",
+        deliveryType: mappedDeliveryEarly,
+        storeOwner: pickupStoreOwner,
+        items: order_item,
+      });
+
+      if (!validation.isValid) {
+        return Response.json(
+          {
+            success: false,
+            message: validation.message || "Unable to fulfill order for the selected delivery location.",
+            errorReason: validation.message || "Unable to fulfill order for the selected delivery location.",
+            assignedVendor: validation.assignedVendor,
+            items: validation.items,
+          },
+          { status: 400 }
+        );
+      }
+      validatedItemByIndex = validation.items || [];
+    }
+
     // Recalculate line amounts from catalog (ignore client prices)
     const pricedItems = [];
     let serverTotal = 0;
-    for (const item of order_item) {
+    for (let idx = 0; idx < order_item.length; idx++) {
+      const item = order_item[idx];
+      const vItem = validatedItemByIndex[idx] || null;
       const qty = Math.max(1, Math.floor(toNumber(item.quantity, 1) || 1));
       const { price } = await resolveLinePrice(item, isKarnatakaOrder);
       const warrantyFromData = await resolveWarrantyPrice(item.warrantyData);
@@ -412,10 +495,16 @@ export async function POST(req) {
       serverTotal += lineTotal > 0 ? lineTotal : Math.max(0, price * qty - exchange);
       pricedItems.push({
         ...item,
+        item_code: vItem?.item_code || item.item_code || "",
         quantity: qty,
         price,
         product_price: price,
         extendedWarranty: warranty,
+        vendor: vItem?.vendorId || regionCtx.vendorId,
+        store_owner: vItem?.vendorId || regionCtx.vendorId,
+        assignedVendor: vItem?.assignedVendor || regionCtx.assignedVendor,
+        region: vItem?.region || resolvedRegion,
+        isUnilet: Boolean(vItem?.isUniletOnlyProduct ?? item.isUnilet),
       });
     }
 
@@ -488,73 +577,26 @@ export async function POST(req) {
       existingOrders.map((order) => [String(order.order_number), order])
     );
 
-    // Pre-order stock re-validation to prevent overselling on initial order placement
-    if (existingOrders.length === 0) {
-      for (const item of pricedItems) {
-        const requiredQty = toNumber(item.quantity, 1) || 1;
-        const productId = item.productId || item.id || item.product_id;
-        const rawCode = item.item_code || item.itemCode || "";
-        const itemCode = rawCode
-          ? (String(rawCode).startsWith("ITEM") ? String(rawCode) : `ITEM${rawCode}`)
-          : null;
-
-        if (isKarnatakaOrder) {
-          const ownerQuery = { owner_id: "unilet", is_active: true };
-          if (productId && mongoose.isValidObjectId(productId)) {
-            ownerQuery.product_id = productId;
-          } else if (itemCode) {
-            ownerQuery.product_item_code = itemCode;
-          }
-
-          let ownerProd = await OwnerProduct.findOne(ownerQuery);
-          if (!ownerProd && itemCode) {
-            ownerProd = await OwnerProduct.findOne({
-              owner_id: "unilet",
-              $or: [{ product_item_code: itemCode }, { vendor_item_code: itemCode }],
-              is_active: true,
-            });
-          }
-
-          if (ownerProd) {
-            if (Number(ownerProd.stock || 0) < requiredQty || ownerProd.stock_status === "Out of Stock") {
-              return Response.json(
-                {
-                  success: false,
-                  message: `Item "${item.name || item.product_name || itemCode}" is out of stock in Karnataka (${ownerProd.stock || 0} available).`,
-                },
-                { status: 400 }
-              );
-            }
-          } else {
-            return Response.json(
-              {
-                success: false,
-                message: `Item "${item.name || item.product_name || itemCode}" is currently unavailable for delivery in Karnataka.`,
-              },
-              { status: 400 }
-            );
-          }
-        } else {
-          let prod = null;
-          if (productId && mongoose.isValidObjectId(productId)) {
-            prod = await Product.findById(productId);
-          } else if (itemCode) {
-            prod = await Product.findOne({ item_code: itemCode });
-          }
-
-          if (prod) {
-            const isCustomOrder = prod.movement === "CUS-Order";
-            if (!isCustomOrder && (Number(prod.quantity || 0) < requiredQty || prod.stock_status === "Out of Stock")) {
-              return Response.json(
-                {
-                  success: false,
-                  message: `Item "${prod.name || item.product_name || itemCode}" is out of stock (${prod.quantity || 0} available).`,
-                },
-                { status: 400 }
-              );
-            }
-          }
-        }
+    // Pre-order stock re-validation when order group has no saved rows yet
+    if (existingOrders.length === 0 && validatedItemByIndex.length === 0) {
+      const validation = await resolveOrderItemsFulfillment({
+        pincode: deliveryPincode,
+        state: deliveryState,
+        region: legacyKarnatakaHint || body.region || "",
+        deliveryType: mappedDelivery,
+        storeOwner: pickupStoreOwner,
+        items: pricedItems,
+      });
+      if (!validation.isValid) {
+        return Response.json(
+          {
+            success: false,
+            message: validation.message || "Unable to fulfill order for the selected delivery location.",
+            errorReason: validation.message || "Unable to fulfill order for the selected delivery location.",
+            assignedVendor: validation.assignedVendor,
+          },
+          { status: 400 }
+        );
       }
     }
 

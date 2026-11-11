@@ -1,7 +1,5 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import Product from "@/models/product";
-import OwnerProduct from "@/models/OwnerProduct";
 import Store from "@/models/store";
 import PincodeLocation from "@/models/PincodeLocation";
 import {
@@ -13,10 +11,13 @@ import {
 import {
   isValidPincode,
   isKarnatakaPincode,
-  isUniletProduct,
   lookupPincode,
 } from "@/lib/regionHelper";
 import { resolveProductPrice } from "@/lib/priceResolver";
+import {
+  resolveRegionalFulfillment,
+  resolveRegionVendorContext,
+} from "@/lib/regionalFulfillment";
 
 export async function GET(req) {
   try {
@@ -25,6 +26,7 @@ export async function GET(req) {
     const pincode = searchParams.get("pincode")?.trim();
     const itemCode = searchParams.get("item_code")?.trim();
     const productId = searchParams.get("productId")?.trim();
+    const quantity = Math.max(1, Math.floor(Number(searchParams.get("quantity") || 1) || 1));
 
     if (!pincode || !isValidPincode(pincode)) {
       return NextResponse.json(
@@ -190,33 +192,32 @@ export async function GET(req) {
       });
     }
 
-    const isKarnataka = region === "karnataka" || isKarnatakaPincode(pincode);
+    const regionCtx = resolveRegionVendorContext({
+      pincode,
+      state: stateName,
+      region,
+    });
+    const isKarnataka = regionCtx.isKarnataka;
+    const resolvedRegion = regionCtx.region || region;
 
-    // 4. Fetch Product and inventory check
+    // 4. Unified Regional Serviceability & Fulfillment Resolution
     let product = null;
-    if (itemCode) {
-      product = await Product.findOne({ item_code: itemCode, status: "Active" }).lean();
-      if (!product) {
-        const cleanItemCode = itemCode.trim();
-        product = await Product.findOne({
-          item_code: new RegExp(`^${cleanItemCode.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i"),
-          status: "Active",
-        }).lean();
-      }
-    }
-    if (!product && productId) {
-      try {
-        product = await Product.findById(productId).lean();
-      } catch {
-        // Ignore invalid object ID format
-      }
-    }
+    let ownerProduct = null;
+    let availableStock = null;
+    if (productId || itemCode) {
+      const fulfillment = await resolveRegionalFulfillment({
+        pincode,
+        state: isKarnataka ? "Karnataka" : stateName,
+        region: resolvedRegion,
+        productId,
+        itemCode,
+        quantity,
+        geoCheckResult: { serviceable: true },
+      });
 
-    if (product) {
-      // Check Karnataka specific Unilet stock rule
-      const isUnilet = isUniletProduct(product);
-
-      if (isUnilet && !isKarnataka) {
+      if (!fulfillment.isDeliverable) {
+        const failureMsg =
+          fulfillment.errorReason || "Not Available for Delivery at Your Location";
         return NextResponse.json({
           status: 0,
           available: false,
@@ -224,70 +225,26 @@ export async function GET(req) {
           deliveryAvailable: false,
           days: 0,
           deliveryDays: 0,
-          message: "UNILETEC products are only deliverable within Karnataka. Please change delivery address or remove item.",
-          deliveryMessage: "UNILETEC products are only deliverable within Karnataka. Please change delivery address or remove item.",
+          message: failureMsg,
+          deliveryMessage: failureMsg,
+          errorReason: failureMsg,
           pickupAvailable: false,
           pickupMessage: "Not Available",
           codAvailable: false,
           isCodAvailable: false,
-          region,
+          assignedVendor: fulfillment.assignedVendor,
+          vendorId: fulfillment.vendorId,
+          vendorName: fulfillment.vendorName,
+          availableStock: fulfillment.availableStock,
+          state: isKarnataka ? "Karnataka" : stateName,
+          isKarnataka,
+          region: fulfillment.region || resolvedRegion,
         });
       }
 
-      if (isKarnataka) {
-        const ownerProduct = await OwnerProduct.findOne({
-          owner_id: "unilet",
-          is_active: true,
-          $or: [
-            ...(product._id ? [{ product_id: product._id }] : []),
-            ...(product.item_code
-              ? [
-                  { product_item_code: product.item_code },
-                  { vendor_item_code: product.item_code },
-                ]
-              : []),
-          ],
-        }).lean();
-
-        if (!ownerProduct || ownerProduct.stock <= 0 || ownerProduct.stock_status === "Out of Stock") {
-          return NextResponse.json({
-            status: 0,
-            available: false,
-            serviceable: false,
-            deliveryAvailable: false,
-            days: 0,
-            deliveryDays: 0,
-            message: "Not Available for Delivery at Your Location",
-            deliveryMessage: "Not Available for Delivery at Your Location",
-            pickupAvailable: false,
-            pickupMessage: "Not Available",
-            codAvailable: false,
-            isCodAvailable: false,
-            state: "Karnataka",
-            isKarnataka: true,
-            region,
-          });
-        }
-      } else {
-        // Non-Karnataka standard stock check
-        if (product.quantity <= 0 && product.movement !== "CUS-Order" && product.stock_status === "Out of Stock") {
-          return NextResponse.json({
-            status: 0,
-            available: false,
-            serviceable: false,
-            deliveryAvailable: false,
-            days: 0,
-            deliveryDays: 0,
-            message: "Out of Stock",
-            deliveryMessage: "Out of Stock",
-            pickupAvailable: false,
-            pickupMessage: "Not Available",
-            codAvailable: false,
-            isCodAvailable: false,
-            region,
-          });
-        }
-      }
+      product = fulfillment.product;
+      ownerProduct = fulfillment.ownerProduct;
+      availableStock = fulfillment.availableStock;
     }
 
     // 5. Server cutoff evaluation (5:00 PM / 17:00 IST)
@@ -322,26 +279,10 @@ export async function GET(req) {
     // Same selling priority as PDP/cart/order: Unilet → LSP → special → MRP
     let sellingPrice = 0;
     if (product) {
-      let ownerProduct = null;
-      if (isKarnataka || isUniletProduct(product)) {
-        ownerProduct = await OwnerProduct.findOne({
-          owner_id: "unilet",
-          is_active: true,
-          $or: [
-            ...(product._id ? [{ product_id: product._id }] : []),
-            ...(product.item_code
-              ? [
-                  { product_item_code: product.item_code },
-                  { vendor_item_code: product.item_code },
-                ]
-              : []),
-          ],
-        }).lean();
-      }
       const priceInfo = resolveProductPrice(
         product,
         ownerProduct,
-        isKarnataka ? "karnataka" : region || "tamilnadu"
+        isKarnataka ? "karnataka" : resolvedRegion || "tamilnadu"
       );
       sellingPrice = Number(priceInfo.effectivePrice) || 0;
     }
@@ -362,7 +303,11 @@ export async function GET(req) {
       pickupStores: eligiblePickupStores.slice(0, 5),
       codAvailable: isCodAvailable,
       isCodAvailable,
-      region,
+      assignedVendor: regionCtx.assignedVendor,
+      vendorId: regionCtx.vendorId,
+      vendorName: regionCtx.vendorName,
+      ...(availableStock != null ? { availableStock } : {}),
+      region: resolvedRegion,
       isKarnataka,
       state: isKarnataka ? "Karnataka" : stateName,
     });

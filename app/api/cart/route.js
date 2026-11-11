@@ -2,19 +2,18 @@ import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import Cart from "@/models/ecom_cart_info";
 import Product from "@/models/product";
-import OwnerProduct from "@/models/OwnerProduct";
 import jwt from "jsonwebtoken";
 import {
   normalizeRegion,
   isKarnatakaPincode,
-  isUniletProduct,
-  isProductDeliverableToPincode,
-  getWarehouseByRegion,
-  UNILET_RESTRICTION_MESSAGE,
 } from "@/lib/regionHelper";
 import { resolveProductPrice } from "@/lib/priceResolver";
 import { isExtendedWarrantyEligible } from "@/lib/productServiceEligibility";
 import { isMovementAllowed } from "@/lib/addCartConfig";
+import {
+  resolveRegionalFulfillment,
+  resolveRegionVendorContext,
+} from "@/lib/regionalFulfillment";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -162,82 +161,15 @@ export async function POST(req) {
     const effectiveUserState = reqUserState || reqState || body.userState || body.state || cookieLocation?.stateName || cookieLocation?.state || "";
     const effectiveRegion = reqRegion || body.region || cookieLocation?.region || "";
 
-    const isKarnataka =
-      isKarnatakaPincode(effectivePincode) ||
-      /karnataka/i.test(String(effectiveUserState)) ||
-      normalizeRegion(effectiveRegion) === "karnataka";
-
-    const userRegion = isKarnataka
-      ? "karnataka"
-      : normalizeRegion(effectiveRegion || effectiveUserState || "tamilnadu");
-
-    const isUnilet = isUniletProduct(product);
-
-    let ownerProduct = null;
-    if (isUnilet || userRegion === "karnataka") {
-      ownerProduct = await OwnerProduct.findOne({
-        owner_id: "unilet",
-        $or: [
-          ...(product._id ? [{ product_id: product._id }] : []),
-          ...(product.item_code ? [{ product_item_code: product.item_code }, { vendor_item_code: product.item_code }] : []),
-          ...(product.sku ? [{ product_item_code: product.sku }, { vendor_item_code: product.sku }] : []),
-          { product_item_code: "UNILETEC383BIKSTM" },
-        ],
-        is_active: true,
-      }).lean();
-    }
-
-    if (isUnilet) {
-      // Unilet products are strictly deliverable only within Karnataka (560000 - 599999)
-      const isDeliverable = isProductDeliverableToPincode(product, effectivePincode, effectiveUserState || userRegion);
-      if (!isDeliverable) {
-        return NextResponse.json(
-          { error: UNILET_RESTRICTION_MESSAGE },
-          { status: 400 }
-        );
-      }
-
-      // Validate stock strictly against Unilet warehouse (OwnerProduct)
-      const ownerStock = Number(ownerProduct?.stock ?? ownerProduct?.quantity ?? 0);
-      const ownerStatus = String(ownerProduct?.stock_status || (ownerStock > 0 ? "In Stock" : "")).trim().toLowerCase();
-
-      if (!ownerProduct || ownerStock <= 0 || ownerStatus === "out of stock" || ownerStatus === "outofstock") {
-        return NextResponse.json(
-          { error: "This product is currently out of stock." },
-          { status: 400 }
-        );
-      }
-
-      if (ownerStock < quantity) {
-        return NextResponse.json(
-          { error: "Requested quantity exceeds available stock." },
-          { status: 409 }
-        );
-      }
-    } else {
-      // Normal Sathya product stock check
-      const prodQty = Number(product.quantity ?? product.stock ?? 0);
-      const prodStatus = String(product.stock_status || (prodQty > 0 ? "In Stock" : "")).trim();
-      if (prodStatus === "Out of Stock" || prodStatus === "outofstock" || prodQty <= 0) {
-        return NextResponse.json(
-          { error: "This product is currently out of stock." },
-          { status: 400 }
-        );
-      }
-
-      if (prodQty < 10 && !isMovementAllowed(product.movement)) {
-        return NextResponse.json(
-          { error: "This product is sold out online and only available for in-store purchase." },
-          { status: 400 }
-        );
-      }
-    }
+    const regionCtx = resolveRegionVendorContext({
+      pincode: effectivePincode,
+      state: effectiveUserState,
+      region: effectiveRegion,
+    });
+    const userRegion = regionCtx.region;
 
     const { userId, guestId: rawGuestId } = getCartIdentifier(req, body);
     const guestId = rawGuestId || `guest_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-
-    const priceInfo = resolveProductPrice(product, ownerProduct, userRegion);
-    const itemEffectivePrice = priceInfo.effectivePrice;
 
     const query = userId ? { userId } : { guestId };
     let cart = await Cart.findOne(query);
@@ -246,7 +178,6 @@ export async function POST(req) {
       cart = new Cart({ ...(userId ? { userId } : { guestId }), items: [] });
     }
 
-    // add/update item
     const existingItemIndex = cart.items.findIndex((item) => {
       const itemProdId = item.productId?._id
         ? item.productId._id.toString()
@@ -254,19 +185,52 @@ export async function POST(req) {
       return itemProdId === productId.toString();
     });
 
-    const availableStock = isUnilet
-      ? Number(ownerProduct?.stock ?? ownerProduct?.quantity ?? 0)
-      : priceInfo.stock;
+    const requestedTotalQty =
+      (existingItemIndex >= 0 ? Number(cart.items[existingItemIndex].quantity || 0) : 0) +
+      Math.max(1, Number(quantity) || 1);
 
-    if (existingItemIndex >= 0) {
-      cart.items[existingItemIndex].quantity += quantity;
+    const fulfillment = await resolveRegionalFulfillment({
+      pincode: effectivePincode,
+      state: effectiveUserState,
+      region: userRegion,
+      productId: product._id,
+      itemCode: product.item_code,
+      quantity: requestedTotalQty,
+      product,
+    });
 
-      if (availableStock && availableStock < cart.items[existingItemIndex].quantity) {
+    if (!fulfillment.isDeliverable) {
+      if (fulfillment.availableStock > 0 && fulfillment.availableStock < requestedTotalQty) {
         return NextResponse.json(
           { error: "Requested quantity exceeds available stock." },
           { status: 409 }
         );
       }
+      return NextResponse.json(
+        { error: fulfillment.errorReason || "This product is currently out of stock." },
+        { status: 400 }
+      );
+    }
+
+    if (
+      !regionCtx.isKarnataka &&
+      !fulfillment.isUniletOnlyProduct &&
+      fulfillment.availableStock < 10 &&
+      !isMovementAllowed(product.movement)
+    ) {
+      return NextResponse.json(
+        { error: "This product is sold out online and only available for in-store purchase." },
+        { status: 400 }
+      );
+    }
+
+    const ownerProduct = fulfillment.ownerProduct;
+    const priceInfo = resolveProductPrice(product, ownerProduct, fulfillment.region);
+    const itemEffectivePrice = priceInfo.effectivePrice;
+    const availableStock = fulfillment.availableStock;
+
+    if (existingItemIndex >= 0) {
+      cart.items[existingItemIndex].quantity = requestedTotalQty;
       cart.items[existingItemIndex].price = itemEffectivePrice;
       cart.items[existingItemIndex].actual_price = priceInfo.price;
       const isWarrantyEligible = Boolean(warrantyData) || Number(selectedExtendedWarranty || 0) > 0 || Number(selectedWarranty || 0) > 0 || isExtendedWarrantyEligible(product);
@@ -321,11 +285,11 @@ export async function POST(req) {
       cart.items[existingItemIndex].variantValues = resolvedVariantValues;
       cart.items[existingItemIndex].selectedVariant = resolvedVariantValues;
       cart.items[existingItemIndex].color = resolvedColor;
-      cart.items[existingItemIndex].isUnilet = Boolean(isUnilet);
-      if (isUnilet) {
-        cart.items[existingItemIndex].vendor = "unilet";
-        cart.items[existingItemIndex].store_owner = "unilet";
-      }
+      cart.items[existingItemIndex].isUnilet = Boolean(fulfillment.isUniletOnlyProduct);
+      cart.items[existingItemIndex].vendor = fulfillment.vendorId;
+      cart.items[existingItemIndex].store_owner = fulfillment.vendorId;
+      cart.items[existingItemIndex].assignedVendor = fulfillment.assignedVendor;
+      cart.items[existingItemIndex].region = fulfillment.region;
       if (normalizedExchangeOffer) {
         cart.items[existingItemIndex].exchangeOffer = normalizedExchangeOffer;
       }
@@ -390,9 +354,11 @@ export async function POST(req) {
         price: itemEffectivePrice,
         name: product.name,
         image: productImage,
-        isUnilet: Boolean(isUnilet),
-        vendor: isUnilet ? "unilet" : (product.vendor || "sathya"),
-        store_owner: isUnilet ? "unilet" : (product.store_owner || "sathya"),
+        isUnilet: Boolean(fulfillment.isUniletOnlyProduct),
+        vendor: fulfillment.vendorId,
+        store_owner: fulfillment.vendorId,
+        assignedVendor: fulfillment.assignedVendor,
+        region: fulfillment.region,
         warranty: effectiveWarranty,
         extendedWarranty: effectiveExtendedWarranty,
         warrantyData: effectiveWarrantyData,
@@ -414,7 +380,10 @@ export async function POST(req) {
     const returnItems = cart.items.map((i) => {
       const pId = i.productId?._id ? i.productId._id.toString() : i.productId?.toString();
       const cId = i._id ? i._id.toString() : pId;
-      const stock = Number(i.productId?.quantity ?? (pId === product._id.toString() ? product.quantity : null) ?? 10);
+      const stock =
+        pId === product._id.toString()
+          ? availableStock
+          : Number(i.productId?.quantity ?? i.original_quantity ?? 10);
       return {
         ...(i.toObject ? i.toObject() : i),
         id: cId,
@@ -479,12 +448,12 @@ export async function GET(req) {
     const qRegion = urlObj?.searchParams.get("region") || urlObj?.searchParams.get("state");
     const effectivePincode = String(qPin || cookieLocation?.pincode || "").replace(/\D/g, "").trim();
     const effectiveUserState = cookieLocation?.stateName || cookieLocation?.state || "";
-    const isKarnataka =
-      isKarnatakaPincode(effectivePincode) ||
-      /karnataka/i.test(String(effectiveUserState)) ||
-      normalizeRegion(qRegion || cookieLocation?.region) === "karnataka";
-
-    const userRegion = isKarnataka ? "karnataka" : normalizeRegion(qRegion || cookieLocation?.region || effectiveUserState || "tamilnadu");
+    const regionCtx = resolveRegionVendorContext({
+      pincode: effectivePincode,
+      state: effectiveUserState,
+      region: qRegion || cookieLocation?.region || "",
+    });
+    const userRegion = regionCtx.region;
 
     let cartModified = false;
     const priceChanges = [];
@@ -519,7 +488,6 @@ export async function GET(req) {
           available_stock = Number(item.original_quantity);
         }
         if (isNaN(available_stock) || available_stock < 0) available_stock = 10;
-        const original_quantity = available_stock;
 
         const prodImg = Array.isArray(prodDoc?.images) && prodDoc.images.length > 0
           ? prodDoc.images[0]
@@ -528,23 +496,48 @@ export async function GET(req) {
         let liveSellingPrice = Number(item.price) || 0;
         let liveActualPrice = Number(item.actual_price) || Number(prodDoc?.price) || liveSellingPrice;
 
-        const isUnilet = isUniletProduct(prodDoc || item);
+        let itemVendor = regionCtx.vendorId;
+        let itemAssignedVendor = regionCtx.assignedVendor;
+        let itemRegion = userRegion;
+        let itemIsUniletOnly = Boolean(item.isUnilet);
+        let itemIsDeliverable = true;
+        let itemDeliveryError = null;
 
-        if (prodDoc) {
-          let ownerProduct = null;
-          if (userRegion === "karnataka" || isUnilet) {
-            ownerProduct = await OwnerProduct.findOne({
-              owner_id: "unilet",
-              $or: [
-                ...(prodDoc._id ? [{ product_id: prodDoc._id }] : []),
-                ...(prodDoc.item_code ? [{ product_item_code: prodDoc.item_code }, { vendor_item_code: prodDoc.item_code }] : []),
-                { product_item_code: "UNILETEC383BIKSTM" },
-              ],
-              is_active: true,
-            }).lean();
+        if (prodDoc && !item.isCombo) {
+          const fulfillment = await resolveRegionalFulfillment({
+            pincode: effectivePincode,
+            state: effectiveUserState,
+            region: userRegion,
+            productId: prodDoc._id,
+            itemCode,
+            quantity: item.quantity,
+            product: prodDoc,
+          });
+
+          itemVendor = fulfillment.vendorId;
+          itemAssignedVendor = fulfillment.assignedVendor;
+          itemRegion = fulfillment.region;
+          itemIsUniletOnly = Boolean(fulfillment.isUniletOnlyProduct);
+          itemIsDeliverable = fulfillment.isDeliverable;
+          itemDeliveryError = fulfillment.errorReason || null;
+          available_stock = fulfillment.availableStock;
+
+          if (
+            item.vendor !== itemVendor ||
+            item.store_owner !== itemVendor ||
+            item.assignedVendor !== itemAssignedVendor ||
+            item.region !== itemRegion ||
+            Boolean(item.isUnilet) !== itemIsUniletOnly
+          ) {
+            item.vendor = itemVendor;
+            item.store_owner = itemVendor;
+            item.assignedVendor = itemAssignedVendor;
+            item.region = itemRegion;
+            item.isUnilet = itemIsUniletOnly;
+            cartModified = true;
           }
 
-          const priceInfo = resolveProductPrice(prodDoc, ownerProduct, userRegion);
+          const priceInfo = resolveProductPrice(prodDoc, fulfillment.ownerProduct, itemRegion);
           const resolvedSellingPrice = priceInfo.effectivePrice;
           const resolvedActualPrice = priceInfo.price;
 
@@ -574,6 +567,7 @@ export async function GET(req) {
             liveActualPrice = resolvedActualPrice;
           }
         }
+        const original_quantity = available_stock;
 
         // Resolve variant attributes if not stored on item
         let itemVariantValues = item.variantValues || item.selectedVariant || null;
@@ -657,9 +651,13 @@ export async function GET(req) {
           isCombo: Boolean(item.isCombo),
           comboId: item.comboId ? item.comboId.toString() : null,
           exchangeOffer: normalizeExchangeOffer(item.exchangeOffer),
-          isUnilet: Boolean(isUnilet),
-          vendor: isUnilet ? "unilet" : (prodDoc?.vendor || "sathya"),
-          store_owner: isUnilet ? "unilet" : (prodDoc?.store_owner || "sathya"),
+          isUnilet: Boolean(itemIsUniletOnly),
+          vendor: itemVendor,
+          store_owner: itemVendor,
+          assignedVendor: itemAssignedVendor,
+          region: itemRegion,
+          isDeliverable: itemIsDeliverable,
+          deliveryErrorReason: itemDeliveryError,
         };
       })
     );
@@ -771,16 +769,48 @@ export async function PUT(req) {
     const effectivePincode = String(body.pincode || cookieLocation?.pincode || "").replace(/\D/g, "").trim();
     const effectiveUserState = body.userState || body.state || cookieLocation?.stateName || cookieLocation?.state || "";
     const effectiveRegion = body.region || cookieLocation?.region || "";
-    const isKarnataka =
-      isKarnatakaPincode(effectivePincode) ||
-      /karnataka/i.test(String(effectiveUserState)) ||
-      normalizeRegion(effectiveRegion) === "karnataka";
+    const regionCtx = resolveRegionVendorContext({
+      pincode: effectivePincode,
+      state: effectiveUserState,
+      region: effectiveRegion,
+    });
+    const userRegion = regionCtx.region;
 
-    const userRegion = isKarnataka ? "karnataka" : normalizeRegion(effectiveRegion || effectiveUserState || "tamilnadu");
+    // Validate available stock before updating quantity
+    const targetItem = cart.items[itemIndex];
+    let targetDoc = targetItem.productId && typeof targetItem.productId === "object" ? targetItem.productId : null;
+    if (!targetDoc && targetItem.productId) {
+      targetDoc = await Product.findById(targetItem.productId).lean();
+    }
+    if (!targetItem.isCombo && targetDoc) {
+      const targetFulfillment = await resolveRegionalFulfillment({
+        pincode: effectivePincode,
+        state: effectiveUserState,
+        region: userRegion,
+        productId: targetDoc._id,
+        itemCode: targetDoc.item_code || targetItem.item_code,
+        quantity,
+        product: targetDoc,
+      });
 
-    // Re-sync latest catalog prices for items in the cart
+      if (!targetFulfillment.isDeliverable) {
+        if (targetFulfillment.availableStock > 0 && targetFulfillment.availableStock < quantity) {
+          return NextResponse.json(
+            { error: "Requested quantity exceeds available stock." },
+            { status: 409 }
+          );
+        }
+        return NextResponse.json(
+          { error: targetFulfillment.errorReason || "Requested quantity exceeds available stock." },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Re-sync latest catalog prices and regional vendor context for items in the cart
+    const stockByIndex = new Map();
     await Promise.all(
-      cart.items.map(async (item) => {
+      cart.items.map(async (item, idx) => {
         let prodDoc =
           item.productId && typeof item.productId === "object" && item.productId._id
             ? item.productId
@@ -793,64 +823,37 @@ export async function PUT(req) {
             prodDoc = await Product.findOne({ item_code: item.item_code || item.itemCode }).lean();
           }
         }
-        if (prodDoc) {
-          let ownerProduct = null;
-          if (userRegion === "karnataka" || isUniletProduct(prodDoc)) {
-            ownerProduct = await OwnerProduct.findOne({
-              owner_id: "unilet",
-              $or: [
-                ...(prodDoc._id ? [{ product_id: prodDoc._id }] : []),
-                ...(prodDoc.item_code ? [{ product_item_code: prodDoc.item_code }, { vendor_item_code: prodDoc.item_code }] : []),
-                { product_item_code: "UNILETEC383BIKSTM" },
-              ],
-              is_active: true,
-            }).lean();
-          }
-          const priceInfo = resolveProductPrice(prodDoc, ownerProduct, userRegion);
+        if (prodDoc && !item.isCombo) {
+          const itemFulfillment = await resolveRegionalFulfillment({
+            pincode: effectivePincode,
+            state: effectiveUserState,
+            region: userRegion,
+            productId: prodDoc._id,
+            itemCode: prodDoc.item_code || item.item_code,
+            quantity: idx === itemIndex ? quantity : item.quantity,
+            product: prodDoc,
+          });
+          stockByIndex.set(idx, itemFulfillment.availableStock);
+
+          const priceInfo = resolveProductPrice(prodDoc, itemFulfillment.ownerProduct, itemFulfillment.region);
           if (priceInfo.effectivePrice > 0) {
             item.price = priceInfo.effectivePrice;
           }
           if (priceInfo.price > 0) {
             item.actual_price = priceInfo.price;
           }
-          if (isUniletProduct(prodDoc)) {
-            item.isUnilet = true;
-            item.vendor = "unilet";
-            item.store_owner = "unilet";
-          }
+          item.isUnilet = Boolean(itemFulfillment.isUniletOnlyProduct);
+          item.vendor = itemFulfillment.vendorId;
+          item.store_owner = itemFulfillment.vendorId;
+          item.assignedVendor = itemFulfillment.assignedVendor;
+          item.region = itemFulfillment.region;
         }
       })
     );
 
-    // Validate available stock before updating quantity
-    const targetItem = cart.items[itemIndex];
-    let targetDoc = targetItem.productId && typeof targetItem.productId === "object" ? targetItem.productId : null;
-    if (!targetDoc && targetItem.productId) {
-      targetDoc = await Product.findById(targetItem.productId).lean();
-    }
-    const isTargetUnilet = isUniletProduct(targetDoc || targetItem);
-    if (isTargetUnilet) {
-      const owner = await OwnerProduct.findOne({
-        owner_id: "unilet",
-        $or: [
-          ...(targetDoc?._id ? [{ product_id: targetDoc._id }] : []),
-          ...(targetItem.item_code ? [{ product_item_code: targetItem.item_code }, { vendor_item_code: targetItem.item_code }] : []),
-          { product_item_code: "UNILETEC383BIKSTM" },
-        ],
-        is_active: true,
-      }).lean();
-      const ownerStock = Number(owner?.stock ?? owner?.quantity ?? 0);
-      if (ownerStock < quantity) {
-        return NextResponse.json(
-          { error: "Requested quantity exceeds available stock." },
-          { status: 409 }
-        );
-      }
-    }
-
     cart.items[itemIndex].quantity = quantity;
     const item_code = cart.items[itemIndex].item_code || cart.items[itemIndex].productId?.item_code;
-    const original_quantity = await getQuantity(item_code);
+    const original_quantity = stockByIndex.get(itemIndex) ?? (await getQuantity(item_code));
     const totals = calculateCartTotals(cart.items);
     cart.totalItems = totals.totalItems;
     cart.totalPrice = totals.totalPrice;
@@ -861,7 +864,7 @@ export async function PUT(req) {
     cart.markModified("totalItems");
     await cart.save();
 
-    const items = cart.items.map((item) => {
+    const items = cart.items.map((item, idx) => {
       const prodIdStr = item.productId?._id
         ? item.productId._id.toString()
         : item.productId?.toString();
@@ -871,6 +874,7 @@ export async function PUT(req) {
       const code = item.productId?.item_code || item.item_code;
       const cartItemId = item._id ? item._id.toString() : prodIdStr;
       const stock = Number(
+        stockByIndex.get(idx) ??
         item.productId?.quantity ??
         item.original_quantity ??
         item.available_stock ??
@@ -895,6 +899,11 @@ export async function PUT(req) {
         slug: item.slug || item.productId?.slug || "",
         available_stock: stock,
         original_quantity: stock,
+        isUnilet: Boolean(item.isUnilet),
+        vendor: item.vendor || regionCtx.vendorId,
+        store_owner: item.store_owner || regionCtx.vendorId,
+        assignedVendor: item.assignedVendor || regionCtx.assignedVendor,
+        region: item.region || userRegion,
         exchangeOffer: normalizeExchangeOffer(item.exchangeOffer),
       };
     });

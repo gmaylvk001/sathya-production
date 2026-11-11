@@ -111,10 +111,11 @@ async function applyRegionStock(products, region) {
   const ids = products.map((p) => p._id).filter(Boolean);
   const codes = products.map((p) => p.item_code).filter(Boolean);
   const owners = await OwnerProduct.find({
+    owner_id: { $regex: /^unilet$/i },
     is_active: true,
     $or: [
       { product_id: { $in: ids } },
-      ...(codes.length ? [{ product_item_code: { $in: codes } }] : []),
+      ...(codes.length ? [{ product_item_code: { $in: codes } }, { vendor_item_code: { $in: codes } }] : []),
     ],
   }).lean();
 
@@ -123,6 +124,7 @@ async function applyRegionStock(products, region) {
   for (const owner of owners) {
     if (owner.product_id) byProductId.set(String(owner.product_id), owner);
     if (owner.product_item_code) byCode.set(String(owner.product_item_code), owner);
+    if (owner.vendor_item_code) byCode.set(String(owner.vendor_item_code), owner);
   }
 
   return products.map((product) => {
