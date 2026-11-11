@@ -1,0 +1,194 @@
+/* ============= Header Start Here ======================= */
+.header {
+  @apply duration-200 ease-linear;
+
+  &.fixed-header {
+    @apply fixed left-0 right-0 top-0 z-[8] w-full animate-slidedown shadow-inset-inner backdrop-blur-xl max-lg:top-[-1px];
+  }
+}
+
+.logo {
+  img {
+    @apply max-w-[200px] max-xxs:max-w-[148px];
+  }
+}
+
+/* Header Menu and Submenu Css Start */
+.nav-menu {
+  @apply gap-[32px] max-2xl:gap-[24px] max-xl:gap-[16px];
+
+  &__item {
+    &.activePage {
+      > a {
+        @apply text-main;
+
+        &::before {
+          @apply text-main;
+        }
+      }
+    }
+    &:hover {
+      > a {
+        @apply text-gray-400 xl:text-main;
+      }
+    }
+  }
+  &__link {
+    @apply w-full px-0 py-[16px] font-[500] text-gray-400 custom-max-xl:text-[14px] max-xl:text-[13px];
+  }
+
+  .common-dropdown__link {
+    @apply custom-max-xl:text-[14px] max-xl:text-[13px];
+  }
+}
+
+.has-submenu {
+  @apply relative;
+  .nav-menu {
+    &__link {
+      @apply pr-[16px];
+    }
+  }
+
+  &.active {
+    > a,
+    > a::before {
+      @apply text-main;
+    }
+    > a::before {
+      @apply translate-y-[-50%] rotate-[180deg] !important;
+    }
+  }
+  > a {
+    @apply relative;
+    &::before {
+      @apply absolute right-0 top-[50%] translate-y-[-50%] font-phospor font-[900] text-black-400 duration-200 ease-linear content-['\E136'];
+    }
+  }
+}
+
+/* Submenu Start */
+.common-dropdown {
+  @apply absolute left-0 top-[100%] z-[99] w-max min-w-[190px] overflow-hidden rounded-[6px] bg-white p-[8px] shadow-lg duration-200 ease-linear xl:max-h-[400px] xl:overflow-y-auto;
+  &--sm {
+    @apply w-[132px] min-w-[unset];
+  }
+  &__item {
+    @apply relative block rounded-[4px] duration-200 ease-linear max-lg:rounded-none;
+
+    &.activePage {
+      .common-dropdown {
+        &__link {
+          @apply text-main !important;
+        }
+      }
+    }
+  }
+  &__link {
+    @apply w-full rounded-[inherit] px-[14px] py-[8px] pr-[16px] font-[500] text-gray-400;
+
+    &:hover {
+      @apply text-gray-600 !important;
+    }
+    &::before {
+      @apply absolute;
+    }
+  }
+}
+/* Submenu End */
+/* Header Menu and Submenu Css End */
+
+/* Category Submenus Submenu Css Start */
+.menu-category-wrapper {
+  gap: clampCal(12, 72, 1199, 1699);
+}
+
+.submenus-submenu-wrapper {
+  overflow: unset;
+}
+
+.submenus-submenu {
+  @apply invisible absolute left-full top-0 z-[99999999999] w-[300px] overflow-hidden rounded-[6px] bg-white opacity-0 shadow-lg;
+
+  &__list {
+    li {
+      a {
+        @apply relative block px-[16px] py-[10px] pl-[32px] text-gray-500;
+
+        &::before {
+          @apply absolute left-[16px] top-[50%] h-[8px] w-[8px] translate-y-[-50%] rounded-[80%] bg-gray-300 duration-200 ease-linear content-[''];
+        }
+        &:hover {
+          @apply bg-gray-50 font-[600] text-gray-800;
+
+          &::before {
+            @apply bg-gray-600;
+          }
+        }
+      }
+    }
+  }
+}
+
+.has-submenus-submenu {
+  &:hover {
+    > a {
+      @apply xl:bg-gray-50 xl:font-[600];
+    }
+    > a {
+      @apply xl:text-gray-900 !important;
+    }
+    .submenus-submenu {
+      @apply xl:visible xl:opacity-100;
+    }
+  }
+}
+
+.category {
+  .category__button {
+    @apply max-md:px-[3px] max-md:py-[12px] max-md:text-[12px] max-sm:pl-[10px] !important;
+  }
+  &:hover {
+    .category__button {
+      @apply xl:bg-gray-50 xl:text-main-600 !important;
+
+      .arrow-icon i::before {
+        @apply content-['\E13C'];
+      }
+    }
+  }
+}
+
+/* Style Two */
+.category-two {
+  @apply relative xl:w-[265px];
+
+  .category__button {
+    @apply w-full max-sm:text-[12px];
+
+    &.active .arrow-icon i::before {
+      @apply content-['\E13A'];
+    }
+  }
+
+  .category__button {
+    @apply max-sm:px-[4px] max-sm:py-[8px] !important;
+  }
+}
+.responsive-dropdown.style-two {
+  @apply max-h-[900px] w-full max-w-[265px] rounded-[0_0_16px_16px] xl:z-[1];
+
+  .responsive-dropdown__list {
+    @apply max-h-[900px] max-xl:max-h-[438px];
+  }
+}
+
+/* Category Submenus Submenu Css End */
+
+.header-border-0 {
+  .header {
+    @apply border-b-0 !important;
+  }
+}
+
+/* ================================= Header Css End =========================== */

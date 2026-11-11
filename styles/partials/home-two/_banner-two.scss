@@ -1,0 +1,37 @@
+/* ================================= Banner Two Css Start ================================= */
+.banner-item-two {
+  @apply relative;
+
+  &-wrapper {
+    @apply m-[32px] mr-0 max-lg:ml-0;
+  }
+  &__content {
+    @apply max-w-[504px] max-lg:max-w-[362px] max-sm:max-w-[320px];
+  }
+  &__title {
+    @apply max-sm:text-[1.5rem];
+  }
+  &__thumb {
+    @apply max-w-[41%] text-end max-sm:right-0 max-sm:mt-[32px] max-sm:max-w-[50%];
+  }
+  &__thumb {
+    @apply max-sm:relative !important;
+  }
+  &__thumb {
+    inset-inline-end: clampCal(24, 140, 1199, 1599);
+  }
+}
+
+.banner-item-two {
+  padding: 186px clamp(2rem, -10.739rem + 17vw, 6.25rem) 186px;
+  @media screen and (max-width: 1199px) {
+    padding: 86px clampCal(32, 100, 1199, 1599) 86px;
+  }
+  @media screen and (max-width: 991px) {
+    padding: 60px clampCal(32, 100, 1199, 1599) 60px;
+  }
+  @media screen and (max-width: 767px) {
+    padding: 40px clampCal(32, 100, 1199, 1599) 40px;
+  }
+}
+/* ================================= Banner Two Css End ================================= */

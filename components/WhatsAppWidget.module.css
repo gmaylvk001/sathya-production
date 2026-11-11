@@ -1,0 +1,188 @@
+/* WhatsApp Floating Widget - Scoped CSS Module (Strict Isolation) */
+
+.widgetWrapper {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 45; /* Above page content, below full-screen modals */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none; /* Allows clicks around the circular bounds */
+  user-select: none;
+}
+
+/* Mobile responsive positioning with safe area insets */
+@media (max-width: 768px) {
+  .widgetWrapper {
+    bottom: max(16px, env(safe-area-inset-bottom, 16px));
+    right: 16px;
+  }
+}
+
+.widgetLink {
+  pointer-events: auto; /* Re-enable clicks for the button */
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 96px;
+  text-decoration: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  outline: none;
+}
+
+.widgetLink:hover {
+  transform: scale(1.06);
+}
+
+.widgetLink:active {
+  transform: scale(0.96);
+}
+
+.widgetLink:focus-visible {
+  box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.5);
+}
+
+/* Pulse animation ring behind the button */
+.pulseRing {
+  position: absolute;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: #25d366;
+  opacity: 0.6;
+  pointer-events: none;
+  animation: pulseAnimation 2.4s cubic-bezier(0.24, 0, 0.38, 1) infinite;
+}
+
+@keyframes pulseAnimation {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.7;
+  }
+  60% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+/* Circular green button core */
+.buttonCore {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #2ae06d 0%, #20ba59 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(37, 211, 102, 0.45), 0 2px 6px rgba(0, 0, 0, 0.12);
+  transition: box-shadow 0.25s ease, background 0.25s ease;
+  z-index: 2;
+}
+
+.widgetLink:hover .buttonCore {
+  box-shadow: 0 8px 24px rgba(37, 211, 102, 0.6), 0 3px 8px rgba(0, 0, 0, 0.16);
+  background: linear-gradient(145deg, #30e874 0%, #22c55e 100%);
+}
+
+.whatsappIcon {
+  width: 32px;
+  height: 32px;
+  fill: #ffffff;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
+  transition: transform 0.2s ease;
+}
+
+.widgetLink:hover .whatsappIcon {
+  transform: scale(1.08);
+}
+
+/* SVG curved text container */
+.curvedTextSvg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 96px;
+  height: 96px;
+  pointer-events: none;
+  z-index: 3;
+  overflow: visible;
+}
+
+.curvedText {
+  font-family: inherit;
+  font-size: 8.8px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  fill: #15803d; /* Rich green matching live site */
+  stroke: #ffffff;
+  stroke-width: 2.2px;
+  paint-order: stroke fill;
+  stroke-linejoin: round;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* Tooltip (Desktop hover helper) */
+.tooltip {
+  position: absolute;
+  right: calc(100% + 4px);
+  background: #1f2937;
+  color: #ffffff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.3;
+}
+
+.tooltipTitle {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.tooltipSub {
+  font-size: 10px;
+  color: #9ca3af;
+}
+
+.tooltipArrow {
+  position: absolute;
+  top: 50%;
+  right: -5px;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 5px solid #1f2937;
+}
+
+/* Show tooltip on desktop hover */
+@media (min-width: 1024px) {
+  .widgetLink:hover .tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(0);
+  }
+}
+

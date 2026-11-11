@@ -1,0 +1,22 @@
+/* ================================== short product Css Start ================================== */
+.underlined-line {
+  &::before,
+  &::after {
+    @apply absolute bottom-0 left-0 h-[2px] w-full bg-white content-[''];
+  }
+  &::after {
+    @apply w-[50%] bg-main-600;
+  }
+}
+
+.short-product-list {
+  &.arrow-style-two {
+    .slick-arrow {
+      @apply bottom-[calc(100%+52px)] right-[16px];
+    }
+    .slick-prev {
+      @apply right-[50px];
+    }
+  }
+}
+/* ================================== short product Css End ================================== */

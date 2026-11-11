@@ -1,0 +1,25 @@
+/* ============================= Banner Three Css Start ================================= */
+.banner-three {
+  @apply bg-neutral-600 px-0 py-[80px] max-lg:px-0 max-lg:py-[60px];
+}
+
+.animation {
+  @apply absolute max-w-[10%];
+}
+
+.star-shape {
+  @apply bottom-[4%] left-[5%] opacity-30;
+
+  &.style-two {
+    @apply bottom-auto left-auto right-[8%] top-[10%];
+  }
+}
+.line-shape {
+  @apply left-[58%] top-[14%];
+}
+
+.animation-rotate {
+  @apply animate-rotation;
+}
+
+/* ============================= Banner Three Css End ================================= */

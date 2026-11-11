@@ -1,0 +1,13 @@
+// Line Clamp start
+.text-line-1 {
+  @apply line-clamp-1 text-ellipsis;
+}
+
+.text-line-2 {
+  @apply line-clamp-2 text-ellipsis;
+}
+
+.text-line-3 {
+  @apply line-clamp-3 text-ellipsis;
+}
+// Line Clamp End

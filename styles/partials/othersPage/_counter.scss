@@ -1,0 +1,9 @@
+.line-wrapper {
+  > div {
+    @apply relative last:before:hidden;
+
+    &::before {
+      @apply absolute right-0 top-0 h-full w-[1px] bg-white-100 content-[''] max-lg:hidden;
+    }
+  }
+}

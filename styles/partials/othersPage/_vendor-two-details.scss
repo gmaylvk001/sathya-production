@@ -1,0 +1,20 @@
+/* ============================== Vendor Two Details Css Start =============================== */
+.grid-columns-4 {
+  @apply grid gap-[24px];
+  &.list-view {
+    @apply grid-cols-2 max-2xl:grid-cols-1 !important;
+  }
+}
+.grid-columns-4 {
+  @apply grid-cols-4 max-2xl:grid-cols-3 max-xl:grid-cols-2 max-sm:grid-cols-1 !important;
+}
+
+.vendor-two-details {
+  .shop-sidebar {
+    @apply w-[332px];
+  }
+  &__contents {
+    @apply w-[calc(100%-356px)] flex-grow;
+  }
+}
+/* ============================== Vendor Two Details Css End =============================== */

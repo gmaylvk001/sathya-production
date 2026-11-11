@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"brand_slug":{"$numberInt":"1"}},"name":"brand_slug_1","background":true,"unique":true}],"uuid":"9443cd115be9427bb217b7cc6f78d1cd","collectionName":"ecom_brand_infos","type":"collection"}

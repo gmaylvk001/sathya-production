@@ -1,0 +1,11 @@
+/* ========================== Cart Page Css Start ============================ */
+.table-product {
+  &__thumb {
+    @apply aspect-[1] h-full max-h-[150px] w-full max-w-[150px];
+
+    img {
+      @apply max-w-[75px];
+    }
+  }
+}
+/* ========================== Cart Page Css End ============================ */

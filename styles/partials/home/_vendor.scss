@@ -1,0 +1,79 @@
+/* ===================================== Vendor Css Start ================================== */
+.vendor-card {
+  &__logo {
+    @apply max-w-[66px];
+  }
+  &__item {
+    @apply aspect-[1] h-full max-h-[64px] w-full max-w-[64px];
+  }
+  .vendor-card__list {
+    &.style-two {
+      .vendor-card__item {
+        @apply max-h-[88px] max-w-[88px];
+      }
+      .vendor-card__item {
+        @apply rounded-[8px] !important;
+      }
+      .slick-slide {
+        @apply mx-[4px] my-0 !important;
+      }
+    }
+  }
+}
+
+.vendor-card {
+  -webkit-mask-image: url(../images/shape/box-shape2.png);
+  mask-image: url(../images/shape/box-shape2.png);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  background: #f4f6e6;
+  mask-position: top;
+  mask-size: 100% 100%;
+  &.style-two {
+    -webkit-mask-image: url(../images/shape/box-shape3.png);
+    mask-image: url(../images/shape/box-shape3.png);
+  }
+}
+.vendor-card-wrapper div[class*="flex"] {
+  &:nth-child(8n + 1) {
+    .vendor-card {
+      @apply bg-[#F4F6E6];
+    }
+  }
+  &:nth-child(8n + 2) {
+    .vendor-card {
+      @apply bg-[#E6F6F6];
+    }
+  }
+  &:nth-child(8n + 3) {
+    .vendor-card {
+      @apply bg-[#F6E6F6];
+    }
+  }
+  &:nth-child(8n + 4) {
+    .vendor-card {
+      @apply bg-[#F8EAE4];
+    }
+  }
+  &:nth-child(8n + 5) {
+    .vendor-card {
+      @apply bg-[#F8EAE4];
+    }
+  }
+  &:nth-child(8n + 6) {
+    .vendor-card {
+      @apply bg-[#DEE6F3];
+    }
+  }
+  &:nth-child(8n + 7) {
+    .vendor-card {
+      @apply bg-[#DAF2DB];
+    }
+  }
+  &:nth-child(8n + 8) {
+    .vendor-card {
+      @apply bg-[#EBF1DA];
+    }
+  }
+}
+/* ===================================== Vendor Css End ================================== */

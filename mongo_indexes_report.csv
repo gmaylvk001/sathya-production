@@ -1,0 +1,18 @@
+Component,Collection,Field(s),Index Type,Reason,Estimated Write Cost
+Footer,Category,position,Single,"Optimizes the .sort({ position: 1 }) operation",Very Low
+Footer,Product,"category, brand",Compound,"Massively speeds up the $match and $group aggregation for brand extraction",Medium
+Footer,Brand,_id,Native,"Native MongoDB ID index used for $in query",None
+Header,ecom_cart_info,user_id,Single,"Used to fetch user's cart items on every page load",High
+Header,ecom_cart_info,session_id,Single,"Used to fetch guest cart items on every page load",High
+Header,Offertimer,"region, status",Compound,"Fetches active global timer based on selected region",Low
+Header,User,email,Single/Unique,"Used in Login/Signup via the Header Auth Modal",Low
+Header,User,phone,Single,"Used for OTP logins in the Header Auth Modal",Low
+Home,Brand,status,Single,"Fetches active brands for homepage carousel",Low
+Home,VideoCard,status,Single,"Fetches active promo videos for the homepage",Low
+Home,topbanner,"status, position",Compound,"Fetches and sorts active top banners",Low
+Home,flashsale,"status, endDate",Compound,"Fetches active flash sales within current date range",Low
+Home,homeSection,"status, position",Compound,"Fetches and sorts active home sections",Low
+Home,Category,"status, position",Compound,"Fetches and sorts active categories for quick links",Low
+Home,Product,"status, category",Compound,"Fetches active products for various home sections",Medium
+Home,categorybanner,"status, position",Compound,"Fetches and sorts active category banners",Low
+Home,singlebanner,status,Single,"Fetches active single banners",Low

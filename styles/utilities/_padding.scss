@@ -1,0 +1,84 @@
+/* ================================= Padding Css Start =========================== */
+@each $property, $value in $spaces {
+  .p-#{$property} {
+    padding: var(--size-#{$property}) !important;
+  }
+}
+
+@each $property, $value in $spaces {
+  .px-#{$property} {
+    padding-inline: var(--size-#{$property}) !important;
+  }
+}
+
+@each $property, $value in $spaces {
+  .py-#{$property} {
+    padding-block: var(--size-#{$property}) !important;
+  }
+}
+
+@each $property, $value in $spaces {
+  .ps-#{$property} {
+    padding-inline-start: var(--size-#{$property}) !important;
+  }
+}
+
+@each $property, $value in $spaces {
+  .pe-#{$property} {
+    padding-inline-end: var(--size-#{$property}) !important;
+  }
+}
+
+@each $property, $value in $spaces {
+  .pt-#{$property} {
+    padding-block-start: var(--size-#{$property}) !important;
+  }
+}
+
+@each $property, $value in $spaces {
+  .pb-#{$property} {
+    padding-block-end: var(--size-#{$property}) !important;
+  }
+}
+
+.p--24 {
+  padding: 24px;
+  @apply p-[24px];
+}
+
+.p-56-px {
+  padding: clampCal(8, 56, 1299, 1699);
+}
+
+.ps-0 {
+  @apply pl-[0px] !important;
+}
+
+.pe-0 {
+  @apply pr-[0px] !important;
+}
+
+.py-100 {
+  @apply pb-[40px] pt-[40px] xl:pb-[60px] xl:pt-[60px] 2xl:pb-[80px] 2xl:pt-[80px] custom-2xl:pb-[100px] custom-2xl:pt-[100px] !important;
+}
+
+.py-80 {
+  @apply pb-[60px] pt-[60px] xl:pb-[80px] xl:pt-[80px] !important;
+}
+.pt-80 {
+  @apply pt-[60px] xl:pt-[80px] !important;
+}
+.pb-80 {
+  @apply pb-[60px] xl:pb-[80px] !important;
+}
+
+.py-60 {
+  @apply pb-[30px] pt-[30px] md:pb-[40px] md:pt-[40px] xl:pb-[60px] xl:pt-[60px] !important;
+}
+.pt-60 {
+  @apply pt-[30px] md:pt-[40px] xl:pt-[60px] !important;
+}
+.pb-60 {
+  @apply pb-[30px] md:pb-[40px] xl:pb-[60px] !important;
+}
+/* ================================= Padding Css End =========================== */

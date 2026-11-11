@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"bannerType":{"$numberInt":"1"},"status":{"$numberInt":"1"}},"name":"bannerType_1_status_1","background":true}],"uuid":"3aa0412e80794af99ea20e63d381b4c1","collectionName":"ecom_banner_infos","type":"collection"}

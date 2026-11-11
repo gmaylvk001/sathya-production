@@ -1,0 +1,42 @@
+/* ============================= */
+/* 1. ABSTRACTS (Variables, Mixins) */
+/* ============================= */
+@import "./abstracts/_css-index";
+@import "./abstracts/_functions";
+@import "./abstracts/_index";
+@import "./abstracts/_mixins";
+@import "./abstracts/_variable";
+
+/* ============================= */
+/* 2. UTILITIES (Helper Classes) */
+/* ============================= */
+@import "./utilities/reset";
+@import "./utilities/helpers";
+@import "./utilities/typography";
+
+/* ============================= */
+/* 3. GLOBAL AND APP STYLES */
+/* ============================= */
+@import "./global";
+@import "./app";
+
+/* ============================= */
+/* 4. LAYOUT (Header, Footer, Grid) */
+/* ============================= */
+@import "./layout/header";
+@import "./layout/footer";
+@import "./layout/grid";
+
+/* ============================= */
+/* 5. PARTIALS (Reusable Components) */
+/* ============================= */
+@import "./partials/navbar";
+@import "./partials/sidebar";
+@import "./partials/modals";
+
+/* ============================= */
+/* 6. COMPONENTS (Buttons, Cards, Forms) */
+/* ============================= */
+@import "./components/buttons";
+@import "./components/cards";
+@import "./components/forms";

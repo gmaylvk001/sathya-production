@@ -1,0 +1,50 @@
+/* ========================== Count Down Css Start =============================== */
+.countdown-list {
+  @apply gap-[20px] max-2xl:gap-[6px];
+  &__item {
+    @apply relative rounded-[8px] bg-white last:before:hidden max-2xl:text-[12px];
+    &::before {
+      @apply absolute right-[-10px] top-[50%] translate-y-[-50%] font-[700] content-[":"] max-2xl:hidden;
+    }
+    &.colon-white {
+      &::before {
+        @apply text-white;
+      }
+    }
+  }
+  &__item {
+    padding: clampCal(6, 12, 1399, 1599) clampCal(8, 16, 1399, 1599);
+  }
+
+  &.style-two {
+    .countdown-list {
+      &__item {
+        @apply bg-main-600;
+      }
+      &__item {
+        @apply text-white before:text-main-600 !important;
+      }
+    }
+  }
+
+  &.style-three {
+    @apply gap-[12px];
+    .countdown-list {
+      &__item {
+        @apply bg-main-50 p-[6px];
+      }
+      &__item {
+        @apply text-[11px] text-[#1A1A1A] !important;
+      }
+    }
+  }
+
+  &.style-four {
+    .countdown-list {
+      &__item {
+        @apply h-[64px] w-[64px] items-center justify-center p-[2px] before:text-neutral-600;
+      }
+    }
+  }
+}
+/* ========================== Count Down Css End =============================== */

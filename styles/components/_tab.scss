@@ -1,0 +1,38 @@
+/* ================================= Tab Css Start =========================== */
+.common-tab {
+  @apply mb-[20px] gap-[8px];
+
+  .nav-item {
+    @apply border-b-0;
+
+    .nav-link {
+      @apply relative overflow-hidden rounded-[50px] border border-solid border-border-color bg-transparent text-[16px] font-normal text-gray-500 duration-200 ease-linear max-2xl:text-[14px];
+
+      &.active {
+        @apply border-main-600 bg-main-600 text-white !important;
+      }
+      &:hover {
+        @apply text-main-600;
+      }
+    }
+
+    .nav-link {
+      @apply px-[24px] py-[9px] max-2xl:px-[16px] max-2xl:py-[6px] !important;
+    }
+  }
+  &.style-two {
+    .nav-link {
+      border: 1px solid var(--gray-100);
+      color: var(--neutral-600);
+      @apply border border-solid border-gray-100 text-neutral-600;
+
+      &.active {
+        @apply border-main-two-600 bg-main-two-600 text-white !important;
+      }
+      &:hover {
+        @apply text-main-two-600;
+      }
+    }
+  }
+}
+/* ================================= Tab Css End =========================== */

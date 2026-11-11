@@ -1,0 +1,52 @@
+// background
+@each $color, $shades in $colors {
+  @each $shade, $value in $shades {
+    .bg-#{$color}-#{$shade} {
+      background-color: var(--#{$color}-#{$shade}) !important;
+    }
+  }
+}
+
+// hover background
+@each $color, $shades in $colors {
+  @each $shade, $value in $shades {
+    .hover-bg-#{$color}-#{$shade} {
+      &:hover {
+        background-color: var(--#{$color}-#{$shade}) !important;
+      }
+    }
+  }
+}
+
+.hover-bg {
+  &-white {
+    &:hover {
+      @apply bg-white !important;
+    }
+  }
+}
+
+.bg-light-purple {
+  @apply bg-[#ECDBEC] !important;
+}
+
+.bg {
+  &-yellow-light {
+    @apply bg-[#FFFCE1] !important;
+  }
+  &-danger-light {
+    @apply bg-[#FFEBEE] !important;
+  }
+  &-purple-light {
+    @apply bg-[#F5E7FC] !important;
+  }
+  &-danger-light {
+    @apply bg-[#FFE2F5] !important;
+  }
+  &-warning-light {
+    @apply bg-[#FBEEDD] !important;
+  }
+  &-success-light {
+    @apply bg-[#F6F5DB] !important;
+  }
+}

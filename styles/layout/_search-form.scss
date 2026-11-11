@@ -1,0 +1,7 @@
+.search-box {
+  @apply invisible fixed z-[9] flex h-full w-full scale-[0.8] items-center justify-center bg-black opacity-0 duration-200 ease-linear;
+
+  &.active {
+    @apply visible scale-[1] opacity-100;
+  }
+}

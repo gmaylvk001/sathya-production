@@ -1,0 +1,14 @@
+/* ======================= Checkout Css Start ============================= */
+.payment-item {
+  &__content {
+    @apply hidden;
+
+    &::before {
+      @apply absolute bottom-[calc(100%+-1px)] left-[32px] h-[14px] w-[20px] bg-main-50 content-[''];
+    }
+    &::before {
+      clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+    }
+  }
+}
+/* ======================= Checkout Css End ============================= */

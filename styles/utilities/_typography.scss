@@ -1,0 +1,95 @@
+/* ================================= Typography Css Start =========================== */
+* {
+  @apply m-0 box-border p-0;
+}
+
+html {
+  @apply scroll-smooth;
+}
+
+body {
+  @apply relative flex min-h-screen flex-col bg-white font-inter text-light;
+}
+
+body {
+  word-break: break-word;
+}
+
+html,
+body {
+  @apply overflow-x-hidden;
+}
+
+p {
+  @apply m-0 font-normal leading-[1.6];
+}
+
+span {
+  @apply inline-block;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  @apply mx-0 mb-[16px] mt-0 font-quicksand font-bold leading-[1.2] text-black;
+}
+h1,
+.h1 {
+  @apply text-heading-one;
+}
+h2,
+.h2 {
+  @apply text-heading-two;
+}
+h3,
+.h3 {
+  @apply text-heading-three;
+}
+h4,
+.h4 {
+  @apply text-heading-four;
+}
+h5,
+.h5 {
+  @apply text-heading-five;
+}
+h6,
+.h6 {
+  @apply text-heading-six;
+}
+
+h1 > a,
+h2 > a,
+h3 > a,
+h4 > a,
+h5 > a,
+h6 > a {
+  @apply text-[length:inherit] font-inherit leading-[inherit] text-inherit duration-200 ease-linear hover:text-main;
+}
+
+a {
+  @apply inline-block text-[#0661e9] no-underline duration-200 ease-linear;
+}
+// hover:text-[#1d72f2]
+img {
+  @apply inline-block h-auto max-w-full;
+}
+select {
+  @apply cursor-pointer;
+}
+ul,
+ol {
+  @apply m-0 list-none p-0;
+}
+button {
+  @apply border-0 bg-transparent focus:border-transparent focus:shadow-none focus:ring-0;
+}
+.form-select:focus {
+  @apply focus:shadow-none focus:outline-0 focus-visible:outline-0;
+}
+input:focus-visible {
+  @apply focus-visible:outline-0;
+}

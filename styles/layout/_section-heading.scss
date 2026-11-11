@@ -1,0 +1,15 @@
+/* ================== Section Heading Css Start ========================= */
+.section-heading {
+  @apply mb-[40px] max-xl:mb-[24px];
+
+  &.writing-mode {
+    @apply 2xl:rotate-[180deg] max-xl:mb-[60px];
+  }
+
+  &.writing-mode {
+    @media (min-width: 1200px) {
+      writing-mode: vertical-lr;
+    }
+  }
+}
+/* ================== Section Heading Css End ========================= */

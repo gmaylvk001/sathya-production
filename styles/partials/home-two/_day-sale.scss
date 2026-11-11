@@ -1,0 +1,9 @@
+/*  */
+.day-sale {
+  &-box {
+    &__content {
+      @apply max-w-[500px];
+    }
+  }
+}
+/*  */

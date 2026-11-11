@@ -1,0 +1,34 @@
+import dbConnect from "@/lib/db";
+import EmiScheme from "@/models/EmiScheme";
+import { NextResponse } from "next/server";
+
+export async function POST(req) {
+  try {
+    await dbConnect();
+    const body = await req.json();
+    const { _id } = body;
+
+    if (!_id) {
+      return NextResponse.json(
+        { success: false, error: "Missing _id" },
+        { status: 400 }
+      );
+    }
+
+    const deleted = await EmiScheme.findByIdAndDelete(_id);
+    if (!deleted) {
+      return NextResponse.json(
+        { success: false, error: "Record not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: deleted });
+  } catch (error) {
+    console.error("Error deleting Emi Scheme:", error);
+    return NextResponse.json(
+      { success: false, error: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}

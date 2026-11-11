@@ -1,0 +1,21 @@
+/* ================= Common Card Css Start ========================= */
+.common-card {
+  @apply border-0;
+  .card-header,
+  .card-footer {
+    @apply border-b border-solid border-border-color bg-transparent px-[24px] py-[12px] max-xxs:px-[16px] max-xxs:py-[12px];
+  }
+  .card-header {
+    @apply bg-black;
+    .title {
+      @apply mb-0 text-white;
+    }
+  }
+  .card-body {
+    @apply p-[24px] max-xxs:p-[16px];
+  }
+  .card-footer {
+    @apply border-b-0 border-t border-solid border-t-border-color;
+  }
+}
+/* ================= Common Card Css End ========================= */

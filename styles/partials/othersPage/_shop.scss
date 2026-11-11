@@ -1,0 +1,46 @@
+/* ================================ Shop Page css Start =============================== */
+.list-grid-btns {
+  @apply max-xs:hidden;
+}
+.list-grid-wrapper {
+  @apply grid grid-cols-[repeat(auto-fit,_minmax(230px,_1fr))] gap-[24px];
+}
+
+.list-view {
+  @apply custom-md:grid-cols-[repeat(auto-fit,_minmax(430px,_1fr))];
+
+  .product-card {
+    @apply custom-md:flex custom-md:flex-row custom-md:items-center;
+
+    &__thumb {
+      @apply custom-md:max-w-[200px];
+    }
+    &__thumb {
+      @apply custom-md:h-full !important;
+    }
+    &__content {
+      @apply custom-md:ml-[20px] custom-md:flex-grow;
+    }
+    &__content {
+      @apply custom-md:mt-0 !important;
+    }
+  }
+}
+
+.shop-sidebar__box {
+  @apply max-xl:p-[16px] !important;
+}
+.shop-sidebar {
+  @apply max-lg:fixed max-lg:left-0 max-lg:top-0 max-lg:z-[11] max-lg:h-screen max-lg:w-[300px] max-lg:translate-x-[-100%] max-lg:overflow-y-auto max-lg:border-r max-lg:border-solid max-lg:border-r-gray-100 max-lg:bg-white max-lg:duration-200 max-lg:ease-linear;
+
+  &.active {
+    @apply max-lg:translate-x-0;
+  }
+  &__box {
+    @apply max-lg:rounded-none max-lg:border-0 !important;
+  }
+}
+.shop-sidebar {
+  @apply max-lg:rounded-none !important;
+}
+/* ================================ Shop Page css End =============================== */

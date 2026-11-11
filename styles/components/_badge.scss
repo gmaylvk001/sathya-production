@@ -1,0 +1,14 @@
+.badge-notification {
+  @apply absolute left-0 top-[-18px] mb-[6px] animate-notification;
+  &::before {
+    @apply absolute top-[calc(100%-1px)] h-[6px] w-[11px] bg-inherit content-[""];
+  }
+
+  &::before {
+    clip-path: polygon(0% 0%, 100% 0%, 0% 100%, 0% 100%);
+  }
+}
+
+.badge-style-two::before {
+  @apply absolute left-[-4px] top-[50%] h-[12px] w-[12px] translate-y-[-50%] rotate-[45deg] rounded-[2px] bg-main-two-600 content-[''];
+}

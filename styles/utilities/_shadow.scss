@@ -1,0 +1,22 @@
+/* Box shadow start */
+.box-shadow {
+  &-sm {
+    @apply shadow-sm;
+  }
+  &-md {
+    @apply shadow-md;
+  }
+  &-lg {
+    @apply shadow-lg;
+  }
+  &-xl {
+    @apply shadow-xl;
+  }
+  &-2xl {
+    @apply shadow-2xl;
+  }
+  &-inner {
+    @apply shadow-inner;
+  }
+}
+/* Box shadow End */

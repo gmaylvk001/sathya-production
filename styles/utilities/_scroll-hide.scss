@@ -1,0 +1,9 @@
+/* Hide Scroll bar Css For Custom Modal */
+.scroll-hide {
+  @apply absolute left-0 top-0 w-full overflow-y-hidden pr-[17px] max-lg:pr-0;
+
+  &-sm {
+    @apply max-lg:absolute max-lg:left-0 max-lg:top-0 max-lg:w-full max-lg:overflow-y-hidden;
+  }
+}
+/* Hide Scroll bar Css For Custom Modal End */

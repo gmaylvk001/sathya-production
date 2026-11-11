@@ -1,0 +1,35 @@
+/* Hover Classes Start */
+.item-hover {
+  &:hover {
+    .item-hover__text {
+      @apply text-main-600 !important;
+    }
+  }
+}
+.item-hover-two {
+  &:hover {
+    .item-hover__text {
+      @apply text-main-two-600 !important;
+    }
+  }
+}
+
+.on-hover-dropdown {
+  @apply invisible mt-[16px] opacity-0;
+}
+
+.on-hover-item {
+  @apply relative;
+
+  &:hover {
+    .on-hover-dropdown {
+      @apply visible mt-[0px] opacity-100;
+    }
+    > a {
+      &::before {
+        @apply xl:translate-y-[-50%] xl:rotate-[180deg] xl:text-main;
+      }
+    }
+  }
+}
+/* Hover Classes End */

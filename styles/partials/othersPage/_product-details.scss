@@ -1,0 +1,23 @@
+/* ============================ Product Details Css Start ============================= */
+.product-details {
+  &__thumb {
+    &-slider {
+      padding: clampCal(48, 116);
+    }
+  }
+
+  .slick-initialized.slick-slider .slick-slide > div > div {
+    @apply h-full;
+  }
+}
+
+.product-dContent__box,
+.product-dContent__header {
+  @apply px-[40px] py-[16px];
+}
+.product-dContent {
+  &__box {
+    @apply py-[48px];
+  }
+}
+/* ============================ Product Details Css End ============================= */

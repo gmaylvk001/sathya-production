@@ -1,0 +1,9 @@
+/* ======================= Offer Css Start =========================== */
+.offer-card {
+  &__thumb {
+    img {
+      @apply custom-max-2xl:w-full custom-max-2xl:max-w-[246px] max-xl:max-w-[163px];
+    }
+  }
+}
+/* ======================= Offer Css End =========================== */

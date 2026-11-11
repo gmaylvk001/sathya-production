@@ -1,0 +1,63 @@
+/* ============================= Product Card Css Start ========================== */
+.product-card {
+  @apply flex flex-col items-start justify-between;
+
+  &:hover {
+    .product-card__thumb img {
+      @apply scale-[1.2];
+    }
+  }
+  &__cart {
+    @apply custom-max-2xl:text-[12px];
+  }
+  &__cart {
+    @apply custom-max-2xl:px-[12px] custom-max-2xl:py-[9px] !important;
+  }
+  &__badge {
+    @apply rounded-[16px_0_16px_0];
+  }
+  &__thumb {
+    @apply h-[232px] w-full;
+
+    img {
+      @apply w-full max-w-[160px] duration-200 ease-linear;
+    }
+  }
+
+  &__thumb {
+    @apply transition-none !important;
+  }
+
+  &.style-two {
+    @apply flex-row;
+    .product-card {
+      &__thumb {
+        @apply h-[190px] w-[260px] max-lg:w-[190px] max-sm:w-[124px];
+      }
+    }
+  }
+}
+
+.product-card {
+  &__thumb {
+    @apply max-xl:min-h-[160px];
+
+    img {
+      @apply max-xl:max-w-[120px];
+    }
+  }
+  &__content {
+    .product-card {
+      &__price span {
+        @apply max-xl:text-[12px] !important;
+      }
+    }
+    .title .link {
+      @apply max-xl:text-[14px];
+    }
+    .text-xs {
+      @apply max-xl:text-[10px] !important;
+    }
+  }
+}
+/* ============================= Product Card Css End ========================== */

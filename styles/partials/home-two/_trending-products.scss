@@ -1,0 +1,24 @@
+/* ============================ trending products css Start =========================== */
+.trending-products-three {
+  .product-card__thumb {
+    @apply h-[330px];
+  }
+}
+
+.trending-products {
+  &-box {
+    @apply bg-[#F3EDDE];
+
+    &__title {
+      @apply mx-auto my-0 max-w-[364px];
+    }
+  }
+}
+
+.expand-btn {
+  @apply text-neutral-600;
+}
+.expand-icons {
+  @apply hidden flex-col;
+}
+/* ============================ trending products css End =========================== */

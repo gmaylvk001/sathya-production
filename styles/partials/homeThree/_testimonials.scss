@@ -1,0 +1,61 @@
+/* ================================= Testimonials Section Css Start ==================================== */
+.testimonials-item {
+  &__desc {
+    @apply lg:line-clamp-1 lg:block lg:text-ellipsis;
+  }
+}
+
+.testimonials-slider {
+  @apply lg:absolute lg:left-[25.50%] lg:top-0 custom-max-xl:left-[34%] max-md:left-0;
+}
+
+.testimonials-thumbs {
+  @apply flex overflow-hidden !important;
+  &__img {
+    @apply relative h-full max-h-[350px] w-full duration-500 ease-linear;
+
+    img {
+      @apply object-top;
+    }
+    &::before {
+      @apply invisible absolute left-0 top-0 h-full w-full bg-style-three opacity-0 duration-200 ease-linear content-[''];
+    }
+  }
+
+  &:hover {
+    .testimonials-thumbs__img::before,
+    .testimonials-thumbs__content {
+      @apply visible block opacity-100 !important;
+    }
+  }
+}
+
+.testimonials {
+  .slick-slider .slick-track {
+    @apply flex items-end;
+  }
+  .slick-active.slick-current .testimonials-thumbs {
+    overflow: unset !important;
+    &__img {
+      @apply max-h-full object-cover;
+    }
+  }
+}
+.testimonials-thumbs-slider {
+  .slick-slide {
+    @apply h-[630px] !important;
+  }
+}
+.testimonials-slider {
+  .slick-slide {
+    @apply lg:h-[630px] !important;
+  }
+}
+.testimonials-slider .slick-slide > div {
+  height: auto !important;
+}
+
+.testimonials-thumbs-slider .testimonials-thumbs__content {
+  height: auto !important;
+}
+/* ================================= Testimonials Section Css End ==================================== */

@@ -1,0 +1,86 @@
+/* =========================== header top Css Start =============================== */
+.header-top {
+  &__right {
+    @apply max-md:w-full;
+
+    li {
+      &:last-child {
+        @apply max-md:ml-auto;
+      }
+      &:nth-last-child(2) {
+        @apply max-md:mr-0 max-md:pr-0 !important;
+
+        &::before {
+          @apply max-md:hidden;
+        }
+      }
+    }
+
+    &.style-two {
+      > li {
+        @apply mr-0 pr-[16px] last:pr-0 !important;
+
+        &::before {
+          @apply hidden !important;
+        }
+        a {
+          @apply pr-[20px];
+
+          &::before {
+            @apply text-[14px] text-black max-lg:text-white !important;
+          }
+        }
+        a {
+          @apply max-lg:text-white !important;
+        }
+        > ul {
+          @apply left-[calc(-100%+-24px)] right-auto !important;
+
+          li a {
+            @apply max-lg:text-neutral-600 !important;
+          }
+        }
+      }
+    }
+  }
+}
+
+.border-right-item {
+  a {
+    @apply max-lg:text-[12px] !important;
+  }
+}
+.border-right-item {
+  @apply relative;
+
+  &:not(:last-child) {
+    @apply mr-[24px] pr-[24px];
+
+    &::before {
+      @apply absolute right-0 top-[50%] h-[15px] w-[1px] translate-y-[-50%] bg-white-300 content-[''];
+    }
+  }
+  &:not(:last-child) {
+    @apply max-2xl:mr-[16px] max-2xl:pr-[16px] max-xl:mr-[10px] max-xl:pr-[10px] !important;
+  }
+  &-sm-space {
+    &:not(:last-child) {
+      @apply mr-[20px] pr-[20px];
+    }
+  }
+}
+/* Has Dropdown Css */
+.arrow-white {
+  > a {
+    @apply pr-[12px];
+
+    &::before {
+      @apply text-[8px];
+    }
+    &::before {
+      @apply text-white !important;
+    }
+  }
+}
+
+/* =========================== header top Css End =============================== */

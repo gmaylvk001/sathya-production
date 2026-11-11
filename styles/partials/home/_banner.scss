@@ -1,0 +1,68 @@
+/* ============================== Banner Css Start ========================== */
+.banner {
+  margin-top: 32px;
+  @apply mt-[32px] max-md:mb-[32px];
+
+  .slick-slider {
+    position: unset;
+  }
+  .slick-initialized.slick-slider .slick-slide {
+    @apply m-0;
+  }
+}
+
+.banner-item {
+  &__title {
+    @apply custom-max-2xl:text-[56px] max-xl:text-[46px] max-lg:text-[28px] max-md:text-[26px];
+  }
+
+  &__title {
+    margin-block-end: clampCal(16, 60);
+  }
+  &__content {
+    @apply max-w-[852px] custom-max-2xl:max-w-[750px];
+  }
+  &__thumb {
+    img {
+      @apply max-sm:w-full max-sm:max-w-[350px];
+    }
+  }
+}
+
+.banner-item {
+  position: relative;
+  padding-block-start: clampCal(32, 100, 768, 1599);
+  padding-block-end: clampCal(32, 220, 768, 1599);
+  padding-inline-start: clampCal(16, 142, 992, 1599);
+  padding-inline-end: clampCal(16, 76, 992, 1599);
+  -webkit-mask-image: url(../images/bg/banner-bg2.png);
+  mask-image: url(../images/bg/banner-bg2.png);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  background: #d3ebc0;
+  mask-position: top;
+  mask-size: 100% 100%;
+  gap: clampCal(24, 72);
+
+  @media screen and (max-width: 767px) {
+    mask-image: none;
+    overflow: unset !important;
+  }
+}
+
+.banner-slider__inner {
+  @apply max-sm:flex-wrap;
+}
+
+.scroll-down {
+  @apply relative z-[2] mb-[24px] h-[94px] w-[94px] max-2xl:mb-[16px] max-2xl:h-[74px] max-2xl:w-[74px] max-md:mb-[-36px];
+
+  &::before {
+    @apply absolute top-[16px] h-[32px] w-[2px] animate-updown border-2 border-dashed border-white-400 content-[''] max-2xl:top-[8px];
+  }
+  .icon {
+    @apply mt-[16px] animate-updown text-[28px];
+  }
+}
+
+/* ============================== Banner Css End ========================== */

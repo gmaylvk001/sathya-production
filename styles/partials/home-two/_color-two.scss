@@ -1,0 +1,58 @@
+/* Home Two Css Start */
+.color-two {
+  &:root {
+    --main-h: 24;
+    --main-s: 100%;
+    --main-l: 49%;
+  }
+}
+
+.font-exo {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-exo-font;
+  }
+  h1,
+  .h1,
+  h2,
+  .h2,
+  h3,
+  .h3,
+  h4,
+  .h4,
+  h5,
+  .h5,
+  h6,
+  .h6 {
+    @apply font-exo-font;
+  }
+}
+.font-outfit {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-outfit-font;
+  }
+  h1,
+  .h1,
+  h2,
+  .h2,
+  h3,
+  .h3,
+  h4,
+  .h4,
+  h5,
+  .h5,
+  h6,
+  .h6 {
+    @apply font-outfit-font;
+  }
+}
+/* Home Two Css End */

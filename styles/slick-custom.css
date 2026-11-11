@@ -1,0 +1,23 @@
+.slick-dots {
+    bottom: 40px !important;
+    text-align: left !important;
+    /* left: 175px !important; */
+    left: 40% !important;
+    width: fit-content !important;
+    line-height: 14px !important;
+    background: rgba(0,0,0,0.35) !important; 
+    -webkit-backdrop-filter: blur(8px) !important;
+    backdrop-filter: blur(8px) !important;
+    border-radius: 13px !important;
+}
+
+.slick-dots li button:before {
+    font-size: 12px !important;
+    color: #ffff !important;
+    opacity: .50;
+}
+
+.slick-dots li.slick-active button:before {
+    opacity: .90 !important;
+    color: #ffff !important;
+}

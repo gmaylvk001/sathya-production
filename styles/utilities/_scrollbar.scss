@@ -1,0 +1,11 @@
+.scroll-sm {
+  &::-webkit-scrollbar {
+    @apply h-[4px] w-[4px] !important;
+  }
+  &::-webkit-scrollbar-thumb {
+    @apply bg-[#b1b3b8] hover:bg-[#7e7d7d];
+  }
+  &::-webkit-scrollbar-track {
+    @apply bg-[#d6d9de];
+  }
+}

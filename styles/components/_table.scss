@@ -1,0 +1,94 @@
+/* ======================= Common Table Css Start ======================= */
+.table-card {
+  @apply rounded-[10px] border border-solid border-white-200;
+}
+
+.table-card {
+  padding: clampCal(20, 36);
+}
+.table {
+  @apply mb-0 w-full min-w-max text-white;
+
+  & > :not(caption) > * > * {
+    @apply border-b-0;
+  }
+  tr {
+    th {
+      @apply p-[32px] pl-0 first:pl-0 last:pr-0;
+    }
+    th,
+    td {
+      @apply text-center align-middle first:text-start last:pr-0 last:text-end;
+    }
+  }
+  thead {
+    tr {
+      @apply border-b border-solid border-b-white-200;
+
+      th {
+        @apply pt-0 font-[700];
+      }
+
+      th {
+        font-size: clampCal(16, 20);
+        padding-block-end: clampCal(16, 30);
+      }
+    }
+  }
+  tbody {
+    tr {
+      @apply border-b border-solid border-b-white-200;
+
+      &:last-child {
+        @apply border-b-0;
+
+        td {
+          @apply pb-0;
+        }
+      }
+      td {
+        font-weight: 400;
+
+        @apply font-normal;
+      }
+
+      td {
+        padding: clampCal(16, 30) 0;
+        font-size: clampCal(14, 16);
+      }
+    }
+  }
+
+  &.style-two {
+    @apply text-black;
+
+    thead tr,
+    tbody tr {
+      @apply border-b border-solid border-b-black-100;
+    }
+    thead tr th {
+      @apply pb-[16px] text-[15px];
+    }
+  }
+  &.style-three {
+    tbody tr {
+      @apply border-b border-solid border-b-gray-100;
+
+      &:last-child {
+        @apply border-0;
+      }
+      td {
+        &:first-child {
+          @apply pl-0;
+        }
+        &:last-child {
+          @apply pr-0;
+        }
+      }
+      td {
+        padding: clampCal(24, 40) 24px;
+      }
+    }
+  }
+}
+/* ======================= Common Table Css End ======================= */

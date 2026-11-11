@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"offer_code":{"$numberInt":"1"}},"name":"offer_code_1","background":true,"unique":true}],"uuid":"26c3a9e0bd3a4d7da2fd5057e0a47124","collectionName":"ecom_offer_info","type":"collection"}

@@ -1,0 +1,17 @@
+/* ============================ Extend Css Start ======================== */
+/* Cover image Css */
+.cover-img {
+  @apply h-full w-full object-cover;
+}
+/* Display Flex Css Start */
+.flex-align {
+  @apply flex items-center;
+}
+.flex-center {
+  @apply flex items-center justify-center;
+}
+.flex-between {
+  @apply flex items-center justify-between;
+}
+/* Display Flex Css End */
+/* ============================ Extend Css End ======================== */

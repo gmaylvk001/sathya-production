@@ -1,0 +1,11 @@
+.progress-wrap.active-progress {
+  @apply visible translate-y-0 opacity-100 !important;
+}
+
+.progress-wrap svg path {
+  @apply fill-none;
+}
+
+.progress-wrap svg.progress-circle path {
+  @apply box-border stroke-main stroke-[5px] transition-all duration-200 ease-linear;
+}

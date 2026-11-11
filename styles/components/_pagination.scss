@@ -1,0 +1,22 @@
+/* ================================= Pagination Css Start =========================== */
+.pagination {
+  @apply mt-[64px] max-xl:mt-[48px] max-lg:mt-[40px] max-md:mt-[32px];
+
+  .page-item {
+    &.active {
+      .page-link {
+        @apply border-main-600 bg-main-600 text-white !important;
+      }
+    }
+    .page-link {
+      @apply shadow-none !important;
+
+      &:hover,
+      &:active,
+      &:focus {
+        @apply border-main-300 bg-main-100 text-main-600 !important;
+      }
+    }
+  }
+}
+/* ================================= Pagination Css End =========================== */

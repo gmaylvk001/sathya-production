@@ -1,0 +1,82 @@
+/* ================================= Button Css Start =========================== */
+.btn-check:checked + .btn,
+.btn.active,
+.btn.show,
+.btn:first-child:active,
+:not(.btn-check) + .btn:active {
+  @apply border-transparent bg-transparent text-transparent;
+}
+
+.btn {
+  @apply relative z-[1] rounded-[5px] border border-solid border-transparent px-[24px] py-[13px] font-inter font-[500] leading-none max-2xl:px-[20px] max-2xl:py-[10px] max-2xl:text-[14px];
+
+  &:hover,
+  &:focus,
+  &:focus-visible {
+    @apply shadow-none !important;
+  }
+  &-sm {
+    @apply px-[16px] py-[10px] !important;
+  }
+  &:active {
+    @apply scale-[1.01];
+  }
+  // ============= Different Color Button Start ==================
+  &-main {
+    @apply border-main bg-main !important;
+    &:hover {
+      @apply border-main-800 bg-main-800 !important;
+    }
+  }
+  &-outline-main {
+    @apply border-main bg-transparent text-main !important;
+    &:hover {
+      @apply border-main-400 bg-main-200 !important;
+    }
+  }
+  &-main-two {
+    @apply border-main-two bg-main-two text-white !important;
+    &:hover {
+      @apply border-main-two-800 bg-main-two-800 !important;
+    }
+  }
+  &-outline-main-two {
+    @apply border-main-two bg-transparent text-main-two !important;
+    &:hover {
+      @apply border-main-two-400 bg-main-two-200 !important;
+    }
+  }
+
+  &-white {
+    @apply border-white bg-white text-black !important;
+    &:hover {
+      @apply border-white-900 bg-white-900 !important;
+    }
+  }
+
+  &-outline-white {
+    @apply border-white bg-transparent text-white !important;
+    &:hover {
+      @apply border-white bg-white text-black !important;
+    }
+  }
+
+  &-black {
+    @apply border-black bg-black text-white !important;
+    &:hover {
+      @apply border-black-800 bg-black-800 !important;
+    }
+  }
+
+  &-outline-black {
+    @apply border-black bg-transparent text-black !important;
+    &:hover {
+      @apply border-black bg-black text-white !important;
+    }
+  }
+}
+
+.btn {
+  @apply text-white !important;
+}
+/* ================================= Button Css End =========================== */

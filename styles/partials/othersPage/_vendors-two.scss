@@ -1,0 +1,18 @@
+/* ======================== Vendors Two Page css Start ============================= */
+.grid-columns-3 {
+  @apply grid gap-[24px];
+  &.list-view {
+    @apply grid-cols-2 max-2xl:grid-cols-1 !important;
+  }
+}
+
+.grid-columns-3 {
+  @apply grid-cols-3 max-xl:grid-cols-2 max-sm:grid-cols-1 !important;
+}
+
+.list-view {
+  .vendors-two-item {
+    @apply flex;
+  }
+}
+/* ======================== Vendors Two Page css End ============================= */

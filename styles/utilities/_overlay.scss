@@ -1,0 +1,17 @@
+/* Overlay Start */
+.overlay {
+  @apply invisible fixed left-0 top-0 z-[99] h-full w-full bg-black-600 opacity-0 duration-200 ease-linear content-[''];
+
+  &.show-overlay {
+    @apply visible opacity-100;
+  }
+}
+
+.side-overlay {
+  @apply invisible fixed left-0 top-0 z-[8] h-full w-full bg-black-600 opacity-0 duration-200 ease-linear content-[''];
+
+  &.show {
+    @apply max-lg:visible max-lg:opacity-100;
+  }
+}
+/* Overlay End */

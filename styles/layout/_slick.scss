@@ -1,0 +1,68 @@
+/* ================= Slick Arrow & Dots css Start ================ */
+.slick-initialized.slick-slider {
+  .slick-track {
+    @apply flex;
+  }
+  .slick-slide {
+    @apply mx-[10px] my-0 h-auto cursor-grab;
+
+    > div {
+      @apply h-full;
+
+      > div {
+        @apply h-full;
+      }
+    }
+  }
+}
+
+/* Slick Slider Arrow */
+.slick-arrow {
+  @apply h-[48px] w-[48px] max-lg:h-[40px] max-lg:w-[40px] max-md:h-[32px] max-md:w-[32px];
+
+  &:active {
+    @apply scale-[1.02];
+  }
+}
+
+/* Arrow Style Two */
+.arrow-center {
+  @apply relative;
+
+  .slick-arrow {
+    @apply absolute left-[16px] top-[50%] z-[2] translate-y-[-50%];
+
+    &.slick-next {
+      @apply left-auto right-[16px];
+    }
+  }
+}
+
+.slick-arrows-style-three {
+  .slick-arrow {
+    @apply invisible opacity-0;
+  }
+  &:hover {
+    .slick-arrow {
+      @apply visible opacity-100;
+    }
+  }
+}
+
+/* Dots Css Start */
+.slick-dots {
+  @apply absolute bottom-[60px] z-[1] flex w-full items-center justify-center text-center leading-none;
+
+  li {
+    @apply flex;
+
+    button {
+      @apply mx-[3px] my-0 h-[12px] w-[12px] rounded-[50px] border-0 bg-white-300 indent-[-9999px] text-white duration-300 ease-linear;
+    }
+    &.slick-active button {
+      @apply w-[40px] bg-main-two;
+    }
+  }
+}
+/* Dots Css End */
+/* ================= Slick Arrow & Dots css Start ================ */

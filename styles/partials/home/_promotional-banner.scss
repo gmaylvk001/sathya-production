@@ -1,0 +1,15 @@
+/* ======================== promotional banner Css Start ============================== */
+.promotional-banner-item {
+  @apply max-sm:px-[16px] max-sm:py-[24px];
+
+  &__content {
+    @apply max-w-[200px];
+  }
+  &__title {
+    @apply max-2xl:text-[24px] !important;
+  }
+}
+.promotional-banner-item {
+  padding: clampCal(32, 84) 24px;
+}
+/* ======================== promotional banner Css End ============================== */

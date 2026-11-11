@@ -1,0 +1,15 @@
+/* ======================= Newsletter Css Start =========================== */
+.newsletter-box {
+  @apply bg-black;
+}
+
+.newsletter-box {
+  padding: 32px clampCal(24, 64, 1199, 1499);
+}
+
+.newsletter-two {
+  &__form {
+    @apply max-lg:w-full !important;
+  }
+}
+/* ======================= Newsletter Css End =========================== */

@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"filter_slug":{"$numberInt":"1"}},"name":"filter_slug_1","background":true,"unique":true}],"uuid":"53b2cf21de0041a29cc349b0164e03c0","collectionName":"ecom_filter_infos","type":"collection"}

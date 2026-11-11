@@ -1,0 +1,118 @@
+/* ============================ Feature Section Css start =============================== */
+.feature {
+  @apply mt-[32px];
+
+  .arrow-center {
+    &:hover {
+      .slick-arrow {
+        @apply visible ml-[-28px] opacity-100;
+
+        &.slick-next {
+          @apply mr-[-20px];
+        }
+      }
+    }
+    .slick-arrow {
+      @apply invisible top-[54px] ml-[-40px] translate-y-0 border border-solid border-gray-100 opacity-0;
+
+      &.slick-next {
+        @apply mr-[-30px];
+      }
+    }
+  }
+  &.feature-three .arrow-center .slick-arrow {
+    @apply top-[110px];
+  }
+}
+
+.feature-item {
+  &-wrapper {
+    @apply grid grid-cols-[repeat(auto-fit,minmax(132px,1fr))] gap-[16px];
+
+    .feature-item {
+      &:nth-child(10n + 1) {
+        .feature-item__thumb {
+          @apply bg-[#E8F9E9];
+        }
+      }
+      &:nth-child(10n + 2) {
+        .feature-item__thumb {
+          @apply bg-[#FCEDED];
+        }
+      }
+      &:nth-child(10n + 3) {
+        .feature-item__thumb {
+          @apply bg-[#F6EBF3];
+        }
+      }
+      &:nth-child(10n + 4) {
+        .feature-item__thumb {
+          @apply bg-[#FCF2E7];
+        }
+      }
+      &:nth-child(10n + 5) {
+        .feature-item__thumb {
+          @apply bg-[#F5FBE3];
+        }
+      }
+      &:nth-child(10n + 6) {
+        .feature-item__thumb {
+          @apply bg-[#E3FBE9];
+        }
+      }
+      &:nth-child(10n + 7) {
+        .feature-item__thumb {
+          @apply bg-[#E9E3FB];
+        }
+      }
+      &:nth-child(10n + 8) {
+        .feature-item__thumb {
+          @apply bg-[#ECF8F2];
+        }
+      }
+      &:nth-child(10n + 9) {
+        .feature-item__thumb {
+          @apply bg-[#F8F5E5];
+        }
+      }
+      &:nth-child(10n + 10) {
+        .feature-item__thumb {
+          @apply bg-[#F0F8E5];
+        }
+      }
+      &:nth-child(10n + 11) {
+        .feature-item__thumb {
+          @apply bg-[#ddd];
+        }
+      }
+    }
+  }
+  &__thumb {
+    @apply mx-auto my-0 aspect-[1] max-h-[153px] max-w-[153px] bg-main-50;
+
+    img {
+      @apply duration-200 ease-linear;
+    }
+  }
+  &:hover {
+    .feature-item__thumb img {
+      @apply scale-[1.2];
+    }
+  }
+}
+
+.featured-products,
+.popular-products {
+  .product-card {
+    @apply flex-row;
+  }
+  .product-card {
+    align-items: unset;
+  }
+}
+.popular-products {
+  .product-card__thumb {
+    @apply w-[120px] !important;
+  }
+}
+/* ============================ Feature Section Css End =============================== */
