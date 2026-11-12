@@ -114,24 +114,65 @@ function HeaderLinks({ links, busy, onAdd, onToggle, onDelete, onReorder }) {
 
 function HeaderToggle({ shown, disabled, onClick }) {
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
+    <label
       title="Show or hide in the website header menu"
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (!disabled) onClick();
+      }}
+      onMouseDown={(e) => e.stopPropagation()}
       style={{
-        padding: "4px 10px",
-        borderRadius: "12px",
-        border: "none",
-        fontSize: "0.8em",
-        fontWeight: "500",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "8px",
         cursor: disabled ? "not-allowed" : "pointer",
-        backgroundColor: shown ? "#e8f5e9" : "#eeeeee",
-        color: shown ? "#2e7d32" : "#757575",
+        userSelect: "none",
+        opacity: disabled ? 0.6 : 1,
       }}
     >
-      {shown ? "Header: Shown" : "Header: Hidden"}
-    </button>
+      <span style={{ fontSize: "0.8em", fontWeight: 600, color: "#555" }}>
+        Header
+      </span>
+      <span
+        role="switch"
+        aria-checked={shown}
+        aria-label={shown ? "Header shown" : "Header hidden"}
+        style={{
+          position: "relative",
+          width: "44px",
+          height: "24px",
+          borderRadius: "999px",
+          backgroundColor: shown ? "#2e7d32" : "#bdbdbd",
+          transition: "background-color 0.2s",
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            position: "absolute",
+            top: "2px",
+            left: shown ? "22px" : "2px",
+            width: "20px",
+            height: "20px",
+            borderRadius: "50%",
+            backgroundColor: "white",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+            transition: "left 0.2s",
+          }}
+        />
+      </span>
+      <span
+        style={{
+          fontSize: "0.8em",
+          fontWeight: 600,
+          minWidth: "28px",
+          color: shown ? "#2e7d32" : "#757575",
+        }}
+      >
+        {shown ? "On" : "Off"}
+      </span>
+    </label>
   );
 }
 
@@ -643,8 +684,8 @@ export default function CategoryNavPage() {
       </h2>
       <p style={{ color: "#666", marginBottom: "12px", fontSize: "14px" }}>
         Direct links shown in the red header menu after the categories. Drag to
-        reorder (saves automatically). Use
-        &quot;Header: Shown/Hidden&quot; above to choose which categories appear.
+        reorder (saves automatically). Use the Header On/Off toggle above to
+        choose which categories appear.
       </p>
       <HeaderLinks
         links={headerLinks}

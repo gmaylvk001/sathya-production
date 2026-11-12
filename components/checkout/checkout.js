@@ -3028,7 +3028,7 @@ export default function CheckoutPage() {
 
                 {/* MRP */}
                 <div className="flex justify-between text-sm text-gray-700">
-                  <span>product price</span>
+                  <span>Product price</span>
                   <span>₹{mrpTotal.toLocaleString('en-IN')}</span>
                 </div>
 

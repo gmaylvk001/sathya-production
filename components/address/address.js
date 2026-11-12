@@ -261,14 +261,14 @@ export default function Address() {
                   <FaAddressBook className="text-brandRed text-xl" />
                   <span>Addresses</span>
                 </Link>
-                <Link href="/orders" className={`w-full flex items-center gap-2 px-5 py-3 text-base font-medium rounded-lg transition-all duration-200 ${isActive('/orders') ? 'text-brandRed bg-red-50 pl-6' : 'text-gray-600 hover:text-brandRed hover:bg-red-50 hover:pl-6'}`}>
+                {/* <Link href="/orders" className={`w-full flex items-center gap-2 px-5 py-3 text-base font-medium rounded-lg transition-all duration-200 ${isActive('/orders') ? 'text-brandRed bg-red-50 pl-6' : 'text-gray-600 hover:text-brandRed hover:bg-red-50 hover:pl-6'}`}>
                   <HiShoppingBag className="text-brandRed text-xl" />
                   <span>Orders</span>
                 </Link>
                 <Link href="/wishlist" className={`w-full flex items-center gap-2 px-5 py-3 text-base font-medium rounded-lg transition-all duration-200 ${isActive('/wishlist') ? 'text-brandRed bg-red-50 pl-6' : 'text-gray-600 hover:text-brandRed hover:bg-red-50 hover:pl-6'}`}>
                   <FaHeart className="text-brandRed text-xl" />
                   <span>Wishlist</span>
-                </Link>
+                </Link> */}
               </nav>
             </div>
           </div>
