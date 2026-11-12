@@ -229,11 +229,11 @@ export default function HeaderMenuSidebar({
     return [
       {
         title: "Only at Sathya",
-        red: false,
+        red: true,
         items: [
           { key: "brands", label: "Brands", href: "/brands", children: brandGroups, width: BRAND_GROUP_W },
           { key: "deals", label: "Deals", href: "/deals-offer" },
-          { key: "open-box", label: "Open Box", href: "/open-box" },
+          // { key: "open-box", label: "Open Box", href: "/open-box" },
         ],
       },
       {
