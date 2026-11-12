@@ -49,7 +49,7 @@ export default function Login() {
         role: "admin",
         source: "admin",
       });
-      window.location.replace(getFromUrl() || "/admin/dashboard");
+      window.location.replace(getFromUrl() || "/admin");
     };
 
     const boot = async () => {
@@ -136,7 +136,7 @@ export default function Login() {
 
       setMessage("Login successful! ✅");
       redirectingRef.current = true;
-      window.location.replace(getFromUrl() || "/admin/dashboard");
+      window.location.replace(getFromUrl() || "/admin");
     } catch (error) {
       setMessage(error.message);
       setLoading(false);
