@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getPublicHeaderMenu } from "@/lib/headerMenu";
+import { getHeaderMenuSettings, getPublicHeaderMenu } from "@/lib/headerMenu";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -12,8 +12,8 @@ const NO_CACHE_HEADERS = {
 
 export async function GET() {
   try {
-    const data = await getPublicHeaderMenu();
-    return NextResponse.json({ data }, { headers: NO_CACHE_HEADERS });
+    const [data, settings] = await Promise.all([getPublicHeaderMenu(), getHeaderMenuSettings()]);
+    return NextResponse.json({ data, settings }, { headers: NO_CACHE_HEADERS });
   } catch (error) {
     console.error("[header-menu storefront]", error);
     return NextResponse.json({ data: [], error: "Failed to load header menu" }, { headers: NO_CACHE_HEADERS });

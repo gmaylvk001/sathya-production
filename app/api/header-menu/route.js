@@ -4,7 +4,11 @@ import dbConnect from "@/lib/db";
 import HeaderMenuItem from "@/models/header_menu_item";
 import Category from "@/models/ecom_category_info";
 import { requireAdmin } from "@/lib/adminRequest";
-import { invalidateHeaderMenuCache, listHeaderMenuItemsForAdmin } from "@/lib/headerMenu";
+import {
+  getHeaderMenuSettings,
+  invalidateHeaderMenuCache,
+  listHeaderMenuItemsForAdmin,
+} from "@/lib/headerMenu";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +19,11 @@ export async function GET(req) {
   if (!auth.authorized) return auth.response;
 
   try {
-    const items = await listHeaderMenuItemsForAdmin();
-    return NextResponse.json({ data: items });
+    const [items, settings] = await Promise.all([
+      listHeaderMenuItemsForAdmin(),
+      getHeaderMenuSettings(),
+    ]);
+    return NextResponse.json({ data: items, settings });
   } catch (error) {
     console.error("[header-menu GET]", error);
     return NextResponse.json({ error: "Failed to load header menu" }, { status: 500 });

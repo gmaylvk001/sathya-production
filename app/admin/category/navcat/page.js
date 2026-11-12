@@ -112,7 +112,7 @@ function HeaderLinks({ links, busy, onAdd, onToggle, onDelete, onReorder }) {
   );
 }
 
-function HeaderToggle({ shown, disabled, onClick }) {
+function HeaderToggle({ shown, disabled, onClick, label = "Header" }) {
   return (
     <label
       title="Show or hide in the website header menu"
@@ -131,13 +131,15 @@ function HeaderToggle({ shown, disabled, onClick }) {
         opacity: disabled ? 0.6 : 1,
       }}
     >
-      <span style={{ fontSize: "0.8em", fontWeight: 600, color: "#555" }}>
-        Header
-      </span>
+      {label ? (
+        <span style={{ fontSize: "0.8em", fontWeight: 600, color: "#555" }}>
+          {label}
+        </span>
+      ) : null}
       <span
         role="switch"
         aria-checked={shown}
-        aria-label={shown ? "Header shown" : "Header hidden"}
+        aria-label={shown ? `${label || "Menu"} shown` : `${label || "Menu"} hidden`}
         style={{
           position: "relative",
           width: "44px",
@@ -351,6 +353,7 @@ export default function CategoryNavPage() {
   const [hasSubChanges, setHasSubChanges] = useState(false);
   const [confirmKind, setConfirmKind] = useState(null); // "main" | "sub" | null
   const [headerMenu, setHeaderMenu] = useState([]);
+  const [menuButtonEnabled, setMenuButtonEnabled] = useState(true);
   const [headerBusy, setHeaderBusy] = useState(false);
 
   const headerCategoryItems = useMemo(
@@ -363,6 +366,7 @@ export default function CategoryNavPage() {
     try {
       const data = await readJson(await fetch("/api/header-menu", { cache: "no-store" }));
       setHeaderMenu(data.data || []);
+      setMenuButtonEnabled(data.settings?.menuButtonEnabled !== false);
     } catch (error) {
       console.error("Error loading header menu:", error);
     }
@@ -394,6 +398,11 @@ export default function CategoryNavPage() {
       jsonRequest(`/api/header-menu/${item._id}`, "PUT", { status: item.status === "Active" ? "Inactive" : "Active" })
     );
   };
+
+  const toggleMenuButton = () =>
+    headerAction(
+      jsonRequest("/api/header-menu/settings", "PUT", { menuButtonEnabled: !menuButtonEnabled })
+    );
 
   const toggleLink = (link) =>
     headerAction(jsonRequest(`/api/header-menu/${link._id}`, "PUT", { status: link.status === "Active" ? "Inactive" : "Active" }));
@@ -621,6 +630,35 @@ export default function CategoryNavPage() {
         Drag items to set the order shown in the storefront nav menu. Save each
         section separately.
       </p>
+
+      {/* ── Storefront "Menu" dropdown button ── */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "16px",
+          padding: "15px",
+          marginBottom: "28px",
+          border: "1px solid #ddd",
+          borderRadius: "8px",
+          background: "white",
+        }}
+      >
+        <div>
+          <div style={{ fontWeight: 600, color: "#333" }}>Menu button (☰ Menu)</div>
+          <div style={{ color: "#666", fontSize: "14px", marginTop: "4px" }}>
+            Shows the Menu dropdown (Brands, Deals, Open Box and all categories) at
+            the left of the red header bar on the website.
+          </div>
+        </div>
+        <HeaderToggle
+          label=""
+          shown={menuButtonEnabled}
+          disabled={headerBusy}
+          onClick={toggleMenuButton}
+        />
+      </div>
 
       {/* ── Main categories ── */}
       <h2 style={{ color: "#333", fontSize: "18px", marginBottom: "8px" }}>

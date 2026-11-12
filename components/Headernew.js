@@ -26,6 +26,7 @@ import { Navigation, Scrollbar } from 'swiper/modules';
 import { useHeaderdetails } from "@/context/HeaderContext";
 import { useRegion } from "@/context/RegionContext";
 import HeaderOfferTimer from "@/components/HeaderOfferTimer";
+import HeaderMenuSidebar from "@/components/HeaderMenuSidebar";
 import DealsPdfButton from "@/components/deals-offer/DealsPdfButton";
 import { filterAndRankProducts } from '@/lib/searchMatch';
 import { uniqueById } from '@/lib/uniqueById';
@@ -336,6 +337,7 @@ const Header = () => {
   const [activeTab, setActiveTab] = useState('login');
   // const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const menuHoverLeaveTimer = useRef(null);
   // const [userData, setUserData] = useState(null);
   const [hasMounted, setHasMounted] = useState(false);
   const [headerOfferTimer, setHeaderOfferTimer] = useState(null);
@@ -888,14 +890,18 @@ const Header = () => {
   const [offers, setOffers] = useState([]);
   const [categories, setCategories] = useState([]);
   const [headerMenuItems, setHeaderMenuItems] = useState([]);
+  // "Menu" dropdown button on the red bar; admin switches it in /admin/category/navcat.
+  const [menuButtonEnabled, setMenuButtonEnabled] = useState(false);
   const [products, setProducts] = useState([]);
 
   useEffect(() => {
     let mounted = true;
     const cacheKey = "sathya_header_menu_v1";
+    const menuButtonCacheKey = "sathya_header_menu_button_v1";
     try {
       const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
       if (Array.isArray(cached) && cached.length) setHeaderMenuItems(cached);
+      if (localStorage.getItem(menuButtonCacheKey) === "1") setMenuButtonEnabled(true);
     } catch { }
     fetch("/api/header-menu/storefront", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
@@ -903,6 +909,11 @@ const Header = () => {
         if (!mounted || !Array.isArray(json?.data)) return;
         setHeaderMenuItems(json.data);
         try { localStorage.setItem(cacheKey, JSON.stringify(json.data)); } catch { }
+        if (json.settings) {
+          const enabled = json.settings.menuButtonEnabled !== false;
+          setMenuButtonEnabled(enabled);
+          try { localStorage.setItem(menuButtonCacheKey, enabled ? "1" : "0"); } catch { }
+        }
       })
       .catch(() => { });
     return () => { mounted = false; };
@@ -1686,6 +1697,12 @@ const Header = () => {
     cancelHide();
     const cat = categoryNode || categories.find((c) => c._id === categoryId);
     if (!cat) return;
+    // The category mega menu and the Menu dropdown never show together.
+    if (menuHoverLeaveTimer.current) {
+      clearTimeout(menuHoverLeaveTimer.current);
+      menuHoverLeaveTimer.current = null;
+    }
+    setShowMenu(false);
     setHoveredCategory(cat);
     const sortedSubs = [...(cat.subcategories || [])]
       .sort(sortByCategoryPosition);
@@ -3371,7 +3388,53 @@ const Header = () => {
           className="hidden sm:flex relative w-full min-h-[56px] items-center bg-[#ED1C24] shadow"
           style={{ borderTop: "4px solid #FFF200" }}
         >
-          <div className="w-full relative">
+          {menuButtonEnabled && (
+            <div
+              className="relative flex-shrink-0 self-stretch pl-10 md:pl-14"
+              data-sathya-menu-toggle
+              onMouseEnter={() => {
+                if (menuHoverLeaveTimer.current) {
+                  clearTimeout(menuHoverLeaveTimer.current);
+                  menuHoverLeaveTimer.current = null;
+                }
+                setShowMenu(true);
+                cancelHide();
+                setHoveredCategory(null);
+                setActiveSubCategory(null);
+              }}
+              onMouseLeave={() => {
+                if (menuHoverLeaveTimer.current) clearTimeout(menuHoverLeaveTimer.current);
+                menuHoverLeaveTimer.current = setTimeout(() => {
+                  setShowMenu(false);
+                  menuHoverLeaveTimer.current = null;
+                }, 200);
+              }}
+            >
+              <button
+                type="button"
+                className="h-full self-stretch px-4 md:px-5 flex items-center gap-2.5 text-white font-bold text-base bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent"
+                aria-label="Open menu"
+                aria-expanded={showMenu}
+                onClick={() => {
+                  // Touch / keyboard: toggle. Desktop opens on hover.
+                  setShowMenu((prev) => !prev);
+                  cancelHide();
+                  setHoveredCategory(null);
+                  setActiveSubCategory(null);
+                }}
+              >
+                <FiMenu size={18} strokeWidth={2.5} />
+                <span>Menu</span>
+              </button>
+              <HeaderMenuSidebar
+                open={showMenu}
+                onClose={() => setShowMenu(false)}
+                categories={categories}
+                resolveCategoryHref={resolveCategoryNavHref}
+              />
+            </div>
+          )}
+          <div className="w-full relative min-w-0">
             <div className="relative">
               <div className="flex justify-center overflow-x-auto scrollbar-hide">
                 <Swiper
