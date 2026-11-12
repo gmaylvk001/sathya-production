@@ -350,10 +350,11 @@ export default function TopBannerEditor({ pageId }) {
         )}
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1160px] table-fixed text-sm">
+          <table className="w-full min-w-[1360px] table-fixed text-sm">
             <colgroup>
               <col className="w-16" />
-              <col className="w-[280px]" />
+              <col className="w-[240px]" />
+              <col className="w-[180px]" />
               <col className="w-36" />
               <col className="w-44" />
               <col className="w-44" />
@@ -364,6 +365,7 @@ export default function TopBannerEditor({ pageId }) {
               <tr className="border-b text-left text-gray-500">
                 <th className="px-3 py-2 font-semibold">SNO</th>
                 <th className="px-3 py-2 font-semibold">Desktop Image</th>
+                <th className="px-3 py-2 font-semibold">Mobile Image</th>
                 <th className="px-3 py-2 font-semibold">State</th>
                 <th className="px-3 py-2 font-semibold">Start date</th>
                 <th className="px-3 py-2 font-semibold">End date</th>
@@ -374,7 +376,7 @@ export default function TopBannerEditor({ pageId }) {
             <tbody>
               {visibleRows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-10 text-center text-gray-500">
+                  <td colSpan={8} className="px-3 py-10 text-center text-gray-500">
                     {isDealsRole && !dealsState
                       ? "Your account email does not include a state."
                       : banners.length === 0
@@ -393,6 +395,20 @@ export default function TopBannerEditor({ pageId }) {
                           src={banner.desktopImage}
                           alt=""
                           className="block h-auto w-full max-w-[71%] rounded border bg-gray-100 object-contain"
+                        />
+                      ) : (
+                        <span className="inline-flex h-16 w-full items-center justify-center rounded border bg-gray-50 text-[11px] text-gray-400">
+                          No image
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3">
+                      {banner.mobileImage ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={banner.mobileImage}
+                          alt=""
+                          className="block h-auto max-h-28 w-auto max-w-full rounded border bg-gray-100 object-contain"
                         />
                       ) : (
                         <span className="inline-flex h-16 w-full items-center justify-center rounded border bg-gray-50 text-[11px] text-gray-400">
