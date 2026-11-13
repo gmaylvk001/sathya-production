@@ -1408,11 +1408,18 @@ export default function CheckoutPage() {
   const isHeaderKarnataka = isKarnatakaPincode(normHeaderPin);
   const currentSt = currentShipping?.state || formData.state || '';
 
-  const useUniletStoreList = normDeliveryPin.length === 6 ? isKarnatakaPincode(normDeliveryPin) : isHeaderKarnataka;
+  const isKarnatakaStore = (store) => {
+    const owner = String(store?.store_owner || "").trim().toLowerCase();
+    if (owner === "unilet") return true;
+    const pin = String(store?.zipcode || store?.pincode || store?.zip || "").replace(/\D/g, "");
+    if (isKarnatakaPincode(pin)) return true;
+    const place = `${store?.state || ""} ${store?.city || ""} ${store?.address || ""}`;
+    return /karnataka/i.test(place);
+  };
   const pickupStores = stores.filter((store) => {
     if (Number(store?.approved) !== 1) return false;
-    const owner = String(store.store_owner || '').trim().toLowerCase();
-    return useUniletStoreList ? owner === 'unilet' : owner === 'sathya';
+    const karnatakaStore = isKarnatakaStore(store);
+    return isHeaderKarnataka ? karnatakaStore : !karnatakaStore;
   });
   const matchesSelectedStore = (s) => isStoreSelected(s, formData.selectedStore);
 
@@ -1423,7 +1430,7 @@ export default function CheckoutPage() {
     if (String(formData.selectedStore).toUpperCase() === 'NULL' || !pickupStores.some(matchesSelectedStore)) {
       setFormData((prev) => ({ ...prev, selectedStore: '' }));
     }
-  }, [useUniletStoreList, formData.selectedStore, stores]);
+  }, [isHeaderKarnataka, formData.selectedStore, stores]);
 
   const isKarnatakaDelivery =
     normDeliveryPin.length === 6

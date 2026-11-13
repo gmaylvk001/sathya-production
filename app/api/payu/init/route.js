@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getPayuConfig, generatePayuHash } from "@/lib/payu";
+import { getRequestOrigin, getSiteUrl } from "@/lib/siteUrl";
 import dbConnect from "@/lib/db";
 import OrderNew from "@/models/orders_new";
 import { findRelatedOrders } from "@/lib/orderPayment";
@@ -56,8 +57,8 @@ export async function POST(req) {
 
     const { key, actionUrl } = getPayuConfig();
     const txnid = `TXN_${order_number}_${Date.now()}`;
-    const { getSiteUrl } = await import("@/lib/siteUrl");
-    const baseUrl = getSiteUrl();
+    // Return to the host the customer checked out on, not the canonical sathya.store URL.
+    const baseUrl = getRequestOrigin(req) || getSiteUrl();
     const surl = `${baseUrl}/api/payu/status?txnid=${encodeURIComponent(txnid)}`;
     const furl = `${baseUrl}/api/payu/status?txnid=${encodeURIComponent(txnid)}`;
 

@@ -9,6 +9,14 @@ import { sendOrderConfirmationSms } from "@/lib/orderConfirmSms";
 import mongoose from "mongoose";
 import { markOrdersPaid } from "@/lib/orderPayment";
 
+function redirectToPath(_req, path) {
+  const location = path.startsWith("/") ? path : `/${path}`;
+  return new NextResponse(null, {
+    status: 303,
+    headers: { Location: location },
+  });
+}
+
 // The request body can only be read once, so pick the parser up front.
 async function readPayuParams(req) {
   const params = {};
@@ -64,8 +72,6 @@ async function handlePayuReturn(req) {
       error_Message = "",
     } = params;
 
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-
     let isValid = params.hash ? verifyPayuHash(params).isValid : false;
 
     // PayU's posted data missing or unsigned: ask PayU for the real transaction status.
@@ -73,9 +79,9 @@ async function handlePayuReturn(req) {
       const verified = await verifyPayuTransaction(txnid);
       if (!verified || !(verified.status === "success" || PAYU_FAILED_STATUSES.includes(verified.status))) {
         console.warn("[PayU Callback] Could not confirm transaction with PayU:", txnid, verified?.status || "no response");
-        return NextResponse.redirect(
-          new URL(`/checkout?error=${encodeURIComponent("We could not confirm your payment yet. Please check My Orders before paying again.")}`, baseUrl),
-          303
+        return redirectToPath(
+          req,
+          `/checkout?error=${encodeURIComponent("We could not confirm your payment yet. Please check My Orders before paying again.")}`
         );
       }
       status = verified.status;
@@ -93,9 +99,9 @@ async function handlePayuReturn(req) {
 
     if (!baseOrderNumber || !txnid) {
       console.error("[PayU Callback] Missing order number / txnid; no orders updated. Keys:", Object.keys(params));
-      return NextResponse.redirect(
-        new URL(`/checkout?error=${encodeURIComponent("Payment response was empty. Please check your order status before retrying.")}`, baseUrl),
-        303
+      return redirectToPath(
+        req,
+        `/checkout?error=${encodeURIComponent("Payment response was empty. Please check your order status before retrying.")}`
       );
     }
 
@@ -119,12 +125,9 @@ async function handlePayuReturn(req) {
 
     if (!orders.length) {
       console.warn(`[PayU Callback] No orders found for txnid=${txnid} baseOrder=${baseOrderNumber}`);
-      return NextResponse.redirect(
-        new URL(
-          `/checkout?error=${encodeURIComponent("Payment response was empty. Please check your order status before retrying.")}`,
-          baseUrl
-        ),
-        303
+      return redirectToPath(
+        req,
+        `/checkout?error=${encodeURIComponent("Payment response was empty. Please check your order status before retrying.")}`
       );
     }
 
@@ -132,12 +135,9 @@ async function handlePayuReturn(req) {
       (o) => String(o.payment_status).toLowerCase() === "paid"
     );
     if (allAlreadyPaid && isSuccess) {
-      return NextResponse.redirect(
-        new URL(
-          `/orders?payment=success&order_number=${encodeURIComponent(baseOrderNumber)}&payment_id=${encodeURIComponent(mihpayid || txnid)}`,
-          baseUrl
-        ),
-        303
+      return redirectToPath(
+        req,
+        `/orders?payment=success&order_number=${encodeURIComponent(baseOrderNumber)}&payment_id=${encodeURIComponent(mihpayid || txnid)}`
       );
     }
 
@@ -151,12 +151,9 @@ async function handlePayuReturn(req) {
         console.error(
           `[PayU Callback] Amount mismatch paid=${paidAmount} expected=${expectedTotal} order=${baseOrderNumber}`
         );
-        return NextResponse.redirect(
-          new URL(
-            `/checkout?error=${encodeURIComponent("Payment amount mismatch. Please contact support.")}`,
-            baseUrl
-          ),
-          303
+        return redirectToPath(
+          req,
+          `/checkout?error=${encodeURIComponent("Payment amount mismatch. Please contact support.")}`
         );
       }
 
@@ -206,12 +203,9 @@ async function handlePayuReturn(req) {
         await Cart.deleteOne({ userId: udf2 }).catch(() => {});
       }
 
-      return NextResponse.redirect(
-        new URL(
-          `/orders?payment=success&order_number=${encodeURIComponent(baseOrderNumber)}&payment_id=${encodeURIComponent(mihpayid)}`,
-          baseUrl
-        ),
-        303
+      return redirectToPath(
+        req,
+        `/orders?payment=success&order_number=${encodeURIComponent(baseOrderNumber)}&payment_id=${encodeURIComponent(mihpayid)}`
       );
     } else {
       // Payment Failed or Cancelled
@@ -233,20 +227,16 @@ async function handlePayuReturn(req) {
         // Stock remains untouched because it was never prematurely deducted
       }
 
-      return NextResponse.redirect(
-        new URL(
-          `/checkout?error=${encodeURIComponent(failReason)}&order_number=${encodeURIComponent(baseOrderNumber)}`,
-          baseUrl
-        ),
-        303
+      return redirectToPath(
+        req,
+        `/checkout?error=${encodeURIComponent(failReason)}&order_number=${encodeURIComponent(baseOrderNumber)}`
       );
     }
   } catch (error) {
     console.error("[PayU Status Callback Error]:", error);
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-    return NextResponse.redirect(
-      new URL(`/checkout?error=${encodeURIComponent(error.message || "Payment processing error")}`, baseUrl),
-      303
+    return redirectToPath(
+      req,
+      `/checkout?error=${encodeURIComponent(error.message || "Payment processing error")}`
     );
   }
 }
