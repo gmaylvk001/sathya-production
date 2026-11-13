@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { FaPlus, FaMinus, FaEdit } from "react-icons/fa";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { FaEdit } from "react-icons/fa";
 import ReactPaginate from "react-paginate";
 import BulkFilterGroupUploadPage from "../filter/filter_upload";
 import { Icon } from '@iconify/react';
@@ -17,6 +17,9 @@ export default function FilterComponent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [filterGroupFilter, setFilterGroupFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const customStyles = {
     menu: (provided) => ({
       ...provided,
@@ -54,69 +57,15 @@ export default function FilterComponent() {
   };
 
 
-  /* const fetchFilters = async () => {
-    try {
-      const response = await fetch("/api/filter");
-      const data = await response.json();
-      setFilters(data.data);
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Error fetching filters:", error);
-      setIsLoading(false);
-    }
-  }; */
-
-  /* const fetchFilters = async () => {
-    try {
-      const response = await fetch("/api/filter");
-      const data = await response.json();
-        setFilters(data.data);
-        setIsLoading(false);
-      const updatedFilters = await Promise.all(
-        data.data.map(async (filter) => {
-          const filter_slug = slugify(filter.filter_name);
-          // update DB
-          await fetch(`/api/filter/${filter._id.toString()}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ filter_slug }),
-          });
-  
-  
-          return { ...filter, filter_slug };
-        })
-      );
-  
-      setFilters(updatedFilters);
-      // setIsLoading(false);
-  
-    } catch (error) {
-      console.error("Error fetching filters:", error);
-      setIsLoading(false);
-    }
-  }; */
-
   const fetchFilters = async () => {
     try {
+      setIsLoading(true);
       const res = await fetch("/api/filter");
       const data = await res.json();
-      setFilters(data.data);
-      setIsLoading(false);
-      for (const filter of data.data) {
-        const filter_slug = slugify(filter.filter_name);
-
-        await fetch(`/api/filter/${filter._id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ filter_slug }),
-        });
-      }
-
-
-
-
+      setFilters(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Error:", err);
+      console.error("Error fetching filters:", err);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -144,10 +93,10 @@ export default function FilterComponent() {
 
   const handleExportFilters = async () => {
     const XLSX = await import("xlsx");
-    // Determine if a search is active (non-empty searchQuery)
-    const isSearchActive = searchQuery.trim().length > 0;
+    // Determine if any filter is active
+    const isFilterActive = searchQuery.trim().length > 0 || filterGroupFilter !== "All" || statusFilter !== "All";
     let exportList = [];
-    if (isSearchActive) {
+    if (isFilterActive) {
       exportList = filteredFilters;
     } else {
       exportList = flattenFilters(filters);
@@ -190,11 +139,13 @@ export default function FilterComponent() {
 
   const handleAddFilter = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
 
-    // Create a regular object instead of FormData
+    setIsSubmitting(true);
+
     const requestBody = {
       filter_name: newFilter.filter_name,
-      filter_slug: newFilter.filter_slug,
+      filter_slug: newFilter.filter_slug || slugify(newFilter.filter_name),
       status: newFilter.status,
       filter_group: newFilter.filter_group
     };
@@ -216,12 +167,10 @@ export default function FilterComponent() {
         body: JSON.stringify(requestBody)
       });
 
-      // First check if response exists
       if (!response) {
         throw new Error('No response from server');
       }
 
-      // Check if response is JSON
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         const text = await response.text();
@@ -236,6 +185,7 @@ export default function FilterComponent() {
         fetchFilters();
         setNewFilter({
           filter_name: "",
+          filter_slug: "",
           status: "Active",
           filter_group: "",
           _id: null,
@@ -252,6 +202,8 @@ export default function FilterComponent() {
     } catch (error) {
       console.error("Network/parsing error:", error);
       toast.error(`Request failed: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
   // Add this useEffect hook near your other hooks
@@ -370,6 +322,22 @@ export default function FilterComponent() {
     setIsModalOpen(true);
   };
 
+  const getFilterGroupName = useCallback((filter) => {
+    return (
+      filter.filter_group?.filtergroup_name ||
+      filter.filter_group_name ||
+      (typeof filter.filter_group === "string" &&
+        filterGroups.find((g) => g.value === filter.filter_group)?.label) ||
+      ""
+    );
+  }, [filterGroups]);
+
+  const getFilterGroupId = useCallback((filter) => {
+    if (filter.filter_group?._id) return String(filter.filter_group._id);
+    if (typeof filter.filter_group === "string") return filter.filter_group;
+    return "";
+  }, []);
+
   const flattenFilters = (filters, parentId = "none", level = 0, result = []) => {
     filters.forEach((filter) => {
       result.push({ ...filter, level });
@@ -377,29 +345,39 @@ export default function FilterComponent() {
     return result;
   };
 
-  const renderFilterRows = () => {
-    const flattenedFilters = flattenFilters(filters);
-    const filteredFilters = flattenedFilters.filter((filter) => {
-      const query = searchQuery.toLowerCase();
-      const filterGroupName =
-        (filter.filter_group && filter.filter_group.filtergroup_name) ||
-        filter.filter_group_name ||
-        "";
-      return (
-        filter.filter_name.toLowerCase().includes(query) ||
-        filter.filter_slug.toLowerCase().includes(query) ||
-        filterGroupName.toLowerCase().includes(query)
-      );
-    });
+  const flattenedFilters = useMemo(() => flattenFilters(filters), [filters]);
 
+  const filteredFilters = useMemo(() => {
+    return flattenedFilters.filter((filter) => {
+      const search = searchQuery.trim().toLowerCase();
+      const filterGroupName = getFilterGroupName(filter);
+      const matchesSearch =
+        !search ||
+        (filter.filter_name || "").toLowerCase().includes(search) ||
+        (filter.filter_slug || "").toLowerCase().includes(search) ||
+        filterGroupName.toLowerCase().includes(search);
+
+      const matchesFilterGroup =
+        filterGroupFilter === "All" ||
+        getFilterGroupId(filter) === filterGroupFilter ||
+        filterGroupName.toLowerCase() ===
+          (filterGroups.find((g) => g.value === filterGroupFilter)?.label || "").toLowerCase();
+
+      const matchesStatus = statusFilter === "All" || filter.status === statusFilter;
+
+      return matchesSearch && matchesFilterGroup && matchesStatus;
+    });
+  }, [flattenedFilters, searchQuery, filterGroupFilter, statusFilter, filterGroups, getFilterGroupName, getFilterGroupId]);
+
+  const renderFilterRows = () => {
     return filteredFilters
       .slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage)
-      .map((filter, index) => (
+      .map((filter) => (
         <tr key={filter._id} className="text-center border-b">
           <td className="p-2">{filter.filter_name}</td>
           <td className="p-2">{filter.filter_slug}</td>
           <td className="p-2">
-            {filter.filter_group?.filtergroup_name || filter.filter_group_name || "N/A"}
+            {getFilterGroupName(filter) || "N/A"}
           </td>
 
           <td className="p-2 font-semibold">
@@ -434,21 +412,8 @@ export default function FilterComponent() {
       ));
   };
 
-  const flattenedFilters = flattenFilters(filters);
-  const filteredFilters = flattenedFilters.filter((filter) => {
-    const query = searchQuery.toLowerCase();
-    const filterGroupName =
-      (filter.filter_group && filter.filter_group.filtergroup_name) ||
-      filter.filter_group_name ||
-      "";
-    return (
-      filter.filter_name.toLowerCase().includes(query) ||
-      filter.filter_slug.toLowerCase().includes(query) ||
-      filterGroupName.toLowerCase().includes(query)
-    );
-  });
   const pageCount = Math.ceil(filteredFilters.length / itemsPerPage);
-  const startEntry = currentPage * itemsPerPage + 1;
+  const startEntry = filteredFilters.length === 0 ? 0 : currentPage * itemsPerPage + 1;
   const endEntry = Math.min((currentPage + 1) * itemsPerPage, filteredFilters.length);
 
   return (
@@ -461,42 +426,74 @@ export default function FilterComponent() {
         <p>Loading filters...</p>
       ) : (
         <div className="bg-white shadow-md rounded-lg p-5 overflow-x-auto border border-gray-200">
-          <div className="flex justify-between mb-5">
-            <input
-              type="text"
-              placeholder="Search filter..."
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentPage(0); // 👈 Reset to first page when searching
-              }}
-              className="border px-3 py-2 rounded-md w-64"
-            />
-            <div className="flex flex-wrap gap-3">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-5">
+            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+              <input
+                type="text"
+                placeholder="Search filter..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(0);
+                }}
+                className="border px-3 py-2 rounded-md w-full sm:w-60 text-sm focus:outline-none focus:ring-1 focus:ring-red-500"
+              />
+              <select
+                value={filterGroupFilter}
+                onChange={(e) => {
+                  setFilterGroupFilter(e.target.value);
+                  setCurrentPage(0);
+                }}
+                className="border px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-red-500 bg-white cursor-pointer max-w-[220px]"
+              >
+                <option value="All">All Filter Groups</option>
+                {filterGroups.map((group) => (
+                  <option key={group.value} value={group.value}>
+                    {group.label}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(0);
+                }}
+                className="border px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-red-500 bg-white cursor-pointer"
+              >
+                <option value="All">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+              {(searchQuery || filterGroupFilter !== "All" || statusFilter !== "All") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setFilterGroupFilter("All");
+                    setStatusFilter("All");
+                    setCurrentPage(0);
+                  }}
+                  className="text-xs text-red-600 hover:text-red-700 underline font-medium cursor-pointer"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={() => Modelopen(true)}
-                className="bg-red-500 text-white px-4 py-2 rounded-md"
+                className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition"
               >
                 + Add Filter
               </button>
-
               <button
                 onClick={handleExportFilters}
-                className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 flex items-center gap-2"
+                className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition flex items-center gap-2"
               >
                 <Icon icon="mdi:download" className="w-4 h-4" />
                 Export
               </button>
-
-              <a
-                href="/api/product/filter-bulk-upload/export-product-filters"
-                download="sathya_product_filters_export.xlsx"
-                className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition flex items-center gap-2 text-sm font-semibold"
-                title="Download matched product filters Excel"
-              >
-                <Icon icon="mdi:file-excel" className="w-4 h-4" />
-                Download Product Filters (Temp)
-              </a>
             </div>
           </div>
 
@@ -640,9 +637,10 @@ export default function FilterComponent() {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  className="inline-block bg-red-600 text-white px-5 py-2 rounded-md text-sm font-semibold hover:bg-red-700 transition"
+                  disabled={isSubmitting}
+                  className="inline-block bg-red-600 text-white px-5 py-2 rounded-md text-sm font-semibold hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {newFilter._id ? "Update" : "Add"} Filter
+                  {isSubmitting ? "Saving..." : `${newFilter._id ? "Update" : "Add"} Filter`}
                 </button>
               </form>
             </div>
