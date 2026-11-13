@@ -1179,6 +1179,9 @@ const AddressModalForm = ({
 };
 
 // ─── Main CheckoutPage ───────────────────────────────────────────────────────
+// Feature flag: set to true (or set NEXT_PUBLIC_ENABLE_LIVE_VIDEO_DEMO='true') to re-enable "Sathya Stores Live Video Demo"
+const SHOW_LIVE_VIDEO_DEMO = process.env.NEXT_PUBLIC_ENABLE_LIVE_VIDEO_DEMO === 'true' || false;
+
 export default function CheckoutPage() {
   const { openLiveDemoModal } = useModal();
   const { cartCount, updateCartCount } = useCart();
@@ -3134,26 +3137,32 @@ export default function CheckoutPage() {
                   </svg>
                   Need help before you buy? Our experts are here for you!
                 </p>
-                <div className="grid grid-cols-2 gap-2">
+                <div className={SHOW_LIVE_VIDEO_DEMO ? "grid grid-cols-2 gap-2" : "grid grid-cols-1 gap-2"}>
                   <a href="tel:9842344323"
-                    className="flex items-center justify-center gap-1.5 border border-green-200 rounded-lg py-2 px-1 text-[11px] sm:text-xs font-medium text-green-700 hover:bg-green-50 transition">
-                    <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    className={`flex items-center justify-center border border-green-200 rounded-lg font-medium text-green-700 hover:bg-green-50 transition ${
+                      SHOW_LIVE_VIDEO_DEMO
+                        ? "gap-1.5 py-2 px-1 text-[11px] sm:text-xs"
+                        : "w-full gap-2 py-2.5 px-3 text-xs sm:text-sm bg-green-50/40"
+                    }`}>
+                    <svg className={`${SHOW_LIVE_VIDEO_DEMO ? "w-3.5 h-3.5" : "w-4 h-4"} shrink-0`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                     </svg>
                     Call expert
                   </a>
-                  <button
-                    type="button"
-                    onClick={openLiveDemoModal}
-                    className="flex flex-col items-center justify-center gap-1 border border-[#c4b5fd] rounded-lg bg-[#f5f3ff] hover:bg-[#ede9fe] transition py-2 px-1 text-center w-full"
-                  >
-                    <svg className="w-4 h-4 text-[#5B4CF5]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    <span className="text-[10px] sm:text-[11px] font-bold text-[#5B4CF5] leading-tight">
-                      Sathya Stores Live<br />Video Demo
-                    </span>
-                  </button>
+                  {SHOW_LIVE_VIDEO_DEMO && (
+                    <button
+                      type="button"
+                      onClick={openLiveDemoModal}
+                      className="flex flex-col items-center justify-center gap-1 border border-[#c4b5fd] rounded-lg bg-[#f5f3ff] hover:bg-[#ede9fe] transition py-2 px-1 text-center w-full"
+                    >
+                      <svg className="w-4 h-4 text-[#5B4CF5]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                      <span className="text-[10px] sm:text-[11px] font-bold text-[#5B4CF5] leading-tight">
+                        Sathya Stores Live<br />Video Demo
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
 
