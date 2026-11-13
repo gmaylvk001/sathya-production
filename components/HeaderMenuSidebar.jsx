@@ -109,6 +109,7 @@ export default function HeaderMenuSidebar({
   onClose,
   categories = [],
   resolveCategoryHref,
+  showDealsButton = true,
 }) {
   const [level1, setLevel1] = useState(null); // { key, top } of the open first-level row
   const [level2, setLevel2] = useState(null); // { key, top } of the open second-level row
@@ -226,15 +227,19 @@ export default function HeaderMenuSidebar({
         .map(brandNode),
     }));
 
+    const onlyAtSathyaItems = [
+      { key: "brands", label: "Brands", href: "/brands", children: brandGroups, width: BRAND_GROUP_W },
+    ];
+    // Hide Deals when an offer timer is active for the current state (timer opens same page via popup)
+    if (showDealsButton) {
+      onlyAtSathyaItems.push({ key: "deals", label: "Deals", href: "/deals-offer" });
+    }
+
     return [
       {
         title: "Only at Sathya",
         red: true,
-        items: [
-          { key: "brands", label: "Brands", href: "/brands", children: brandGroups, width: BRAND_GROUP_W },
-          { key: "deals", label: "Deals", href: "/deals-offer" },
-          // { key: "open-box", label: "Open Box", href: "/open-box" },
-        ],
+        items: onlyAtSathyaItems,
       },
       {
         title: "Shop by Category",
@@ -244,7 +249,7 @@ export default function HeaderMenuSidebar({
           .map((cat) => categoryNode(cat, 0, [])),
       },
     ];
-  }, [categories, brands, resolveCategoryHref]);
+  }, [categories, brands, resolveCategoryHref, showDealsButton]);
 
   if (!open) return null;
 

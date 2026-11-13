@@ -507,6 +507,9 @@ const Header = () => {
   // 2. Existing normal state-wise Top Banner
   // 3. Existing default header background (null)
   const effectiveOfferTimer = headerOfferTimer || activeOfferTimer;
+  // When an offer timer is active for the current state (all-states or state-specific),
+  // show only the timer widget and hide the Deals button (same destination page).
+  const showDealsButton = !effectiveOfferTimer;
   const currentBannerUrl = useMemo(() => {
     const timerBanner = effectiveOfferTimer
       ? (effectiveOfferTimer.top_banner_url || effectiveOfferTimer.topBanner || headerTopBanner || activeTopBanner)
@@ -2326,17 +2329,19 @@ const Header = () => {
                 <span className="truncate" suppressHydrationWarning>{pincode ? pincode : (selectedRegion?.code || 'TN')}</span>
                 <span className="text-[9px] opacity-70">▾</span>
               </button>
-              {/* Mobile Deals Button (Compact & strictly isolated) */}
-              <Link
-                href="/deals-offer"
-                className="inline-flex items-center justify-center px-2 py-0.5 h-[26px] sm:h-[28px] rounded-md text-[#000000] font-bold text-[10.5px] sm:text-[11px] leading-tight transition-all duration-200 shadow-xs hover:shadow hover:opacity-95 active:scale-95 flex-shrink-0 self-center"
-                style={{
-                  background: "linear-gradient(135deg, #00b4db 0%, #f44336 55%, #ffc107 100%)",
-                }}
-                title="View Deals & Special Offers"
-              >
-                Deals
-              </Link>
+              {/* Mobile Deals Button — hidden when offer timer is active for this state */}
+              {showDealsButton && (
+                <Link
+                  href="/deals-offer"
+                  className="inline-flex items-center justify-center px-2 py-0.5 h-[26px] sm:h-[28px] rounded-md text-[#000000] font-bold text-[10.5px] sm:text-[11px] leading-tight transition-all duration-200 shadow-xs hover:shadow hover:opacity-95 active:scale-95 flex-shrink-0 self-center"
+                  style={{
+                    background: "linear-gradient(135deg, #00b4db 0%, #f44336 55%, #ffc107 100%)",
+                  }}
+                  title="View Deals & Special Offers"
+                >
+                  Deals
+                </Link>
+              )}
             </div>
             <div className="flex items-center gap-1 sm:gap-1.5 text-brandRed flex-shrink-0">
               <Link href="/wishlist" className={`${HEADER_ACTION_LINK_CLASS} relative min-w-[32px] sm:min-w-[36px]`}>
@@ -2662,17 +2667,19 @@ const Header = () => {
                 <FiSearch size={20} />
               </button>
 
-              {/* Deals Button (Live Sathya Style: Multi-color gradient, Title Case "Deals", Bold Black text, rounded-md) */}
-              <Link
-                href="/deals-offer"
-                className="hidden sm:inline-flex items-center justify-center px-3.5 py-1.5 rounded-md text-[#000000] font-bold text-[13px] leading-tight transition-all duration-200 shadow-xs hover:shadow hover:opacity-95 active:scale-95 shrink-0 self-center"
-                style={{
-                  background: "linear-gradient(135deg, #00b4db 0%, #f44336 55%, #ffc107 100%)",
-                }}
-                title="View Deals & Special Offers"
-              >
-                Deals
-              </Link>
+              {/* Deals Button — hidden when offer timer is active for this state */}
+              {showDealsButton && (
+                <Link
+                  href="/deals-offer"
+                  className="hidden sm:inline-flex items-center justify-center px-3.5 py-1.5 rounded-md text-[#000000] font-bold text-[13px] leading-tight transition-all duration-200 shadow-xs hover:shadow hover:opacity-95 active:scale-95 shrink-0 self-center"
+                  style={{
+                    background: "linear-gradient(135deg, #00b4db 0%, #f44336 55%, #ffc107 100%)",
+                  }}
+                  title="View Deals & Special Offers"
+                >
+                  Deals
+                </Link>
+              )}
 
               {/* State / Region Selector Button */}
               <button
@@ -3111,24 +3118,26 @@ const Header = () => {
                   </div>
                 )}
               </div>
-              {/* Deals & Special Offers Link */}
-              <div className="mt-3">
-                <Link
-                  href="/deals-offer"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 shadow-xs text-black font-bold text-xs transition-transform active:scale-[0.98]"
-                  style={{
-                    background: "linear-gradient(135deg, #00b4db 0%, #f44336 55%, #ffc107 100%)",
-                  }}
-                  title="View Deals & Special Offers"
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="text-sm">🔥</span>
-                    <span className="tracking-wide">Deals & Special Offers</span>
-                  </span>
-                  <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded text-white font-semibold">View →</span>
-                </Link>
-              </div>
+              {/* Deals & Special Offers Link — hidden when offer timer is active for this state */}
+              {showDealsButton && (
+                <div className="mt-3">
+                  <Link
+                    href="/deals-offer"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="w-full flex items-center justify-between rounded-xl px-3.5 py-2.5 shadow-xs text-black font-bold text-xs transition-transform active:scale-[0.98]"
+                    style={{
+                      background: "linear-gradient(135deg, #00b4db 0%, #f44336 55%, #ffc107 100%)",
+                    }}
+                    title="View Deals & Special Offers"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="text-sm">🔥</span>
+                      <span className="tracking-wide">Deals & Special Offers</span>
+                    </span>
+                    <span className="text-[10px] bg-black/20 px-2 py-0.5 rounded text-white font-semibold">View →</span>
+                  </Link>
+                </div>
+              )}
             </div>
           )}
           {/* Auth Modal — Phone + OTP */}
@@ -3431,6 +3440,7 @@ const Header = () => {
                 onClose={() => setShowMenu(false)}
                 categories={categories}
                 resolveCategoryHref={resolveCategoryNavHref}
+                showDealsButton={showDealsButton}
               />
             </div>
           )}
