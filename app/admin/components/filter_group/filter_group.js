@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { FaPlus, FaMinus, FaEdit } from "react-icons/fa";
+import React, { useEffect, useState, useMemo } from "react";
+import { FaEdit } from "react-icons/fa";
 import { ToastContainer, toast } from "react-toastify";
 import ReactPaginate from "react-paginate";
 import BulkFilterGroupUploadPage from "../filter/filter_group_upload";
@@ -12,6 +12,8 @@ export default function FiltergroupComponent() {
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [slugFilter, setSlugFilter] = useState("All");
   const [newFiltergroup, setNewFiltergroup] = useState({
     filtergroup_name: "",
     status: "Active",
@@ -227,6 +229,16 @@ export default function FiltergroupComponent() {
     setIsModalOpen(true);
   };
 
+  const uniqueSlugs = useMemo(() => {
+    return Array.from(
+      new Set(
+        (filterGroups || [])
+          .map((g) => (g.filtergroup_slug || "").trim())
+          .filter(Boolean)
+      )
+    ).sort((a, b) => a.localeCompare(b));
+  }, [filterGroups]);
+
   const flattenFilterGroups = (groups, parentId = "none", level = 0, result = []) => {
     groups.forEach((group) => {
       result.push({ ...group, level });
@@ -234,16 +246,27 @@ export default function FiltergroupComponent() {
     return result;
   };
 
-  const renderFilterGroupRows = () => {
-    const flattenedGroups = flattenFilterGroups(filterGroups);
-    const filteredGroups = flattenedGroups.filter((group) =>
-      group.filtergroup_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      group.filtergroup_slug.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+  const flattenedGroups = useMemo(() => flattenFilterGroups(filterGroups), [filterGroups]);
 
+  const filteredGroups = useMemo(() => {
+    return flattenedGroups.filter((group) => {
+      const search = searchQuery.trim().toLowerCase();
+      const name = (group.filtergroup_name || "").toLowerCase();
+      const slug = (group.filtergroup_slug || "").toLowerCase();
+      const matchesSearch = !search || name.includes(search) || slug.includes(search);
+
+      const matchesStatus = statusFilter === "All" || group.status === statusFilter;
+
+      const matchesSlug = slugFilter === "All" || (group.filtergroup_slug || "").trim().toLowerCase() === slugFilter.toLowerCase();
+
+      return matchesSearch && matchesStatus && matchesSlug;
+    });
+  }, [flattenedGroups, searchQuery, statusFilter, slugFilter]);
+
+  const renderFilterGroupRows = () => {
     return filteredGroups
       .slice(currentPage * itemsPerPage, (currentPage + 1) * itemsPerPage)
-      .map((group, index) => (
+      .map((group) => (
         <tr key={group._id} className="text-center border-b">
           <td className="p-2">{group.filtergroup_name}</td>
           <td className="p-2">{group.filtergroup_slug}</td>
@@ -279,51 +302,83 @@ export default function FiltergroupComponent() {
       ));
   };
 
-  const flattenedGroups = flattenFilterGroups(filterGroups);
-  const filteredGroups = flattenedGroups.filter((group) =>
-    group.filtergroup_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    group.filtergroup_slug.toLowerCase().includes(searchQuery.toLowerCase())
-  );
   const pageCount = Math.ceil(filteredGroups.length / itemsPerPage);
-  const startEntry = currentPage * itemsPerPage + 1;
+  const startEntry = filteredGroups.length === 0 ? 0 : currentPage * itemsPerPage + 1;
   const endEntry = Math.min((currentPage + 1) * itemsPerPage, filteredGroups.length);
   return (
     <div className="container mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-5 mt-5">
         <h2 className="text-2xl font-bold">Filter Group List</h2>
-        <a
-          href="/api/product/filter-bulk-upload/export-product-filters"
-          download="sathya_product_filters_export.xlsx"
-          className="bg-emerald-600 text-white px-5 py-2.5 rounded-lg hover:bg-emerald-700 shadow-md transition flex items-center gap-2 text-sm font-semibold"
-          title="Download matched product filters Excel"
-        >
-          <Icon icon="mdi:file-excel" className="w-5 h-5" />
-          📥 Download Product Filters Excel (Temp)
-        </a>
       </div>
 
       {isLoading ? (
         <p>Loading filter groups...</p>
       ) : (
         <div className="bg-white shadow-md rounded-lg p-5 overflow-x-auto border border-gray-200">
-          <div className="flex justify-between mb-5">
-            <input
-              type="text"
-              placeholder="Search filter group..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="border px-3 py-2 rounded-md w-64"
-            />
-            <div className="flex gap-3">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-5">
+            <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+              <input
+                type="text"
+                placeholder="Search filter group..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(0);
+                }}
+                className="border px-3 py-2 rounded-md w-full sm:w-60 text-sm focus:outline-none focus:ring-1 focus:ring-red-500"
+              />
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(0);
+                }}
+                className="border px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-red-500 bg-white cursor-pointer"
+              >
+                <option value="All">All Status</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+              <select
+                value={slugFilter}
+                onChange={(e) => {
+                  setSlugFilter(e.target.value);
+                  setCurrentPage(0);
+                }}
+                className="border px-3 py-2 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-red-500 bg-white cursor-pointer max-w-[200px]"
+              >
+                <option value="All">All Slugs</option>
+                {uniqueSlugs.map((slug) => (
+                  <option key={slug} value={slug}>
+                    {slug}
+                  </option>
+                ))}
+              </select>
+              {(searchQuery || statusFilter !== "All" || slugFilter !== "All") && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setStatusFilter("All");
+                    setSlugFilter("All");
+                    setCurrentPage(0);
+                  }}
+                  className="text-xs text-red-600 hover:text-red-700 underline font-medium cursor-pointer"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="bg-red-500 text-white px-4 py-2 rounded-md"
+                className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition"
               >
                 + Add Filter Group
               </button>
               <button
                 onClick={() => setIsFilterModalOpen(true)}
-                className="bg-[#d72828] text-white px-4 py-2 rounded-md"
+                className="bg-[#d72828] text-white px-4 py-2 rounded-md hover:bg-[#b82222] transition"
               >
                 ⬆️ Bulk Upload
               </button>
@@ -334,15 +389,6 @@ export default function FiltergroupComponent() {
                 <Icon icon="mdi:download" className="w-4 h-4" />
                 Export
               </button>
-              <a
-                href="/api/product/filter-bulk-upload/export-product-filters"
-                download="sathya_product_filters_export.xlsx"
-                className="bg-emerald-600 text-white px-4 py-2 rounded-md hover:bg-emerald-700 transition flex items-center gap-2 text-sm font-medium"
-                title="Download matched product filters Excel"
-              >
-                <Icon icon="mdi:file-excel" className="w-5 h-5" />
-                Export Product Filters (Temp)
-              </a>
             </div>
           </div>
 
