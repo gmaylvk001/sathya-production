@@ -2317,7 +2317,7 @@ const Header = () => {
           <div className="sm:hidden flex items-center justify-between w-full max-w-full min-w-0 relative gap-1">
             <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0 min-w-0">
               <Link href="/" aria-label="SATHYA Store Homepage" className={`p-0.5 sm:p-1 rounded-lg flex-shrink-0 ${currentBannerUrl ? "bg-transparent" : "bg-white"}`}>
-                <img src="/uploads/sathya-header-logo.webp" alt="SATHYA Store Logo" width={58} height={36} className="h-8 sm:h-9 w-auto object-contain" />
+                <img src="/uploads/sathya-header-logo.webp" alt="SATHYA Store Logo" width={58} height={36} className="h-8 sm:h-9 w-auto" />
               </Link>
               <button
                 type="button"
@@ -2581,7 +2581,7 @@ const Header = () => {
             {/* Logo (Hidden on mobile) */}
             <div className={`hidden sm:block py-2 rounded-lg ${currentBannerUrl ? "bg-transparent" : "bg-white"}`}>
               <Link href="/" aria-label="SATHYA Store Homepage" className="mx-auto">
-                <img src="/uploads/sathya-header-logo.webp" alt="SATHYA Store Logo" className="h-auto object-contain" width={80} height={45} />
+                <img src="/uploads/sathya-header-logo.webp" alt="SATHYA Store Logo" className="h-auto" width={80} height={45} />
               </Link>
             </div>
 
