@@ -22,7 +22,7 @@ const steps = [
   { title: "Others" },
 ];
 
-export default function AddProductPage({ mode = "add", productData = null, productId = null, onSuccess, initialProductData }) {
+export default function AddProductPage({ mode = "add", productData = null, productId = null, onSuccess, initialProductData, onClose }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [jsonHighlightsInput, setJsonHighlightsInput] = useState('');
@@ -1578,45 +1578,122 @@ export default function AddProductPage({ mode = "add", productData = null, produ
     if (currentStep > 1) setCurrentStep(prev => prev - 1);
   };
 
+  const handleCancel = () => {
+    setCurrentStep(1);
+    setValidationError(null);
+    setJsonHighlightsInput('');
+    setProduct({
+      name: "",
+      slug: "",
+      item_code: "",
+      price: "",
+      special_price: "",
+      quantity: "",
+      brand: "",
+      brand_code: "",
+      category: "",
+      stock_status: "In Stock",
+      description: "",
+      related_products: [],
+      add_ons: "",
+      images: ["", "", "", ""],
+      key_specifications: "",
+      featured: false,
+      tags: [],
+      meta_title: "",
+      status: "Active",
+      chk_display_store_stock: 0,
+      variant_attribute: { name: "", options: [] },
+      variants: [],
+      filters: [],
+      hasVariants: false,
+      variantAttributes: [],
+      files: [],
+      meta_description: "",
+      overviewdescription: "",
+      overviewImage: [null],
+      overviewImageFile: [null],
+      featured_products: [],
+      warranty: "",
+      extended_warranty: "",
+      product_highlights: [],
+      search_keywords: "",
+      warranty_ids: [],
+    });
+    setVariant([{
+      variant_attribute_name: "",
+      options: "",
+      item_code: "",
+      price: "",
+      special_price: "",
+      quantity: "",
+      stock_status: "In Stock",
+      images: [],
+      status: "Active"
+    }]);
+    setVariantImages([{
+      images: []
+    }]);
+    setSelectedCategories(new Set());
+    setSelectedCategory("");
+    setSelectedParentCategory("");
+
+    if (mode === "edit" && typeof onClose === "function") {
+      onClose();
+      return;
+    }
+    router.push("/admin/product");
+  };
+
   const StepNavigation = () => (
-    <div className="flex justify-between mt-6">
+    <div className="flex items-center justify-between mt-6 flex-wrap gap-3">
       {currentStep > 1 && (
         <button
           type="button"
           onClick={prevStep}
-          className="bg-gray-200 px-4 py-2 rounded flex items-center gap-2"
+          className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded flex items-center gap-2 transition-colors"
         >
           <FaArrowLeft /> Previous
         </button>
       )}
-      {currentStep < steps.length ? (
+      <div className="flex items-center gap-3">
+        {currentStep < steps.length ? (
+          <button
+            type="button"
+            onClick={nextStep}
+            className="bg-[#d72828] hover:bg-[#b82222] text-white px-4 py-2 rounded flex items-center gap-2 transition-colors font-medium"
+          >
+            Next <FaArrowRight />
+          </button>
+        ) : (
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className={`text-white px-5 py-2 rounded flex items-center gap-2 font-medium transition-colors ${
+              isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+            }`}
+          >
+            {isSubmitting ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth={4} />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                <span>{mode === "edit" ? "Updating..." : "Publishing..."}</span>
+              </>
+            ) : (
+              <span>{mode === "edit" ? "Update Product" : "Publish Product"}</span>
+            )}
+          </button>
+        )}
         <button
           type="button"
-          onClick={nextStep}
-          className="bg-[#d72828] text-white px-4 py-2 rounded flex items-center gap-2"
+          onClick={handleCancel}
+          className="border border-gray-300 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded font-medium transition-colors"
         >
-          Next <FaArrowRight />
+          Cancel
         </button>
-      ) : (
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className={`text-white px-5 py-2 rounded flex items-center gap-2 font-medium ${isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
-            }`}
-        >
-          {isSubmitting ? (
-            <>
-              <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-              </svg>
-              <span>{mode === "edit" ? "Updating..." : "Publishing..."}</span>
-            </>
-          ) : (
-            <span>{mode === "edit" ? "Update Product" : "Publish Product"}</span>
-          )}
-        </button>
-      )}
+      </div>
     </div>
   );
 
