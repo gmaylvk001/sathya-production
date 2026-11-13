@@ -65,15 +65,12 @@ function BannerTile({ banner, className = "" }) {
   return (
     <BannerLink
       href={href}
-      aria-label={banner.alt || banner.title || banner.buttonText || "Promotional Banner"}
       className={`flex items-center justify-center w-full min-w-0 overflow-hidden rounded-sm hover:opacity-95 transition-opacity ${className}`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={banner.image}
-        alt={banner.alt || banner.title || "Promotional Banner"}
-        loading="lazy"
-        decoding="async"
+        alt=""
         onLoad={handleLoad}
         style={
           displaySize

@@ -224,9 +224,7 @@ export default function CategoryImageCarousel({ config }) {
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={item.image}
-        alt={name || `Promotional Image ${idx + 1}`}
-        loading="lazy"
-        decoding="async"
+        alt={name || `Image ${idx + 1}`}
         className="block w-full h-auto max-w-[320px] max-h-[430px] object-contain pointer-events-none select-none"
         draggable={false}
       />
@@ -342,8 +340,8 @@ export default function CategoryImageCarousel({ config }) {
                 aria-label={`Page ${i + 1}`}
                 onClick={() => scrollToPage(i)}
                 className={`h-1.5 w-1.5 rounded-full transition ${i === page
-                    ? "bg-[#ED1C24] scale-110"
-                    : "bg-gray-300 hover:bg-gray-400"
+                  ? "bg-[#ED1C24] scale-110"
+                  : "bg-gray-300 hover:bg-gray-400"
                   }`}
               />
             ))}
