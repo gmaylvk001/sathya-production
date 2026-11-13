@@ -796,6 +796,36 @@ const OrderDetails = () => {
                 )
               )}
 
+              {(() => {
+                const lines = (order.order_details?.length
+                  ? order.order_details
+                  : order.order_item) || [];
+                const fromLines = lines.reduce((sum, item) => {
+                  const unit =
+                    Number(
+                      item.exchange_off_amount ??
+                        item.eo_amount ??
+                        item.exchangeOffer?.price ??
+                        0
+                    ) || 0;
+                  const qty = Number(item.quantity) || 1;
+                  return sum + unit * qty;
+                }, 0);
+                const exchangeTotal =
+                  fromLines > 0 ? fromLines : Number(order.eo_discount) || 0;
+                if (exchangeTotal <= 0) return null;
+                return (
+                  <tr className="font-semibold">
+                    <td colSpan={isUniletOrder ? 5 : 4} className="p-2 text-right text-green-700">
+                      Exchange Value:
+                    </td>
+                    <td className="p-2 text-right text-green-700">
+                      −₹{exchangeTotal}
+                    </td>
+                  </tr>
+                );
+              })()}
+
               <tr className="font-semibold">
                 <td colSpan={isUniletOrder ? 5 : 4} className="p-2 text-right">Sub-Total:</td>
                 <td className="p-2 text-right">₹{order.order_amount}</td>
