@@ -2,7 +2,7 @@ const assetFallbackUrl = (process.env.NEXT_PUBLIC_ASSET_FALLBACK_URL || "https:/
 let assetHostname = "estore.bharathelectronics.in";
 try {
   assetHostname = new URL(assetFallbackUrl).hostname;
-} catch (e) {}
+} catch (e) { }
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -117,8 +117,24 @@ const nextConfig = {
       },
     ];
   },
+  // async rewrites() {
+  //   return {
+  //     fallback: [
+  //       {
+  //         source: "/uploads/products/:path*",
+  //         destination: `${assetFallbackUrl}/uploads/products/:path*`,
+  //       },
+  //     ],
+  //   };
+  // },
   async rewrites() {
     return {
+      beforeFiles: [
+        {
+          source: "/uploads/:path*",
+          destination: "/api/uploads/:path*",
+        },
+      ],
       fallback: [
         {
           source: "/uploads/products/:path*",
