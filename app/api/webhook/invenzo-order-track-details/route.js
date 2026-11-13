@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import dbConnect from "@/lib/db";
 import InvensoOrderTrack from "@/models/invenso_order_track";
+import InvensoResponseResult from "@/models/invenso_response_result";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,41 @@ export async function POST(req) {
   }
 
   const orderNumber = readOrderNumber(body);
+  if (!orderNumber) {
+    return NextResponse.json(
+      { success: false, message: "order_number is required." },
+      { status: 400 }
+    );
+  }
+
+  try {
+    await dbConnect();
+    const jobCreated = await InvensoResponseResult.findOne({
+      order_number: orderNumber,
+      call_type: "job_create",
+      "response.status": { $regex: /^success$/i },
+    })
+      .select("_id")
+      .lean();
+
+    if (!jobCreated) {
+      return NextResponse.json(
+        {
+          success: false,
+          message:
+            "Order is not allowed. This order_number has no job_create record with status success.",
+        },
+        { status: 400 }
+      );
+    }
+  } catch (error) {
+    console.error("[invenzo-order-track-details] job check", error);
+    return NextResponse.json(
+      { success: false, message: error.message || "Failed to verify order." },
+      { status: 500 }
+    );
+  }
+
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const orderPart = safeFilePart(orderNumber);
   const fileName = `invenzo-order-track_${stamp}${orderPart ? `_${orderPart}` : ""}.json`;
