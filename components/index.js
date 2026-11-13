@@ -330,25 +330,25 @@ export default function HomeComponent() {
             String(res.categoryBanners.status).toLowerCase() === "active";
           const formatted = isDocActive
             ? res.categoryBanners.banners
-                .filter((banner) => banner && banner.banner_image)
-                .map((banner, index) => {
-                  let obj = {
-                    imageUrl: banner.banner_image,
-                    redirectUrl: banner.redirect_url || "",
-                  };
+              .filter((banner) => banner && banner.banner_image)
+              .map((banner, index) => {
+                let obj = {
+                  imageUrl: banner.banner_image,
+                  redirectUrl: banner.redirect_url || "",
+                };
 
-                  if (index === 0) {
-                    obj.categoryname = "SMART PHONE";
-                  } else if (index === 1) {
-                    obj.categoryname = "AIR CONDITIONER";
-                  } else if (index === 2) {
-                    obj.categoryname = "REFRIGERATOR";
-                  } else if (index === 3) {
-                    obj.categoryname = "WASHING MACHINE";
-                  }
+                if (index === 0) {
+                  obj.categoryname = "SMART PHONE";
+                } else if (index === 1) {
+                  obj.categoryname = "AIR CONDITIONER";
+                } else if (index === 2) {
+                  obj.categoryname = "REFRIGERATOR";
+                } else if (index === 3) {
+                  obj.categoryname = "WASHING MACHINE";
+                }
 
-                  return obj;
-                })
+                return obj;
+              })
             : [];
 
           setCategoryBanner(formatted);
@@ -670,10 +670,24 @@ export default function HomeComponent() {
     }
   }, [isInView.banner, controls]);
   const CustomPrevArrow = ({ onClick }) => (
-    <button onClick={onClick} className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white p-3 rounded-full shadow-md z-10 hover:bg-gray-600"> ◀ </button>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Previous slide"
+      className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white p-3 rounded-full shadow-md z-10 hover:bg-gray-600"
+    >
+      ◀
+    </button>
   );
   const CustomNextArrow = ({ onClick }) => (
-    <button onClick={onClick} className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white p-3 rounded-full shadow-md z-10 hover:bg-gray-600"> ▶ </button>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Next slide"
+      className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-gray-800 text-white p-3 rounded-full shadow-md z-10 hover:bg-gray-600"
+    >
+      ▶
+    </button>
   );
   const settings = {
     dots: true,
@@ -977,7 +991,7 @@ export default function HomeComponent() {
                       {/* Image */}
                       <img
                         src={banner.imageUrl}
-                        alt={`Category Banner ${index + 1}`}
+                        alt={banner.categoryname ? `${banner.categoryname} Category Banner` : `Category Banner ${index + 1}`}
                         className="w-full h-[300px] object-cover transform group-hover:scale-105 transition duration-500 ease-in-out"
                         width={400}
                         height={400}
@@ -991,6 +1005,7 @@ export default function HomeComponent() {
                       <div className="absolute top-8 left-4 py-6">
                         <Link
                           href={banner.redirectUrl || "#"}
+                          aria-label={banner.categoryname ? `Shop ${banner.categoryname}` : (banner.buttonText || "Shop Now")}
                           className="mt-2 inline-flex items-center text-sm font-medium text-gray-800 hover:text-black transition"
                         >
                           {banner.buttonText || "Shop Now"}
@@ -1041,7 +1056,11 @@ export default function HomeComponent() {
                 {flashSalesData.length > 3 && (
                   <>
                     {/* Left Arrow */}
-                    <button className="flash-prev absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center hover:shadow-lg transition">
+                    <button
+                      type="button"
+                      aria-label="Previous Flash Sale"
+                      className="flash-prev absolute left-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center hover:shadow-lg transition"
+                    >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="18"
@@ -1058,7 +1077,11 @@ export default function HomeComponent() {
                     </button>
 
                     {/* Right Arrow */}
-                    <button className="flash-next absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center hover:shadow-lg transition">
+                    <button
+                      type="button"
+                      aria-label="Next Flash Sale"
+                      className="flash-next absolute right-2 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-white shadow-md border border-gray-200 flex items-center justify-center hover:shadow-lg transition"
+                    >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="18"
@@ -1205,7 +1228,7 @@ export default function HomeComponent() {
                     >
                       <img
                         src={feature.image}
-                        alt={feature.title}
+                        alt={feature.title || "Feature"}
                         className="w-16 h-16 object-contain"
                       />
                     </div>
@@ -1237,7 +1260,7 @@ export default function HomeComponent() {
             <div>
               <motion.div variants={containerVariants} className="bg-[#FFF5F5] rounded-2xl py-6 px-4 mx-2">
                 <motion.div variants={itemVariants} className="flex justify-between items-center mb-4">
-                  <h5 className="text-lg font-bold text-[#d72828] tracking-tight">Shop by Brands</h5>
+                  <h2 className="text-lg font-bold text-[#d72828] tracking-tight">Shop by Brands</h2>
                   <Link
                     href="/brands"
                     className="text-sm font-semibold text-[#d72828] hover:text-[#b31e1e] flex items-center gap-1 transition-colors group cursor-pointer"
@@ -1260,7 +1283,7 @@ export default function HomeComponent() {
                           className="p-2 flex justify-center items-center"
                           whileHover={{ scale: 1.05 }}
                         >
-                          <div 
+                          <div
                             className="w-full h-16 sm:h-18 max-w-[150px] px-3 py-2 bg-white rounded-xl border-2 border-gray-150/80 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:border-[#ff9b9b] hover:ring-2 hover:ring-[#ffe4e6] hover:shadow-md transition-all duration-300 flex items-center justify-center overflow-hidden cursor-pointer"
                             onClick={(e) => {
                               e.preventDefault();
@@ -1315,7 +1338,7 @@ export default function HomeComponent() {
                         <div className="absolute inset-0 overflow-hidden">
                           <Image
                             src={banner.bgImageUrl}
-                            alt="Banner"
+                            alt={banner?.alt || "SATHYA Store Promotional Offer"}
                             fill
                             quality={100}
                             className="object-fill w-full h-full"
@@ -1329,7 +1352,7 @@ export default function HomeComponent() {
                           className="absolute inset-0 overflow-hidden cursor-pointer"
                           role="link"
                           tabIndex={0}
-                          aria-label={banner?.alt || banner?.redirectUrl || "Banner"}
+                          aria-label={banner?.alt || "View promotional offer"}
                           onClick={() => {
                             const href = banner?.redirectUrl;
                             if (!href) return;
@@ -1354,7 +1377,7 @@ export default function HomeComponent() {
                         >
                           <Image
                             src={banner.bgImageUrl}
-                            alt={banner?.alt || "Banner"}
+                            alt={banner?.alt || "SATHYA Store Promotional Offer"}
                             fill
                             quality={100}
                             className="object-fill w-full h-full"
@@ -1374,7 +1397,7 @@ export default function HomeComponent() {
                     <div className="absolute inset-0 flex justify-center items-center bg-white">
                       <Image
                         src={bannerData.banner.items[0].bgImageUrl}
-                        alt="Banner"
+                        alt="SATHYA Store Promotional Offer"
                         fill
                         className="object-fill w-full h-full"
                         priority
@@ -1412,10 +1435,10 @@ export default function HomeComponent() {
                         className="relative w-full aspect-[1900/400]"
                         variants={itemVariants}
                       >
-                        <Link href={item.redirect_url || "#"} className="block w-full h-full">
+                        <Link href={item.redirect_url || "#"} aria-label={item.title || "Special Promotional Offer"} className="block w-full h-full">
                           <Image
                             src={item.bgImageUrl}
-                            alt="Single Banner New"
+                            alt={item.title || "Special Promotional Offer"}
                             fill
                             quality={100}
                             className="object-fill w-full h-full"
@@ -1427,10 +1450,10 @@ export default function HomeComponent() {
                   </Slider>
                 ) : (
                   <motion.div className="relative w-full aspect-[1900/400]" variants={itemVariants}>
-                    <Link href={singleBannerNewData.singlebanner_new.items[0].redirect_url || "#"}>
+                    <Link href={singleBannerNewData.singlebanner_new.items[0].redirect_url || "#"} aria-label={singleBannerNewData.singlebanner_new.items[0].title || "Special Promotional Offer"}>
                       <Image
                         src={singleBannerNewData.singlebanner_new.items[0].bgImageUrl}
-                        alt="Single Banner New"
+                        alt={singleBannerNewData.singlebanner_new.items[0].title || "Special Promotional Offer"}
                         width={1900}
                         height={400}
                         className="w-full h-auto object-fill"
@@ -1466,10 +1489,10 @@ export default function HomeComponent() {
                         className="relative w-full aspect-[1900/400]"
                         variants={itemVariants}
                       >
-                        <Link href={item.redirect_url || "#"} className="block w-full h-full">
+                        <Link href={item.redirect_url || "#"} aria-label={item.title || "Featured Brand Offer"} className="block w-full h-full">
                           <Image
                             src={item.bgImageUrl}
-                            alt="Single Banner Two"
+                            alt={item.title || "Featured Brand Offer"}
                             fill
                             quality={100}
                             className="object-fill w-full h-full"
@@ -1484,10 +1507,10 @@ export default function HomeComponent() {
                     className="relative w-full aspect-[1900/400]"
                     variants={itemVariants}
                   >
-                    <Link href={singleBannerTwoData.singlebanner_two.items[0].redirect_url || "#"}>
+                    <Link href={singleBannerTwoData.singlebanner_two.items[0].redirect_url || "#"} aria-label={singleBannerTwoData.singlebanner_two.items[0].title || "Featured Brand Offer"}>
                       <Image
                         src={singleBannerTwoData.singlebanner_two.items[0].bgImageUrl}
-                        alt="Single Banner Two"
+                        alt={singleBannerTwoData.singlebanner_two.items[0].title || "Featured Brand Offer"}
                         width={1900}
                         height={400}
                         className="w-full h-auto object-fill"
@@ -1528,18 +1551,18 @@ export default function HomeComponent() {
                           >
                             <div className="flex items-center">
                               <div className="w-1/3 p-2">
-                                <Link href={`/product/${product.slug}`} className="block">
+                                <Link href={`/product/${product.slug}`} className="block" aria-label={product.name || "View product details"}>
                                   <div className="h-[100px] sm:h-[120px] md:h-[130px] bg-white flex items-center justify-center overflow-hidden rounded-md">
                                     <img
                                       src={`/uploads/products/${product.images?.[0]}` || "/placeholder.jpg"}
-                                      alt={product.item_code}
+                                      alt={product.name || product.item_code || "Product"}
                                       className="object-contain w-full h-full"
                                     />
                                   </div>
                                 </Link>
                               </div>
                               <div className="w-2/3 p-4">
-                                <Link href={`/product/${product.slug}`} className="block">
+                                <Link href={`/product/${product.slug}`} className="block" aria-label={product.name || "View product details"}>
                                   <div className="text-sm line-clamp-2">{product.name}</div>
                                 </Link>
                                 <div className="mt-1">
@@ -1586,18 +1609,18 @@ export default function HomeComponent() {
                               >
                                 <div className="flex items-center">
                                   <div className="w-1/3 p-2">
-                                    <Link href={`/product/${product.slug}`} className="block">
+                                    <Link href={`/product/${product.slug}`} className="block" aria-label={product.name || "View product details"}>
                                       <div className="h-[100px] sm:h-[120px] md:h-[130px] flex items-center justify-center overflow-hidden rounded-md">
                                         <img
                                           src={`/uploads/products/${product.images?.[0]}` || "/placeholder.jpg"}
-                                          alt={product.item_code}
+                                          alt={product.name || product.item_code || "Product"}
                                           className="object-contain w-full h-full"
                                         />
                                       </div>
                                     </Link>
                                   </div>
                                   <div className="w-2/3 p-4">
-                                    <Link href={`/product/${product.slug}`} className="block">
+                                    <Link href={`/product/${product.slug}`} className="block" aria-label={product.name || "View product details"}>
                                       <div className="text-sm line-clamp-2">{product.name}</div>
                                     </Link>
                                     <div className="mt-1">
@@ -1664,6 +1687,7 @@ export default function HomeComponent() {
       <div className={`relative transition-opacity duration-300 ${isLoading ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`} ref={containerRef} >
         {/* Banner Section start */}
         <div className="home-container">
+          <h1 className="sr-only">SATHYA Store - Best Online Shopping for Home Appliances & Electronics</h1>
           <HomePageRenderer />
         </div>
         <ToastContainer />

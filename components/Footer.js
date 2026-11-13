@@ -373,19 +373,17 @@ const Footer = () => {
                   className="w-full flex items-center justify-between py-3.5 md:py-0 text-left cursor-pointer md:cursor-default focus:outline-none"
                   aria-expanded={openSections.about}
                 >
-                  <h3 className="text-sm font-bold tracking-wide uppercase text-white md:mb-4">
+                  <span className="text-sm font-bold tracking-wide uppercase text-white md:mb-4 block">
                     About Sathya
-                  </h3>
+                  </span>
                   <FiChevronDown
-                    className={`md:hidden text-lg text-gray-400 transition-transform duration-200 ${
-                      openSections.about ? "rotate-180 text-white" : ""
-                    }`}
+                    className={`md:hidden text-lg text-gray-400 transition-transform duration-200 ${openSections.about ? "rotate-180 text-white" : ""
+                      }`}
                   />
                 </button>
                 <div
-                  className={`${
-                    openSections.about ? "block" : "hidden"
-                  } md:block pb-4 md:pb-0`}
+                  className={`${openSections.about ? "block" : "hidden"
+                    } md:block pb-4 md:pb-0`}
                 >
                   <ul className="grid grid-cols-2 gap-x-4 gap-y-2.5 md:block md:space-y-2.5">
                     {ABOUT_LINKS.map((link) => (
@@ -412,19 +410,17 @@ const Footer = () => {
                   className="w-full flex items-center justify-between py-3.5 md:py-0 text-left cursor-pointer md:cursor-default focus:outline-none"
                   aria-expanded={openSections.categories}
                 >
-                  <h3 className="text-sm font-bold tracking-wide uppercase text-white md:mb-4">
+                  <span className="text-sm font-bold tracking-wide uppercase text-white md:mb-4 block">
                     Categories
-                  </h3>
+                  </span>
                   <FiChevronDown
-                    className={`md:hidden text-lg text-gray-400 transition-transform duration-200 ${
-                      openSections.categories ? "rotate-180 text-white" : ""
-                    }`}
+                    className={`md:hidden text-lg text-gray-400 transition-transform duration-200 ${openSections.categories ? "rotate-180 text-white" : ""
+                      }`}
                   />
                 </button>
                 <div
-                  className={`${
-                    openSections.categories ? "block" : "hidden"
-                  } md:block pb-4 md:pb-0`}
+                  className={`${openSections.categories ? "block" : "hidden"
+                    } md:block pb-4 md:pb-0`}
                 >
                   <ul className="grid grid-cols-2 gap-x-4 gap-y-2.5 md:block md:space-y-2.5 max-h-[220px] overflow-y-auto pr-2 scrollbar-thin [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-neutral-800 [&::-webkit-scrollbar-thumb]:bg-neutral-600 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-neutral-400 footer-category-scroll">
                     {categoryColumnLinks.length === 0 ? (
@@ -452,19 +448,17 @@ const Footer = () => {
                     className="w-full flex items-center justify-between py-3.5 md:py-0 text-left cursor-pointer md:cursor-default focus:outline-none"
                     aria-expanded={openSections.policies}
                   >
-                    <h3 className="text-sm font-bold tracking-wide uppercase text-white md:mb-4">
+                    <span className="text-sm font-bold tracking-wide uppercase text-white md:mb-4 block">
                       Policies
-                    </h3>
+                    </span>
                     <FiChevronDown
-                      className={`md:hidden text-lg text-gray-400 transition-transform duration-200 ${
-                        openSections.policies ? "rotate-180 text-white" : ""
-                      }`}
+                      className={`md:hidden text-lg text-gray-400 transition-transform duration-200 ${openSections.policies ? "rotate-180 text-white" : ""
+                        }`}
                     />
                   </button>
                   <div
-                    className={`${
-                      openSections.policies ? "block" : "hidden"
-                    } md:block pb-4 md:pb-0`}
+                    className={`${openSections.policies ? "block" : "hidden"
+                      } md:block pb-4 md:pb-0`}
                   >
                     <ul className="grid grid-cols-2 sm:grid-cols-2 md:block gap-x-4 gap-y-2.5 md:space-y-2.5">
                       {POLICY_LINKS.map((link) => (
@@ -486,19 +480,17 @@ const Footer = () => {
                     className="w-full flex items-center justify-between py-3.5 md:py-0 text-left cursor-pointer md:cursor-default focus:outline-none"
                     aria-expanded={openSections.offers}
                   >
-                    <h3 className="text-sm font-bold tracking-wide uppercase text-white md:mb-4">
+                    <span className="text-sm font-bold tracking-wide uppercase text-white md:mb-4 block">
                       Offers
-                    </h3>
+                    </span>
                     <FiChevronDown
-                      className={`md:hidden text-lg text-gray-400 transition-transform duration-200 ${
-                        openSections.offers ? "rotate-180 text-white" : ""
-                      }`}
+                      className={`md:hidden text-lg text-gray-400 transition-transform duration-200 ${openSections.offers ? "rotate-180 text-white" : ""
+                        }`}
                     />
                   </button>
                   <div
-                    className={`${
-                      openSections.offers ? "block" : "hidden"
-                    } md:block pb-4 md:pb-0`}
+                    className={`${openSections.offers ? "block" : "hidden"
+                      } md:block pb-4 md:pb-0`}
                   >
                     <ul className="space-y-2.5">
                       {footerOffers.map((link) => (
@@ -529,19 +521,17 @@ const Footer = () => {
                   className="w-full flex items-center justify-between py-3.5 md:py-0 text-left cursor-pointer md:cursor-default focus:outline-none"
                   aria-expanded={openSections.contact}
                 >
-                  <h3 className="text-sm font-bold tracking-wide uppercase text-white md:mb-4">
+                  <span className="text-sm font-bold tracking-wide uppercase text-white md:mb-4 block">
                     Sales Enquiry
-                  </h3>
+                  </span>
                   <FiChevronDown
-                    className={`md:hidden text-lg text-gray-400 transition-transform duration-200 ${
-                      openSections.contact ? "rotate-180 text-white" : ""
-                    }`}
+                    className={`md:hidden text-lg text-gray-400 transition-transform duration-200 ${openSections.contact ? "rotate-180 text-white" : ""
+                      }`}
                   />
                 </button>
                 <div
-                  className={`${
-                    openSections.contact ? "block" : "hidden"
-                  } md:block pb-4 md:pb-0`}
+                  className={`${openSections.contact ? "block" : "hidden"
+                    } md:block pb-4 md:pb-0`}
                 >
                   <div className="space-y-3 text-sm">
                     <a

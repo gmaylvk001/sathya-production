@@ -286,11 +286,10 @@ export default function RegionSelectorModal() {
 
   return (
     <div
-      className={`fixed left-0 right-0 z-[99999] flex justify-center ${
-        viewportMetrics.isKeyboardOpen
+      className={`fixed left-0 right-0 z-[99999] flex justify-center ${viewportMetrics.isKeyboardOpen
           ? "items-start pt-2 xs:pt-3"
           : "items-center"
-      } p-2.5 xs:p-3 sm:p-4 select-none overflow-y-auto transition-[padding,top] duration-200`}
+        } p-2.5 xs:p-3 sm:p-4 select-none overflow-y-auto transition-[padding,top] duration-200`}
       style={{
         top: viewportMetrics.isKeyboardOpen
           ? `${viewportMetrics.offsetTop}px`
@@ -312,9 +311,8 @@ export default function RegionSelectorModal() {
       {/* Main Modal Card */}
       <div
         ref={modalRef}
-        className={`relative w-full max-w-[560px] bg-white rounded-2xl sm:rounded-xl shadow-2xl z-10 border border-gray-100/90 transition-all duration-200 p-3.5 sm:p-6 overflow-y-auto overflow-x-hidden animate-fadeIn ${
-          viewportMetrics.isKeyboardOpen ? "my-0" : "my-auto"
-        }`}
+        className={`relative w-full max-w-[560px] bg-white rounded-2xl sm:rounded-xl shadow-2xl z-10 border border-gray-100/90 transition-all duration-200 p-3.5 sm:p-6 overflow-y-auto overflow-x-hidden animate-fadeIn ${viewportMetrics.isKeyboardOpen ? "my-0" : "my-auto"
+          }`}
         style={{
           maxHeight: viewportMetrics.isKeyboardOpen
             ? `${Math.max(viewportMetrics.height - 16, 220)}px`
@@ -342,11 +340,11 @@ export default function RegionSelectorModal() {
             onBlur={() => setIsInputFocused(false)}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by city or enter 6-digit pincode"
+            aria-label="Search by city or enter 6-digit pincode"
             autoFocus
             maxLength={20}
-            className={`w-full pl-9 sm:pl-10 ${
-              isValidPincode(searchQuery) ? "pr-24 sm:pr-24" : "pr-9 sm:pr-10"
-            } h-11 sm:h-11 bg-white border border-gray-300 hover:border-gray-400 focus:border-red-500 rounded-lg text-xs sm:text-sm text-gray-800 placeholder-gray-400 placeholder:text-[11px] xs:placeholder:text-[11.5px] sm:placeholder:text-sm focus:outline-none transition-colors`}
+            className={`w-full pl-9 sm:pl-10 ${isValidPincode(searchQuery) ? "pr-24 sm:pr-24" : "pr-9 sm:pr-10"
+              } h-11 sm:h-11 bg-white border border-gray-300 hover:border-gray-400 focus:border-red-500 rounded-lg text-xs sm:text-sm text-gray-800 placeholder-gray-400 placeholder:text-[11px] xs:placeholder:text-[11.5px] sm:placeholder:text-sm focus:outline-none transition-colors`}
           />
           {isValidPincode(searchQuery) && (
             <button
@@ -522,9 +520,8 @@ export default function RegionSelectorModal() {
                   >
                     {/* Landmark Line Art Icon */}
                     <div
-                      className={`flex items-center justify-center transition-transform duration-150 ${
-                        isActive ? "scale-105" : "group-hover:scale-105"
-                      }`}
+                      className={`flex items-center justify-center transition-transform duration-150 ${isActive ? "scale-105" : "group-hover:scale-105"
+                        }`}
                     >
                       <StateLineArt
                         type={region.iconType}
@@ -535,11 +532,10 @@ export default function RegionSelectorModal() {
 
                     {/* State Name */}
                     <span
-                      className={`mt-1 sm:mt-1.5 text-[10px] sm:text-xs text-center leading-[1.2] transition-colors duration-150 break-words w-full px-0.5 ${
-                        isActive
+                      className={`mt-1 sm:mt-1.5 text-[10px] sm:text-xs text-center leading-[1.2] transition-colors duration-150 break-words w-full px-0.5 ${isActive
                           ? "text-gray-900 font-bold"
                           : "text-gray-600 group-hover:text-gray-900"
-                      }`}
+                        }`}
                     >
                       {region.name}
                     </span>
@@ -575,11 +571,10 @@ export default function RegionSelectorModal() {
                               onClick={() =>
                                 handleSelectCity(currentDisplayRegion, city)
                               }
-                              className={`py-1 px-1.5 sm:px-0 transition-colors cursor-pointer text-left whitespace-nowrap flex-shrink-0 text-[11px] sm:text-xs touch-manipulation active:scale-95 ${
-                                isSelectedCity
+                              className={`py-1 px-1.5 sm:px-0 transition-colors cursor-pointer text-left whitespace-nowrap flex-shrink-0 text-[11px] sm:text-xs touch-manipulation active:scale-95 ${isSelectedCity
                                   ? "text-[#dc2626] font-bold underline underline-offset-4 decoration-2"
                                   : "text-gray-700 hover:text-[#dc2626] hover:font-semibold"
-                              }`}
+                                }`}
                             >
                               {city}
                             </button>

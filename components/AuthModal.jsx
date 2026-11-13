@@ -117,7 +117,7 @@ export const AuthModal = ({ onClose, onSuccess, error }) => {
           };
           try {
             localStorage.setItem('sathya_user', JSON.stringify(fullUser));
-          } catch {}
+          } catch { }
           establishSession({
             token: data.token,
             userId: incomingUserId,
@@ -173,7 +173,9 @@ export const AuthModal = ({ onClose, onSuccess, error }) => {
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-8 w-96 max-w-full relative">
         <button
+          type="button"
           onClick={onClose}
+          aria-label="Close authentication modal"
           className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl"
         >
           &times;
@@ -191,11 +193,13 @@ export const AuthModal = ({ onClose, onSuccess, error }) => {
         {step === 1 ? (
           <form onSubmit={handleSendOtp} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Mobile Number</label>
+              <label htmlFor="auth-modal-mobile" className="block text-xs font-medium text-gray-600 mb-1">Mobile Number</label>
               <div className="flex items-center border rounded focus-within:ring-2 focus-within:ring-red-500 overflow-hidden">
                 <span className="px-3 py-2 bg-gray-50 text-gray-500 text-sm border-r">+91</span>
                 <input
+                  id="auth-modal-mobile"
                   type="tel"
+                  aria-label="Mobile Number"
                   placeholder="Enter 10-digit number"
                   value={mobile}
                   onChange={(e) => {
@@ -226,9 +230,11 @@ export const AuthModal = ({ onClose, onSuccess, error }) => {
         ) : (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">Enter OTP</label>
+              <label htmlFor="auth-modal-otp" className="block text-xs font-medium text-gray-600 mb-1">Enter OTP</label>
               <input
+                id="auth-modal-otp"
                 type="text"
+                aria-label="Enter 4-digit OTP"
                 placeholder="Enter 4-digit OTP"
                 value={otp}
                 onChange={(e) => {

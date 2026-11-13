@@ -150,8 +150,8 @@ export default function CompareBar() {
   const suggestedItems = searchResults.length > 0
     ? searchResults
     : (similarProducts || []).filter(
-        (sp) => sp?._id && !compareList.some((item) => String(item.productId) === String(sp._id))
-      );
+      (sp) => sp?._id && !compareList.some((item) => String(item.productId) === String(sp._id))
+    );
 
   const emptySlotsCount = Math.max(0, MAX_SLOTS - compareList.length);
 
@@ -217,6 +217,7 @@ export default function CompareBar() {
                 type="button"
                 onClick={() => setIsMinimized(true)}
                 title="Minimize compare tray"
+                aria-label="Minimize compare tray"
                 className="absolute right-6 -top-3.5 bg-white border border-gray-200 text-gray-500 hover:text-[#d72828] hover:border-red-300 w-7 h-7 rounded-full shadow-md flex items-center justify-center transition-all cursor-pointer z-10"
               >
                 <ChevronDown size={14} />
@@ -427,6 +428,7 @@ export default function CompareBar() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={`Search ${displayCategoryName !== 'Up to 4 items' ? displayCategoryName.toLowerCase() : 'products'} by name or brand...`}
+                  aria-label="Search products to compare"
                   className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs sm:text-sm text-gray-900 placeholder-gray-400 focus:outline-hidden focus:border-[#d72828] focus:bg-white transition-all shadow-2xs"
                 />
                 {searching ? (
@@ -437,6 +439,7 @@ export default function CompareBar() {
                     onClick={() => setSearchQuery('')}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                     title="Clear search"
+                    aria-label="Clear search"
                   >
                     <X size={14} />
                   </button>
@@ -490,11 +493,10 @@ export default function CompareBar() {
                           type="button"
                           onClick={() => handleAddProduct(prod)}
                           disabled={isAdded}
-                          className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
-                            isAdded
+                          className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all shrink-0 cursor-pointer flex items-center gap-1 ${isAdded
                               ? 'bg-emerald-50 text-emerald-700 cursor-default'
                               : 'bg-red-50 hover:bg-[#d72828] text-[#d72828] hover:text-white active:scale-95'
-                          }`}
+                            }`}
                         >
                           {isAdded ? (
                             <>

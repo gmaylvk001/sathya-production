@@ -1,9 +1,9 @@
 "use client";
 import { useModal } from '@/context/ModalContext';
-import { useState,useEffect  } from 'react';
+import { useState, useEffect } from 'react';
 import { useWishlist } from '@/context/WishlistContext';
 import { Heart } from 'lucide-react';
-import {AuthModal} from '@/components/AuthModal';
+import { AuthModal } from '@/components/AuthModal';
 
 
 
@@ -22,7 +22,7 @@ const AddToWishlistButton = ({ productId, onAfterWishlist, className, label, ico
   const handleWishlistAction = async () => {
     setIsLoading(true);
     setAuthError('');
-    
+
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -40,7 +40,7 @@ const AddToWishlistButton = ({ productId, onAfterWishlist, className, label, ico
       // API call
       const wishlistResponse = await fetch('/api/wishlist', {
         method,
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
@@ -58,13 +58,13 @@ const AddToWishlistButton = ({ productId, onAfterWishlist, className, label, ico
       if (!wishlistResponse.ok) {
         throw new Error(`Failed to ${isCurrentlyWishlisted ? 'remove from' : 'add to'} wishlist`);
       }
-      
-     const responseData = await wishlistResponse.json();
-    updateWishlist(responseData.items, responseData.count);
-    if (!isCurrentlyWishlisted && onAfterWishlist) {
-  onAfterWishlist();
-   }
-      
+
+      const responseData = await wishlistResponse.json();
+      updateWishlist(responseData.items, responseData.count);
+      if (!isCurrentlyWishlisted && onAfterWishlist) {
+        onAfterWishlist();
+      }
+
     } catch (error) {
       // console.error('Wishlist error:', error);
       setAuthError(error);
@@ -75,18 +75,20 @@ const AddToWishlistButton = ({ productId, onAfterWishlist, className, label, ico
 
   return (
     <>
-       <button
-          className={
-            className
-              ? `${className} ${isWishlisted ? 'text-red-500 border-red-500' : ''}`
-              : `p-1 rounded-full bg-white shadow ${isWishlisted ? 'text-red-500' : 'hover:text-red-500'}`
-          }
-          onClick={handleWishlistAction}
-          disabled={isLoading}
-        >
-          <Heart size={iconSize} fill={isWishlisted ? 'currentColor' : 'none'} className="shrink-0" />
-          {label && <span className="whitespace-nowrap">{label}</span>}
-        </button>
+      <button
+        type="button"
+        className={
+          className
+            ? `${className} ${isWishlisted ? 'text-red-500 border-red-500' : ''}`
+            : `p-1 rounded-full bg-white shadow ${isWishlisted ? 'text-red-500' : 'hover:text-red-500'}`
+        }
+        onClick={handleWishlistAction}
+        disabled={isLoading}
+        aria-label={label || (isWishlisted ? 'Remove from wishlist' : 'Add to wishlist')}
+      >
+        <Heart size={iconSize} fill={isWishlisted ? 'currentColor' : 'none'} className="shrink-0" />
+        {label && <span className="whitespace-nowrap">{label}</span>}
+      </button>
 
       {/* AuthModal remains the same */}
       {/* {showAuthModal && (

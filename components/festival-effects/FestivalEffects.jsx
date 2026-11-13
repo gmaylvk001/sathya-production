@@ -62,12 +62,12 @@ export default function FestivalEffects() {
           setEffect(activeData.effect);
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(activeData));
-          } catch (e) {}
+          } catch (e) { }
         } else {
           setEffect(null);
           try {
             localStorage.removeItem(STORAGE_KEY);
-          } catch (e) {}
+          } catch (e) { }
         }
       } catch (error) {
         console.error("Failed to load festival effect:", error);
@@ -98,5 +98,9 @@ export default function FestivalEffects() {
   const ActiveComponent = EFFECT_MAP[effect];
   if (!ActiveComponent) return null;
 
-  return <ActiveComponent />;
+  return (
+    <div aria-hidden="true" role="presentation">
+      <ActiveComponent />
+    </div>
+  );
 }

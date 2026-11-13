@@ -711,7 +711,7 @@ const Header = () => {
         setUserData(fullUser);
         try {
           localStorage.setItem('sathya_user', JSON.stringify(fullUser));
-        } catch {}
+        } catch { }
         // Ensure session lock exists once (avoid rewriting sessionId on every load)
         const uid = data.userId || data.user?.userId || data.user?._id;
         const hasLock = Boolean(localStorage.getItem("sathya_auth_session"));
@@ -1577,7 +1577,7 @@ const Header = () => {
         };
         try {
           localStorage.setItem('sathya_user', JSON.stringify(fullUser));
-        } catch {}
+        } catch { }
         establishSession({
           token: data.token,
           userId: incomingUserId,
@@ -2148,7 +2148,7 @@ const Header = () => {
                           return next;
                         });
                       }}
-                      aria-label="Toggle"
+                      aria-label={`Toggle ${node.category_name || "Category"}`}
                       className="ml-2"
                     >
                       <FiChevronRight
@@ -2315,12 +2315,13 @@ const Header = () => {
           {/* NEW MOBILE TOP ROW — compact & collision-free layout */}
           <div className="sm:hidden flex items-center justify-between w-full max-w-full min-w-0 relative gap-1">
             <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0 min-w-0">
-              <Link href="/" className={`p-0.5 sm:p-1 rounded-lg flex-shrink-0 ${currentBannerUrl ? "bg-transparent" : "bg-white"}`}>
-                <img src="/uploads/sathya-header-logo.webp" alt="Logo" width={58} height={36} className="h-8 sm:h-9 w-auto" />
+              <Link href="/" aria-label="SATHYA Store Homepage" className={`p-0.5 sm:p-1 rounded-lg flex-shrink-0 ${currentBannerUrl ? "bg-transparent" : "bg-white"}`}>
+                <img src="/uploads/sathya-header-logo.webp" alt="SATHYA Store Logo" width={58} height={36} className="h-8 sm:h-9 w-auto" />
               </Link>
               <button
                 type="button"
                 onClick={openRegionModal}
+                aria-label={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'}`}
                 className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 hover:bg-red-100 text-[#d72828] text-[10px] font-bold border border-red-200/80 transition-all flex-shrink-0 max-w-[82px] sm:max-w-[95px]"
                 title={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'}`}
                 suppressHydrationWarning
@@ -2333,6 +2334,7 @@ const Header = () => {
               {showDealsButton && (
                 <Link
                   href="/deals-offer"
+                  aria-label="View Deals & Special Offers"
                   className="inline-flex items-center justify-center px-2 py-0.5 h-[26px] sm:h-[28px] rounded-md text-[#000000] font-bold text-[10.5px] sm:text-[11px] leading-tight transition-all duration-200 shadow-xs hover:shadow hover:opacity-95 active:scale-95 flex-shrink-0 self-center"
                   style={{
                     background: "linear-gradient(135deg, #00b4db 0%, #f44336 55%, #ffc107 100%)",
@@ -2344,7 +2346,7 @@ const Header = () => {
               )}
             </div>
             <div className="flex items-center gap-1 sm:gap-1.5 text-brandRed flex-shrink-0">
-              <Link href="/wishlist" className={`${HEADER_ACTION_LINK_CLASS} relative min-w-[32px] sm:min-w-[36px]`}>
+              <Link href="/wishlist" aria-label={`Wishlist (${wishlistCount || 0} items)`} className={`${HEADER_ACTION_LINK_CLASS} relative min-w-[32px] sm:min-w-[36px]`}>
                 <div className={HEADER_ACTION_ICON_WRAP_SM_CLASS}>
                   <HiOutlineHeart size={15} strokeWidth={1.8} />
                   <span className={HEADER_ACTION_BADGE_SM_CLASS} suppressHydrationWarning>
@@ -2353,7 +2355,7 @@ const Header = () => {
                 </div>
                 <span className={`text-[8px] hidden ${HEADER_ACTION_LABEL_CLASS}`}>Wishlist</span>
               </Link>
-              <Link href="/cart" className={`${HEADER_ACTION_LINK_CLASS} relative min-w-[32px] sm:min-w-[36px]`}>
+              <Link href="/cart" aria-label={`Cart (${cartCount || 0} items)`} className={`${HEADER_ACTION_LINK_CLASS} relative min-w-[32px] sm:min-w-[36px]`}>
                 <div className={HEADER_ACTION_ICON_WRAP_SM_CLASS}>
                   <HiOutlineShoppingBag size={15} strokeWidth={1.8} />
                   <span className={HEADER_ACTION_BADGE_SM_CLASS} suppressHydrationWarning>
@@ -2435,6 +2437,7 @@ const Header = () => {
                   onKeyDown={handleKeyPress}
                   placeholder=" "
                   className="header-search-input"
+                  aria-label="Search products, brands and categories"
                   ref={mobileSearchInputRef}
                   onFocus={() => {
                     setSearchContext('mobileTop');
@@ -2576,8 +2579,8 @@ const Header = () => {
           <div className="hidden sm:flex justify-between items-center gap-3">
             {/* Logo (Hidden on mobile) */}
             <div className={`hidden sm:block py-2 rounded-lg ${currentBannerUrl ? "bg-transparent" : "bg-white"}`}>
-              <Link href="/" className="mx-auto">
-                <img src="/uploads/sathya-header-logo.webp" alt="Logo" className="h-auto" width={80} height={45} />
+              <Link href="/" aria-label="SATHYA Store Homepage" className="mx-auto">
+                <img src="/uploads/sathya-header-logo.webp" alt="SATHYA Store Logo" className="h-auto" width={80} height={45} />
               </Link>
             </div>
 
@@ -2663,7 +2666,7 @@ const Header = () => {
             {/* Icons Group */}
             <div className="flex items-center gap-1.5 md:gap-2 lg:gap-2.5 xl:gap-3 flex-shrink-0 mt-0.5">
               {/* Mobile Search Button (Hidden on desktop) */}
-              <button onClick={toggleMobileMenu} className="sm:hidden text-brandRed">
+              <button onClick={toggleMobileMenu} aria-label="Open search" className="sm:hidden text-brandRed">
                 <FiSearch size={20} />
               </button>
 
@@ -2671,6 +2674,7 @@ const Header = () => {
               {showDealsButton && (
                 <Link
                   href="/deals-offer"
+                  aria-label="View Deals & Special Offers"
                   className="hidden sm:inline-flex items-center justify-center px-3.5 py-1.5 rounded-md text-[#000000] font-bold text-[13px] leading-tight transition-all duration-200 shadow-xs hover:shadow hover:opacity-95 active:scale-95 shrink-0 self-center"
                   style={{
                     background: "linear-gradient(135deg, #00b4db 0%, #f44336 55%, #ffc107 100%)",
@@ -2685,6 +2689,7 @@ const Header = () => {
               <button
                 type="button"
                 onClick={openRegionModal}
+                aria-label={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'}`}
                 className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[50px] md:min-w-[54px] cursor-pointer`}
                 title={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'} (${selectedRegion?.name || 'Tamil Nadu'}). Click to change.`}
                 suppressHydrationWarning
@@ -2700,6 +2705,7 @@ const Header = () => {
               {/* Contact Button (Placed next to Pincode as requested) */}
               <Link
                 href="/contact"
+                aria-label="Contact Us"
                 className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[48px] md:min-w-[52px]`}
                 title="Contact Us"
               >
@@ -2713,6 +2719,7 @@ const Header = () => {
                 href="https://sathya.adtarbo.com/stores"
                 target="_blank"
                 rel="noopener noreferrer"
+                aria-label="Store Locations"
                 className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[52px]`}
               >
                 <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
@@ -2721,7 +2728,7 @@ const Header = () => {
                 <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Store</span>
               </a>
 
-              <Link href="/wishlist" className={`${HEADER_ACTION_LINK_CLASS} flex min-w-[52px] relative`}>
+              <Link href="/wishlist" aria-label={`Wishlist (${wishlistCount || 0} items)`} className={`${HEADER_ACTION_LINK_CLASS} flex min-w-[52px] relative`}>
                 <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
                   <HiOutlineHeart size={18} strokeWidth={1.75} />
                   <span className={HEADER_ACTION_BADGE_CLASS} suppressHydrationWarning>
@@ -2731,7 +2738,7 @@ const Header = () => {
                 <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Wishlist</span>
               </Link>
 
-              <Link href="/cart" className={`${HEADER_ACTION_LINK_CLASS} flex min-w-[52px] relative`}>
+              <Link href="/cart" aria-label={`Cart (${cartCount || 0} items)`} className={`${HEADER_ACTION_LINK_CLASS} flex min-w-[52px] relative`}>
                 <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
                   <HiOutlineShoppingBag size={18} strokeWidth={1.75} />
                   <span className={HEADER_ACTION_BADGE_CLASS} suppressHydrationWarning>
@@ -2763,9 +2770,8 @@ const Header = () => {
                   title={isAuthenticated ? (userData?.name || userData?.mobile || "Account") : "Login / Sign In"}
                 >
                   <div
-                    className={`${HEADER_ACTION_ICON_WRAP_CLASS} ${
-                      isAccountMenuOpen ? "!border-[#ED1C24] !bg-[#FFF200] !text-[#C4161D] shadow-[0_4px_10px_rgba(215,40,40,0.18)]" : ""
-                    }`}
+                    className={`${HEADER_ACTION_ICON_WRAP_CLASS} ${isAccountMenuOpen ? "!border-[#ED1C24] !bg-[#FFF200] !text-[#C4161D] shadow-[0_4px_10px_rgba(215,40,40,0.18)]" : ""
+                      }`}
                   >
                     <FiUser size={18} strokeWidth={1.75} />
                   </div>
@@ -2874,6 +2880,7 @@ const Header = () => {
                                 setIsAccountMenuOpen(false);
                                 handleLogout();
                               }}
+                              aria-label="Logout"
                               className="w-full flex items-center gap-3 px-3.5 py-2 text-xs font-semibold text-red-600 hover:text-white hover:bg-[#ED1C24] transition-colors group/item cursor-pointer text-left"
                             >
                               <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-red-600 group-hover/item:bg-white group-hover/item:text-[#ED1C24] transition-colors">
@@ -2962,7 +2969,7 @@ const Header = () => {
                   </div>
                   <div className="min-w-0">
                     <p className="text-xs font-bold text-gray-900 truncate">
-                      {isAuthenticated ? (userData?.name || userData?.username || (userData?.mobile ? `User (${userData.mobile})` : "My Account")) : "My Account"} 
+                      {isAuthenticated ? (userData?.name || userData?.username || (userData?.mobile ? `User (${userData.mobile})` : "My Account")) : "My Account"}
                     </p>
                     <p className="text-[10px] text-gray-500 truncate">
                       {isAuthenticated ? (userData?.mobile || userData?.email || "Manage profile") : "Login to view orders & offers"}
@@ -3030,6 +3037,7 @@ const Header = () => {
                       setIsMobileMenuOpen(false);
                       handleLogout();
                     }}
+                    aria-label="Logout"
                     className="flex flex-col items-center gap-1 text-red-600 hover:text-red-700 py-1 px-1.5 cursor-pointer"
                   >
                     <IoLogOut size={16} />
@@ -3144,7 +3152,7 @@ const Header = () => {
           {showAuthModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg p-8 w-96 max-w-full relative">
-                <button onClick={() => { setShowAuthModal(false); setOtpStep(1); setOtpMobile(''); setOtpValue(''); setOtpError(''); }} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl">
+                <button type="button" onClick={() => { setShowAuthModal(false); setOtpStep(1); setOtpMobile(''); setOtpValue(''); setOtpError(''); }} aria-label="Close login modal" className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl">
                   &times;
                 </button>
 
@@ -3160,11 +3168,13 @@ const Header = () => {
                 {otpStep === 1 ? (
                   <form onSubmit={handleSendOtp} className="space-y-4">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Mobile Number</label>
+                      <label htmlFor="header-auth-mobile" className="block text-xs font-medium text-gray-600 mb-1">Mobile Number</label>
                       <div className="flex items-center border rounded focus-within:ring-2 focus-within:ring-red-500 overflow-hidden">
                         <span className="px-3 py-2 bg-gray-50 text-gray-500 text-sm border-r">+91</span>
                         <input
+                          id="header-auth-mobile"
                           type="tel"
+                          aria-label="Mobile Number"
                           placeholder="Enter 10-digit number"
                           value={otpMobile}
                           onChange={(e) => {
@@ -3195,9 +3205,11 @@ const Header = () => {
                 ) : (
                   <form onSubmit={handleVerifyOtp} className="space-y-4">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1">Enter OTP</label>
+                      <label htmlFor="header-auth-otp" className="block text-xs font-medium text-gray-600 mb-1">Enter OTP</label>
                       <input
+                        id="header-auth-otp"
                         type="text"
+                        aria-label="Enter 4-digit OTP"
                         placeholder="Enter 4-digit OTP"
                         value={otpValue}
                         onChange={(e) => {
@@ -3239,7 +3251,7 @@ const Header = () => {
           {showForgotPasswordModal && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
               <div className="bg-white rounded-lg p-6 w-96 max-w-full relative">
-                <button onClick={() => setShowForgotPasswordModal(false)} className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                <button type="button" onClick={() => setShowForgotPasswordModal(false)} aria-label="Close forgot password modal" className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
                 {/* STEP 1: Enter Email */}
                 {forgotStep === 1 && (
                   <>
@@ -3264,6 +3276,7 @@ const Header = () => {
                     }} className="space-y-4">
                       <input
                         type="email"
+                        aria-label="Email address"
                         placeholder="Enter your email"
                         value={forgotPasswordEmail}
                         onChange={(e) => setForgotPasswordEmail(e.target.value)}
@@ -3318,7 +3331,7 @@ const Header = () => {
                         setForgotPasswordLoading(false);
                       }
                     }} className="space-y-4">
-                      <input type="text" placeholder="Enter OTP" value={forgotOTP} onChange={(e) => setForgotOTP(e.target.value)} required className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-brandRed" />
+                      <input type="text" aria-label="Enter OTP" placeholder="Enter OTP" value={forgotOTP} onChange={(e) => setForgotOTP(e.target.value)} required className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-brandRed" />
                       {forgotPasswordError && (
                         <p className="text-red-500 text-sm">{forgotPasswordError}</p>
                       )}
@@ -3370,8 +3383,8 @@ const Header = () => {
                         setForgotPasswordLoading(false);
                       }
                     }} className="space-y-4">
-                      <input type="password" placeholder="New Password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={6} className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-brandRed" />
-                      <input type="password" placeholder="Confirm New Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6} className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-brandRed" />
+                      <input type="password" aria-label="New Password" placeholder="New Password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} required minLength={6} className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-brandRed" />
+                      <input type="password" aria-label="Confirm New Password" placeholder="Confirm New Password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6} className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-brandRed" />
                       {forgotPasswordError && (
                         <p className="text-red-500 text-sm">{forgotPasswordError}</p>
                       )}
@@ -3459,59 +3472,59 @@ const Header = () => {
                 >
                   {redBarEntries.map((entry) => {
                     if (entry.kind === "custom") return (
-                    <SwiperSlide key={`custom-${entry.key}`} className="!w-auto">
-                      <div
-                        onMouseEnter={() => { cancelHide(); setHoveredCategory(null); }}
-                        className="px-2 py-2 flex flex-col items-center text-center"
-                      >
-                        {/^https?:\/\//i.test(entry.href) ? (
-                          <a
-                            href={entry.href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm font-bold text-white hover:text-[#FFF200] whitespace-nowrap"
-                          >
-                            {entry.label}
-                          </a>
-                        ) : (
+                      <SwiperSlide key={`custom-${entry.key}`} className="!w-auto">
+                        <div
+                          onMouseEnter={() => { cancelHide(); setHoveredCategory(null); }}
+                          className="px-2 py-2 flex flex-col items-center text-center"
+                        >
+                          {/^https?:\/\//i.test(entry.href) ? (
+                            <a
+                              href={entry.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-bold text-white hover:text-[#FFF200] whitespace-nowrap"
+                            >
+                              {entry.label}
+                            </a>
+                          ) : (
+                            <Link
+                              href={entry.href}
+                              className="text-sm font-bold text-white hover:text-[#FFF200] whitespace-nowrap"
+                            >
+                              {entry.label}
+                            </Link>
+                          )}
+                        </div>
+                      </SwiperSlide>
+                    );
+                    const { category } = entry;
+                    return (
+                      <SwiperSlide key={entry.key} className="!w-auto">
+                        <div ref={(el) => (slideRefs.current[category._id] = el)} onMouseEnter={() => handleMouseEnter(category._id, category)} onMouseLeave={() => startHide(120)} className="px-2 py-2 flex flex-col items-center text-center" >
                           <Link
-                            href={entry.href}
+                            href={resolveCategoryNavHref([category.category_slug], category._id, 0)}
+                            onClick={(e) => {
+                              // Ensure latest availability is used even if Swiper cached the slide href.
+                              e.preventDefault();
+                              if (hideTimeout.current) {
+                                clearTimeout(hideTimeout.current);
+                                hideTimeout.current = null;
+                              }
+                              setHoveredCategory(null);
+                              setActiveSubCategory(null);
+                              handleCategoryClick(
+                                category.category_slug,
+                                category.category_name,
+                                category._id
+                              );
+                            }}
                             className="text-sm font-bold text-white hover:text-[#FFF200] whitespace-nowrap"
                           >
                             {entry.label}
                           </Link>
-                        )}
-                      </div>
-                    </SwiperSlide>
-                    );
-                    const { category } = entry;
-                    return (
-                    <SwiperSlide key={entry.key} className="!w-auto">
-                      <div ref={(el) => (slideRefs.current[category._id] = el)} onMouseEnter={() => handleMouseEnter(category._id, category)} onMouseLeave={() => startHide(120)} className="px-2 py-2 flex flex-col items-center text-center" >
-                        <Link
-                          href={resolveCategoryNavHref([category.category_slug], category._id, 0)}
-                          onClick={(e) => {
-                            // Ensure latest availability is used even if Swiper cached the slide href.
-                            e.preventDefault();
-                            if (hideTimeout.current) {
-                              clearTimeout(hideTimeout.current);
-                              hideTimeout.current = null;
-                            }
-                            setHoveredCategory(null);
-                            setActiveSubCategory(null);
-                            handleCategoryClick(
-                              category.category_slug,
-                              category.category_name,
-                              category._id
-                            );
-                          }}
-                          className="text-sm font-bold text-white hover:text-[#FFF200] whitespace-nowrap"
-                        >
-                          {entry.label}
-                        </Link>
 
-                      </div>
-                    </SwiperSlide>
+                        </div>
+                      </SwiperSlide>
                     );
                   })}
                 </Swiper>
@@ -3798,7 +3811,7 @@ const Header = () => {
                               {brand.image ? (
                                 <img
                                   src={`/uploads/Brands/${brand.image}`}
-                                  alt={brand.brand_name}
+                                  alt={brand.brand_name || 'Brand'}
                                   style={{ height: '32px', maxWidth: '80px', objectFit: 'contain' }}
                                   onError={(e) => {
                                     e.currentTarget.style.display = 'none';
@@ -4023,11 +4036,12 @@ const Header = () => {
                               0
                             )}
                             onClick={() => setHoveredCategory(null)}
+                            aria-label={hoveredCategory.category_name || 'View Category'}
                             style={{ display: 'block', width: '100%', height: '100%' }}
                           >
                             <img
                               src={navImgs[0]}
-                              alt={hoveredCategory.category_name}
+                              alt={hoveredCategory.category_name || 'Category'}
                               style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                             />
                           </Link>
