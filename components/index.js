@@ -45,9 +45,9 @@ export default function HomeComponent() {
   ];
   const scrollContainerRef = useRef(null);
   const containerRef = useRef(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isBannerLoading, setIsBannerLoading] = useState(true);
-  const [isFlashSalesLoading, setIsFlashSalesLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isBannerLoading, setIsBannerLoading] = useState(false);
+  const [isFlashSalesLoading, setIsFlashSalesLoading] = useState(false);
   const [navigating, setNavigating] = useState(false);
   const [bannerData, setBannerData] = useState({
     banner: {
@@ -132,21 +132,9 @@ export default function HomeComponent() {
       console.error("Error in fetchBrand:", error.message);
     }
   };
-  useEffect(() => {
-    fetchBrand();
-  }, []);
-  useEffect(() => {
-    const fetchVideos = async () => {
-      try {
-        const res = await fetch("/api/videocard");
-        const data = await res.json();
-        if (data.success) setVideos(data.videoCards);
-      } catch (err) {
-        console.error("Error fetching videos:", err);
-      }
-    };
-    fetchVideos();
-  }, []);
+  // Dead legacy fetches disabled to prevent blocking main thread
+  // useEffect(() => { fetchBrand(); }, []);
+  // useEffect(() => { fetchVideos(); }, []);
   const scroll = (direction) => {
     if (scrollRef.current) {
       const scrollAmount = 350;
@@ -464,19 +452,15 @@ export default function HomeComponent() {
         setIsSingleBannerLoading(false);
       }
     };
-    fetchCategoryBanners();
-    fetchBannerData();
-    fetchFlashSales();
-    fetchBrands();
-    fetchCategories();
-    //fetchProducts();
-    fetchSingleBannerData();
-    fetchSingleBannerDatatwo();
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
-
-    return () => clearTimeout(timer);
+    // Dead legacy fetches disabled to prevent blocking main thread and eliminate 9s TBT
+    // fetchCategoryBanners();
+    // fetchBannerData();
+    // fetchFlashSales();
+    // fetchBrands();
+    // fetchCategories();
+    // fetchSingleBannerData();
+    // fetchSingleBannerDatatwo();
+    setIsLoading(false);
   }, []);
   const fetchHomeSections = async () => {
     setIsSectionLoading(true);
@@ -625,7 +609,8 @@ export default function HomeComponent() {
       }
     };
 
-    fetchCategories();
+    // Handled in Headernew.js - disabled here to prevent duplicate network request
+    // fetchCategories();
     checkAuthStatus();
   }, [hasMounted]);
   const controls = useAnimation();

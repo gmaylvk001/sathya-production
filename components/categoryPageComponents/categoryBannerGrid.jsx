@@ -65,28 +65,31 @@ function BannerTile({ banner, className = "" }) {
   return (
     <BannerLink
       href={href}
+      aria-label={banner.alt || banner.title || banner.buttonText || "Promotional Banner"}
       className={`flex items-center justify-center w-full min-w-0 overflow-hidden rounded-sm hover:opacity-95 transition-opacity ${className}`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={banner.image}
-        alt=""
+        alt={banner.alt || banner.title || "Promotional Banner"}
+        loading="lazy"
+        decoding="async"
         onLoad={handleLoad}
         style={
           displaySize
             ? {
-                width: `${displaySize.width}px`,
-                height: "auto",
-                aspectRatio: `${displaySize.width} / ${displaySize.height}`,
-                maxWidth: "100%",
-                maxHeight: `${displaySize.height}px`,
-              }
+              width: `${displaySize.width}px`,
+              height: "auto",
+              aspectRatio: `${displaySize.width} / ${displaySize.height}`,
+              maxWidth: "100%",
+              maxHeight: `${displaySize.height}px`,
+            }
             : {
-                width: "auto",
-                height: "auto",
-                maxWidth: "100%",
-                maxHeight: `${MAX_DISPLAY}px`,
-              }
+              width: "auto",
+              height: "auto",
+              maxWidth: "100%",
+              maxHeight: `${MAX_DISPLAY}px`,
+            }
         }
         className="block object-contain"
         draggable={false}

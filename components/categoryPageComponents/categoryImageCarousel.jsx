@@ -178,7 +178,7 @@ export default function CategoryImageCarousel({ config }) {
       el.style.cursor = "grab";
       el.style.scrollBehavior = "smooth";
       // Removed pointer capture release
-      
+
       const w = el.clientWidth || 1;
       const idx = Math.round(el.scrollLeft / w);
       requestAnimationFrame(() => {
@@ -215,8 +215,8 @@ export default function CategoryImageCarousel({ config }) {
   const cellStyle =
     showGap && perPage > 1
       ? {
-          width: `calc((100% - ${(perPage - 1) * gapPx}px) / ${perPage})`,
-        }
+        width: `calc((100% - ${(perPage - 1) * gapPx}px) / ${perPage})`,
+      }
       : { width: `${100 / perPage}%` };
 
   const renderItem = (item, idx) => {
@@ -224,7 +224,9 @@ export default function CategoryImageCarousel({ config }) {
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={item.image}
-        alt={name || `Image ${idx + 1}`}
+        alt={name || `Promotional Image ${idx + 1}`}
+        loading="lazy"
+        decoding="async"
         className="block w-full h-auto max-w-[320px] max-h-[430px] object-contain pointer-events-none select-none"
         draggable={false}
       />
@@ -339,11 +341,10 @@ export default function CategoryImageCarousel({ config }) {
                 aria-selected={i === page}
                 aria-label={`Page ${i + 1}`}
                 onClick={() => scrollToPage(i)}
-                className={`h-1.5 w-1.5 rounded-full transition ${
-                  i === page
+                className={`h-1.5 w-1.5 rounded-full transition ${i === page
                     ? "bg-[#ED1C24] scale-110"
                     : "bg-gray-300 hover:bg-gray-400"
-                }`}
+                  }`}
               />
             ))}
           </div>

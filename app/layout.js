@@ -74,10 +74,10 @@ export default function RootLayout({ children }) {
         />
         <Script
           id="gtag-base"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
           src="https://www.googletagmanager.com/gtag/js?id=G-15V9VS13Q7"
         />
-        <Script id="gtm-new" strategy="afterInteractive">
+        <Script id="gtm-new" strategy="lazyOnload">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}
@@ -87,7 +87,7 @@ export default function RootLayout({ children }) {
         </Script>
         <Script
           id="gtm-script"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
           dangerouslySetInnerHTML={{
             __html: `
               (function(w,d,s,l,i){w[l]=w[l]||[];

@@ -70,7 +70,7 @@ export default function CategoryTopBanner({
   if (!imageSrc) return null;
 
   const content = (
-    <div className="relative w-full overflow-hidden rounded-lg mb-6">
+    <div className="relative w-full overflow-hidden rounded-lg mb-6 aspect-[16/7] sm:aspect-[21/9] min-h-[160px] sm:min-h-[260px] bg-gray-100">
       <picture>
         {current.mobileImage && (
           <source media="(max-width: 767px)" srcSet={current.mobileImage} />
@@ -78,8 +78,13 @@ export default function CategoryTopBanner({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imageSrc}
-          alt="Category banner"
-          className="w-full h-auto object-cover max-h-[420px]"
+          alt={current.title || "SATHYA Store Promotional Banner"}
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
+          width={1200}
+          height={420}
+          className="w-full h-full object-cover max-h-[420px]"
         />
       </picture>
 
@@ -108,13 +113,13 @@ export default function CategoryTopBanner({
     const isExternal = /^https?:\/\//i.test(current.url);
     if (isExternal) {
       return (
-        <a href={current.url}>
+        <a href={current.url} aria-label={current.title || "View promotional banner details"}>
           {content}
         </a>
       );
     }
     const href = current.url.startsWith("/") ? current.url : `/${current.url}`;
-    return <Link href={href}>{content}</Link>;
+    return <Link href={href} aria-label={current.title || "View promotional banner details"}>{content}</Link>;
   }
 
   return content;
