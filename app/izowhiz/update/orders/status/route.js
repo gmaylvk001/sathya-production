@@ -7,19 +7,33 @@ import InvensoOrderTrack from "@/models/invenso_order_track";
 export const dynamic = "force-dynamic";
 
 const SAVE_DIR = path.join(process.cwd(), "storage", "invenso_order_track");
-const WEBHOOK_PASSWORD = "invenzo_order_track_sathya";
+const WEBHOOK_API_KEY = "3a03ea12244b07217d4440987f2910f42a10e2d09b4961af7014a755f676c23e";
 
 function readOrderNumber(body) {
   if (!body || typeof body !== "object" || Array.isArray(body)) return null;
-  const raw =
-    body.order_number ??
-    body.orderNumber ??
-    body.order_id ??
-    body.shipment_no ??
-    body.shipment_id ??
-    null;
-  const value = raw == null ? "" : String(raw).trim();
-  return value || null;
+  const keys = [
+    "externalOrderId",
+    "external_order_id",
+    "orderId",
+    "order_number",
+    "orderNumber",
+    "order_id",
+    "channelPartnerOrderId",
+    "thirdPartyOrderId",
+    "invoiceNumber",
+    "shipment_no",
+    "shipmentId",
+    "shipment_id",
+    "awbNumber",
+    "jobId",
+  ];
+  for (const key of keys) {
+    const raw = body[key];
+    if (raw == null) continue;
+    const value = String(raw).trim();
+    if (value) return value;
+  }
+  return null;
 }
 
 function safeFilePart(value) {
@@ -29,12 +43,12 @@ function safeFilePart(value) {
 }
 
 /**
- * POST /api/webhook/invenzo-order-track-details
+ * POST /izowhiz/update/orders/status
  * Saves the JSON body as a file and as a Mongo document.
  */
 export async function POST(req) {
-  const webhookPassword = String(req.headers.get("webhook_password") || "").trim();
-  if (webhookPassword !== WEBHOOK_PASSWORD) {
+  const apiKey = String(req.headers.get("x-api-key") || "").trim();
+  if (apiKey !== WEBHOOK_API_KEY) {
     return NextResponse.json(
       { success: false, message: "Unauthorized webhook." },
       { status: 401 }
@@ -80,11 +94,14 @@ export async function POST(req) {
       data: {
         id: String(saved._id),
         order_number: saved.order_number,
+        externalOrderId: saved.order_number,
+        jobId: body.jobId ?? null,
+        currentStatus: body.currentStatus ?? body.status ?? null,
         file_name: saved.file_name,
       },
     });
   } catch (error) {
-    console.error("[invenzo-order-track-details]", error);
+    console.error("[izowhiz/update/orders/status]", error);
     return NextResponse.json(
       { success: false, message: error.message || "Failed to save order track details." },
       { status: 500 }
