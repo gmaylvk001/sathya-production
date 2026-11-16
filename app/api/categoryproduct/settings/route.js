@@ -87,7 +87,7 @@ export async function GET() {
   }
 } */
 
-  // api/categoryproduct/get/route.js
+// api/categoryproduct/get/route.js
 
 import { NextResponse } from "next/server";
 import connectDB from "@/lib/db";
@@ -124,6 +124,7 @@ export async function GET() {
     const allProducts = await Product.find({
       _id: { $in: allProductIds },
       status: "Active",
+      product_type: { $ne: "gift" },
       $or: [
         { quantity: { $gt: 0 } },
         { stock_status: "In Stock" },
@@ -137,7 +138,7 @@ export async function GET() {
         }
       ]
     })
-      .select("name slug images price special_price quantity stock_status brand category sub_category lsp")
+      .select("name slug images price special_price quantity stock_status brand category sub_category lsp product_type")
       .lean();
 
     // 4️⃣b Fetch fallback products for each subcategoryId in bulk
@@ -147,6 +148,7 @@ export async function GET() {
 
     const fallbackProducts = await Product.find({
       status: "Active",
+      product_type: { $ne: "gift" },
       $or: [
         { sub_category: { $in: subcatObjectIds } },
         { category: { $in: subcatObjectIds } },
@@ -166,7 +168,7 @@ export async function GET() {
         }
       ]
     })
-      .select("name slug images price special_price quantity stock_status brand category sub_category lsp")
+      .select("name slug images price special_price quantity stock_status brand category sub_category lsp product_type")
       .sort({ createdAt: -1, _id: -1 })
       .lean();
 
@@ -225,89 +227,89 @@ export async function GET() {
       const uniqueBrandProducts = Object.values(brandMap)
         .sort((a, b) => b.quantity - a.quantity); // ✅ ADD THIS */
 
-        // 🔥 GROUP BY BRAND (pick highest quantity product)
-        /* const brandMap = {};
+      // 🔥 GROUP BY BRAND (pick highest quantity product)
+      /* const brandMap = {};
 
-        cpProducts.forEach(product => {
-          const brandId = product.brand?.toString();
-          if (!brandId) return;
+      cpProducts.forEach(product => {
+        const brandId = product.brand?.toString();
+        if (!brandId) return;
 
-          if (
-            !brandMap[brandId] ||
-            product.quantity > brandMap[brandId].quantity
-          ) {
-            brandMap[brandId] = product;
+        if (
+          !brandMap[brandId] ||
+          product.quantity > brandMap[brandId].quantity
+        ) {
+          brandMap[brandId] = product;
+        }
+      });
+
+      // ✅ SORT BY HIGHEST QUANTITY
+      const uniqueBrandProducts = Object.values(brandMap)
+        .sort((a, b) => b.quantity - a.quantity);
+
+    return {
+      ...cp,
+      subcategoryId: subcategory,
+      products: uniqueBrandProducts, // ✅ FINAL OUTPUT
+    }; */
+
+      // 🔥 GROUP PRODUCTS BY BRAND
+      const brandGroups = {};
+
+      cpProducts.forEach(product => {
+        const brandId = product.brand?.toString();
+        if (!brandId) return;
+
+        if (!brandGroups[brandId]) {
+          brandGroups[brandId] = [];
+        }
+
+        brandGroups[brandId].push(product);
+      });
+
+      // ✅ Sort each brand's products (optional: by quantity)
+      Object.values(brandGroups).forEach(group => {
+        group.sort((a, b) => b.quantity - a.quantity);
+      });
+
+      // 🔥 STEP 1: First round (1 per brand)
+      const finalProducts = [];
+      // const brandEntries = Object.entries(brandGroups);
+      const brandEntries = Object.entries(brandGroups).sort(
+        (a, b) => (b[1][0]?.quantity || 0) - (a[1][0]?.quantity || 0)
+      );
+
+      // First round
+      brandEntries.forEach(([brandId, products]) => {
+        if (products.length > 0) {
+          finalProducts.push(products.shift());
+        }
+      });
+
+      // 🔥 STEP 2: Continue based on remaining count (DESC)
+      let remainingBrands = brandEntries.filter(([_, products]) => products.length > 0);
+
+      while (remainingBrands.length > 0) {
+        // sort brands by remaining product count
+        remainingBrands.sort((a, b) => b[1].length - a[1].length);
+
+        for (let i = 0; i < remainingBrands.length; i++) {
+          const [brandId, products] = remainingBrands[i];
+
+          if (products.length > 0) {
+            finalProducts.push(products.shift());
           }
-        });
+        }
 
-        // ✅ SORT BY HIGHEST QUANTITY
-        const uniqueBrandProducts = Object.values(brandMap)
-          .sort((a, b) => b.quantity - a.quantity);
+        // remove empty brands
+        remainingBrands = remainingBrands.filter(([_, products]) => products.length > 0);
+      }
 
+      // ✅ FINAL OUTPUT
       return {
         ...cp,
         subcategoryId: subcategory,
-        products: uniqueBrandProducts, // ✅ FINAL OUTPUT
-      }; */
-
-      // 🔥 GROUP PRODUCTS BY BRAND
-const brandGroups = {};
-
-cpProducts.forEach(product => {
-  const brandId = product.brand?.toString();
-  if (!brandId) return;
-
-  if (!brandGroups[brandId]) {
-    brandGroups[brandId] = [];
-  }
-
-  brandGroups[brandId].push(product);
-});
-
-// ✅ Sort each brand's products (optional: by quantity)
-Object.values(brandGroups).forEach(group => {
-  group.sort((a, b) => b.quantity - a.quantity);
-});
-
-// 🔥 STEP 1: First round (1 per brand)
-const finalProducts = [];
-// const brandEntries = Object.entries(brandGroups);
-const brandEntries = Object.entries(brandGroups).sort(
-  (a, b) => (b[1][0]?.quantity || 0) - (a[1][0]?.quantity || 0)
-);
-
-// First round
-brandEntries.forEach(([brandId, products]) => {
-  if (products.length > 0) {
-    finalProducts.push(products.shift());
-  }
-});
-
-// 🔥 STEP 2: Continue based on remaining count (DESC)
-let remainingBrands = brandEntries.filter(([_, products]) => products.length > 0);
-
-while (remainingBrands.length > 0) {
-  // sort brands by remaining product count
-  remainingBrands.sort((a, b) => b[1].length - a[1].length);
-
-  for (let i = 0; i < remainingBrands.length; i++) {
-    const [brandId, products] = remainingBrands[i];
-
-    if (products.length > 0) {
-      finalProducts.push(products.shift());
-    }
-  }
-
-  // remove empty brands
-  remainingBrands = remainingBrands.filter(([_, products]) => products.length > 0);
-}
-
-// ✅ FINAL OUTPUT
-return {
-  ...cp,
-  subcategoryId: subcategory,
-  products: finalProducts,
-};
+        products: finalProducts,
+      };
     });
 
     // 7️⃣ Remove empty categories

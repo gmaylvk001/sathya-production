@@ -34,7 +34,7 @@ function escapeRegExp(str = "") {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-const SEARCH_CARD_PROJECTION = "name slug price special_price lsp usingLsp isUnilet stock_status quantity brand brand_name images rating model_number search_keywords item_code category sub_category createdAt";
+const SEARCH_CARD_PROJECTION = "name slug price special_price lsp usingLsp isUnilet stock_status quantity brand brand_name images rating model_number search_keywords item_code category sub_category createdAt product_type movement";
 
 let cachedCategories = null;
 let categoryCacheTime = 0;
@@ -234,6 +234,7 @@ export async function GET(req) {
     let searchFilter = {
 
       status: "Active",
+      product_type: { $ne: "gift" },
 
     };
 
@@ -647,47 +648,47 @@ export async function GET(req) {
 
     if (hasPriceFilter) {
 
-searchFilter.$and = [
+      searchFilter.$and = [
 
-  ...(searchFilter.$and || []),
+        ...(searchFilter.$and || []),
 
-  {
+        {
 
-    $or: [
+          $or: [
 
-      {
+            {
 
-        $and: [
+              $and: [
 
-          { special_price: { $exists: true } },
+                { special_price: { $exists: true } },
 
-          { special_price: { $ne: null } },
+                { special_price: { $ne: null } },
 
-          { special_price: { $ne: 0 } },
+                { special_price: { $ne: 0 } },
 
-          { special_price: { $gte: minPrice, $lte: maxPrice } },
+                { special_price: { $gte: minPrice, $lte: maxPrice } },
 
-        ],
+              ],
 
-      },
+            },
 
-      {
+            {
 
-        $and: [
+              $and: [
 
-          { $or: [{ special_price: { $exists: false } }, { special_price: null }, { special_price: 0 }] },
+                { $or: [{ special_price: { $exists: false } }, { special_price: null }, { special_price: 0 }] },
 
-          { price: { $gte: minPrice, $lte: maxPrice } },
+                { price: { $gte: minPrice, $lte: maxPrice } },
 
-        ],
+              ],
 
-      },
+            },
 
-    ],
+          ],
 
-  },
+        },
 
-];
+      ];
 
     }
 
@@ -785,12 +786,12 @@ searchFilter.$and = [
         .sort((a, b) => {
           const inStockA =
             a.product.stock_status === "In Stock" &&
-            Number(a.product.quantity || 0) > 0
+              Number(a.product.quantity || 0) > 0
               ? 1
               : 0;
           const inStockB =
             b.product.stock_status === "In Stock" &&
-            Number(b.product.quantity || 0) > 0
+              Number(b.product.quantity || 0) > 0
               ? 1
               : 0;
           if (inStockB !== inStockA) return inStockB - inStockA;
@@ -951,7 +952,7 @@ searchFilter.$and = [
           if (p.sub_category) productCategoryIds.add(p.sub_category.toString());
         });
       } else if (!query) {
-        const categoryOnlyFilter = { status: "Active" };
+        const categoryOnlyFilter = { status: "Active", product_type: { $ne: "gift" } };
         if (hasCategoryConstraint && categoryConditions.length > 0) {
           categoryOnlyFilter.$and = [
             ...(categoryOnlyFilter.$and || []),
@@ -1084,14 +1085,14 @@ searchFilter.$and = [
       categories: categoryTree,
       priceIntent: priceIntent.hasPriceIntent
         ? {
-            minPrice: priceIntent.minPrice,
-            maxPrice: priceIntent.maxPrice,
-            cleanedQuery: query,
-            applied: {
-              minPrice: hasPriceFilter ? minPrice : null,
-              maxPrice: hasPriceFilter ? maxPrice : null,
-            },
-          }
+          minPrice: priceIntent.minPrice,
+          maxPrice: priceIntent.maxPrice,
+          cleanedQuery: query,
+          applied: {
+            minPrice: hasPriceFilter ? minPrice : null,
+            maxPrice: hasPriceFilter ? maxPrice : null,
+          },
+        }
         : null,
     });
 

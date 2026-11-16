@@ -1,6 +1,6 @@
 // app/api/products/related/route.js
 import { NextResponse } from "next/server";
-import dbConnect from "@/lib/db"; 
+import dbConnect from "@/lib/db";
 import Product from "@/models/product";
 import { applyRegionPrices, readRequestRegion } from "@/lib/priceResolver";
 
@@ -9,10 +9,10 @@ export async function GET(req) {
     await dbConnect();
 
     const { searchParams } = new URL(req.url);
-    const categoryId = searchParams.get("category"); 
+    const categoryId = searchParams.get("category");
     const brandId = searchParams.get("brand");   // 👈 brand filter
-    const excludeId = searchParams.get("exclude"); 
-    const limit = parseInt(searchParams.get("limit")) || 5; 
+    const excludeId = searchParams.get("exclude");
+    const limit = parseInt(searchParams.get("limit")) || 5;
 
     if (!categoryId || !brandId) {
       return NextResponse.json(
@@ -26,10 +26,11 @@ export async function GET(req) {
       category: categoryId,
       brand: brandId,
       status: "Active",
+      product_type: { $ne: "gift" },
       stock_status: "In Stock",
       quantity: { $gte: 10 },
     };
-    if (excludeId) query._id = { $ne: excludeId }; 
+    if (excludeId) query._id = { $ne: excludeId };
 
     const relatedProducts = await Product.find(query)
       .limit(limit)

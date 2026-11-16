@@ -13,6 +13,7 @@ export async function GET(req) {
 
     const products = await Product.find({
       status: "Active",
+      product_type: { $ne: "gift" },
       quantity: { $gt: 0 },
     })
       .sort({ featured_products: -1, createdAt: -1 })
@@ -42,7 +43,8 @@ export async function POST(req) {
     if (Array.isArray(ids) && ids.length > 0) {
       products = await Product.find({
         _id: { $in: ids },
-        status: "Active"
+        status: "Active",
+        product_type: { $ne: "gift" }
       }).limit(maxLimit);
     }
 
@@ -51,7 +53,8 @@ export async function POST(req) {
       const existingIds = products.map(p => p._id);
       const queryFilter = {
         _id: { $nin: existingIds },
-        status: "Active"
+        status: "Active",
+        product_type: { $ne: "gift" }
       };
 
       if (category) queryFilter.category = category;

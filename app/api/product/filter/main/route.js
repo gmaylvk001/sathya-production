@@ -5,15 +5,15 @@ import Brand from "@/models/ecom_brand_info";
 import Filter from "@/models/ecom_filter_infos";
 import FilterGroup from "@/models/ecom_filter_group_infos";
 
-const mongoose = require('mongoose'); 
+const mongoose = require('mongoose');
 
 export async function GET(req) {
   try {
     await dbConnect();
-    
+
     const { searchParams } = new URL(req.url);
-   // console.log('🔍 API Request Params:', Object.fromEntries(searchParams.entries()));
-    
+    // console.log('🔍 API Request Params:', Object.fromEntries(searchParams.entries()));
+
     const categoryIds = searchParams.get('categoryIds')?.split(',') || [];
     const sub_category_new = searchParams.get('sub_category_new');
     const brandIds = searchParams.get('brands')?.split(',') || [];
@@ -32,8 +32,9 @@ export async function GET(req) {
     //console.log('💰 Price Range:', minPrice, '-', maxPrice);
 
     // Build base query
-    let query = { 
+    let query = {
       status: "Active",
+      product_type: { $ne: "gift" },
     };
 
     const categoryClauses = [];
@@ -56,7 +57,7 @@ export async function GET(req) {
     if (categoryClauses.length > 0) {
       query.$or = categoryClauses;
     }
-      
+
 
     // Brand filter
     if (brandIds.length > 0) {
@@ -68,14 +69,14 @@ export async function GET(req) {
       {
         $or: [
           // Products with special_price in range
-          { 
+          {
             $and: [
               { special_price: { $ne: null, $ne: 0 } },
               { special_price: { $gte: minPrice, $lte: maxPrice } }
             ]
           },
           // Products without special_price but regular price in range
-          { 
+          {
             $and: [
               { $or: [{ special_price: null }, { special_price: 0 }] },
               { price: { $gte: minPrice, $lte: maxPrice } }
@@ -108,7 +109,7 @@ export async function GET(req) {
     let productsQuery = Product.find(query).populate('brand', 'brand_name brand_slug');
 
     // Apply sorting based on parameter
-    switch(sort) {
+    switch (sort) {
       case 'price-low-high':
         productsQuery = productsQuery.sort({ stock_status: 1, price: 1, _id: -1 });
         break;
@@ -146,14 +147,14 @@ export async function GET(req) {
           const matchingSet = new Set(matchingProductIds.map(id => id.toString()));
           candidateIds = candidateIds.filter(id => matchingSet.has(id.toString()));
 
-          if (candidateIds.length === 0) break; 
+          if (candidateIds.length === 0) break;
         }
 
         query._id = { $in: candidateIds };
         productsQuery = Product.find(query).populate('brand', 'brand_name brand_slug');
 
         // Re-apply sorting
-          switch(sort) {
+        switch (sort) {
           case 'price-low-high':
             productsQuery = productsQuery.sort({ stock_status: 1, price: 1, _id: -1 });
             break;
@@ -180,7 +181,7 @@ export async function GET(req) {
       }
     }
     // Apply pagination
-const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit;
     const totalProducts = await Product.countDocuments(query);
     const totalPages = Math.ceil(totalProducts / limit);
 
@@ -202,10 +203,10 @@ const skip = (page - 1) * limit;
       }
 
       if (query._id) {
-        aggregateMatch._id = { 
-          $in: query._id.$in.map(id => 
-            mongoose.Types.ObjectId.isValid(id.toString()) 
-              ? new mongoose.Types.ObjectId(id.toString()) 
+        aggregateMatch._id = {
+          $in: query._id.$in.map(id =>
+            mongoose.Types.ObjectId.isValid(id.toString())
+              ? new mongoose.Types.ObjectId(id.toString())
               : id
           )
         };
@@ -247,8 +248,8 @@ const skip = (page - 1) * limit;
         .limit(limit)
         .lean();
     }
-      
-          
+
+
     const brandFilterQuery = {
       status: "Active",
     };
@@ -291,7 +292,7 @@ const skip = (page - 1) * limit;
       baseQuery.$or = query.$or;
     }
 
-const finalFilteredProductIds = await Product.distinct('_id', query);
+    const finalFilteredProductIds = await Product.distinct('_id', query);
     const finalFilteredProductIdStrings = finalFilteredProductIds.map(id => id.toString());
 
     // Get selected filters grouped by filter_group
@@ -312,10 +313,10 @@ const finalFilteredProductIds = await Product.distinct('_id', query);
 
     if (filterIds.length > 0) {
       for (const [groupId, groupFilterIds] of Object.entries(selectedFiltersByGroup)) {
-      
+
         let baseIds = await Product.distinct('_id', baseQuery);
 
-        
+
         for (const [otherGroupId, otherGroupFilterIds] of Object.entries(selectedFiltersByGroup)) {
           if (otherGroupId === groupId) continue;
 
@@ -387,13 +388,13 @@ const finalFilteredProductIds = await Product.distinct('_id', query);
       brands: brandsWithCount,
       filters: filtersWithGroup,
     });
-    
+
   } catch (error) {
     console.error('❌ Error in /api/product/filter:', error);
     return Response.json(
-      { 
+      {
         error: "Internal server error",
-        message: error.message 
+        message: error.message
       },
       { status: 500 }
     );

@@ -40,11 +40,11 @@ export async function GET(req) {
     );
     const ids = refs.map((r) => r.productId).filter(Boolean);
     const found = ids.length
-      ? await Product.find({ _id: { $in: ids }, status: "Active" })
-          .select(
-            "name slug images price special_price model_number item_code stock_status quantity brand movement"
-          )
-          .lean()
+      ? await Product.find({ _id: { $in: ids }, status: "Active", product_type: { $ne: "gift" } })
+        .select(
+          "name slug images price special_price model_number item_code stock_status quantity brand movement product_type"
+        )
+        .lean()
       : [];
     const byId = Object.fromEntries(found.map((p) => [String(p._id), p]));
     const products = refs

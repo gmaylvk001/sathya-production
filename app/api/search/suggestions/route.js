@@ -124,8 +124,9 @@ export async function GET(req) {
       orConditions.push({ status: "Active", search_keywords: /air condition/i });
     }
 
-    // Category filter mapping
-    let matchFilter = { $or: orConditions };
+    // Category filter mapping & exclude gift products
+    const nonGiftCondition = { product_type: { $ne: "gift" } };
+    let matchFilter = { $and: [{ $or: orConditions }, nonGiftCondition] };
     const catLower = category.toLowerCase().trim();
     if (category && catLower !== "all category" && catLower !== "all categories") {
       const categoryDoc = await Category.findOne({
@@ -138,7 +139,7 @@ export async function GET(req) {
         : { sub_category_new_name: { $regex: escapeRegExp(category), $options: "i" } };
 
       matchFilter = {
-        $and: [{ $or: orConditions }, categoryFilter],
+        $and: [{ $or: orConditions }, nonGiftCondition, categoryFilter],
       };
     }
 
@@ -188,19 +189,19 @@ export async function GET(req) {
                 $cond: [
                   isShort
                     ? {
-                        $regexMatch: {
-                          input: { $ifNull: ["$name", ""] },
-                          regex: `^${escapedQ}([\\s\\-/,_.)]|$)`,
-                          options: "i",
-                        },
-                      }
-                    : {
-                        $regexMatch: {
-                          input: { $ifNull: ["$name", ""] },
-                          regex: `^${escapedQ}`,
-                          options: "i",
-                        },
+                      $regexMatch: {
+                        input: { $ifNull: ["$name", ""] },
+                        regex: `^${escapedQ}([\\s\\-/,_.)]|$)`,
+                        options: "i",
                       },
+                    }
+                    : {
+                      $regexMatch: {
+                        input: { $ifNull: ["$name", ""] },
+                        regex: `^${escapedQ}`,
+                        options: "i",
+                      },
+                    },
                   50,
                   0,
                 ],
@@ -238,18 +239,18 @@ export async function GET(req) {
               // "AC" synonym category boost
               qLower === "ac"
                 ? {
-                    $cond: [
-                      {
-                        $regexMatch: {
-                          input: { $ifNull: ["$sub_category_new_name", ""] },
-                          regex: "air condition",
-                          options: "i",
-                        },
+                  $cond: [
+                    {
+                      $regexMatch: {
+                        input: { $ifNull: ["$sub_category_new_name", ""] },
+                        regex: "air condition",
+                        options: "i",
                       },
-                      90,
-                      0,
-                    ]
-                  }
+                    },
+                    90,
+                    0,
+                  ]
+                }
                 : 0,
               // Token matches
               ...tokenScoreAdditions,

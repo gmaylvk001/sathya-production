@@ -281,6 +281,7 @@ export async function GET(req) {
 
     const queryObj = {
       ...activeStatusCondition,
+      product_type: { $ne: "gift" },
       ...(filters.length > 0 ? { $and: filters } : {}),
     };
 

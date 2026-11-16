@@ -26,6 +26,12 @@ export default function StorefrontProductCard({
 
   if (!product) return null;
 
+  // Do not display gift products
+  const productType = String(
+    product?.product_type || product?.rawProduct?.product_type || ""
+  ).trim().toLowerCase();
+  if (productType === "gift") return null;
+
   const { discountPercent, showDiscount } = getDiscountInfo(product.price, product.special_price);
   const hasDiscount = showDiscount;
 
@@ -86,8 +92,8 @@ export default function StorefrontProductCard({
   const imagepathname = validImage || product.imgSrc || product.image || "";
   const initialImgSrc = imagepathname
     ? (imagepathname.startsWith("http")
-        ? imagepathname
-        : `/uploads/products/${imagepathname.replace(/^\/?(uploads\/products\/)?/, "").replace(/^\/+/, "")}`)
+      ? imagepathname
+      : `/uploads/products/${imagepathname.replace(/^\/?(uploads\/products\/)?/, "").replace(/^\/+/, "")}`)
     : "/uploads/products/placeholder.jpg";
 
   const [currentImg, setCurrentImg] = useState(initialImgSrc);
@@ -131,43 +137,38 @@ export default function StorefrontProductCard({
 
   return (
     <div
-      className={`group relative bg-white rounded-[16px] border hover:-translate-y-1 transition-all duration-300 flex flex-col h-full overflow-hidden w-full min-w-0 select-none ${
-        hasLsp
+      className={`group relative bg-white rounded-[16px] border hover:-translate-y-1 transition-all duration-300 flex flex-col h-full overflow-hidden w-full min-w-0 select-none ${hasLsp
           ? "lsp-card shadow-sm hover:shadow-xl"
           : "border-red-200/90 hover:border-[#d72828] shadow-2xs hover:shadow-xl"
-      } ${className}`}
+        } ${className}`}
     >
       {/* Top-left Lowest Price Badge (conditional on product.lsp > 0) */}
       <LowestPriceBadge product={product} variant="card" />
 
       {/* Top Image Container */}
       <div
-        className={`relative w-full bg-[#f9fafb] flex items-center justify-center overflow-hidden ${
-          compactMobile ? "h-[120px] sm:h-[170px] p-2 sm:p-3" : "h-[150px] sm:h-[170px] p-3"
-        }`}
+        className={`relative w-full bg-[#f9fafb] flex items-center justify-center overflow-hidden ${compactMobile ? "h-[120px] sm:h-[170px] p-2 sm:p-3" : "h-[150px] sm:h-[170px] p-3"
+          }`}
       >
 
         {/* Top-right Wishlist + Compare buttons */}
         <div
-          className={`absolute z-10 flex flex-col ${
-            compactMobile
+          className={`absolute z-10 flex flex-col ${compactMobile
               ? "top-1.5 right-1.5 sm:top-2.5 sm:right-2.5 gap-1 sm:gap-1.5"
               : "top-2.5 right-2.5 gap-1.5"
-          }`}
+            }`}
         >
           <AddToWishlistButton
             productId={product._id}
             iconSize={compactMobile ? 12 : 14}
-            className={`${
-              compactMobile ? "w-6 h-6 sm:w-7 sm:h-7" : "w-7 h-7"
-            } rounded-full bg-white/90 backdrop-blur-md shadow-xs border border-gray-100 flex items-center justify-center hover:bg-white hover:scale-110 active:scale-95 transition-all text-gray-600 hover:text-rose-600`}
+            className={`${compactMobile ? "w-6 h-6 sm:w-7 sm:h-7" : "w-7 h-7"
+              } rounded-full bg-white/90 backdrop-blur-md shadow-xs border border-gray-100 flex items-center justify-center hover:bg-white hover:scale-110 active:scale-95 transition-all text-gray-600 hover:text-rose-600`}
           />
           <CompareButton
             product={product}
             variant="icon"
-            className={`${
-              compactMobile ? "w-6 h-6 sm:w-7 sm:h-7" : "w-7 h-7"
-            } rounded-full bg-white/90 backdrop-blur-md shadow-xs border flex items-center justify-center transition-all active:scale-95`}
+            className={`${compactMobile ? "w-6 h-6 sm:w-7 sm:h-7" : "w-7 h-7"
+              } rounded-full bg-white/90 backdrop-blur-md shadow-xs border flex items-center justify-center transition-all active:scale-95`}
           />
         </div>
 
@@ -184,9 +185,8 @@ export default function StorefrontProductCard({
             alt={product.name || "Product Image"}
             fill
             sizes="(max-width: 640px) 70vw, (max-width: 1024px) 33vw, 20vw"
-            className={`object-contain p-2 group-hover:scale-105 transition-transform duration-300 ease-out ${
-              imgLoaded ? "opacity-100" : "opacity-0"
-            }`}
+            className={`object-contain p-2 group-hover:scale-105 transition-transform duration-300 ease-out ${imgLoaded ? "opacity-100" : "opacity-0"
+              }`}
             loading="lazy"
             onLoad={() => setImgLoaded(true)}
             onError={handleImageError}
@@ -197,9 +197,8 @@ export default function StorefrontProductCard({
 
       {/* Content Area */}
       <div
-        className={`flex flex-col flex-1 bg-white ${
-          compactMobile ? "p-2 sm:p-4" : "p-3 sm:p-4"
-        }`}
+        className={`flex flex-col flex-1 bg-white ${compactMobile ? "p-2 sm:p-4" : "p-3 sm:p-4"
+          }`}
       >
         <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider truncate mb-1 block">
           {brandName || ""}
@@ -208,19 +207,18 @@ export default function StorefrontProductCard({
         <Link href={productUrl} onClick={handleClick} className="block mb-1 sm:mb-1.5">
           <h4
             title={product.name}
-            className={`font-semibold text-gray-900 group-hover:text-[#d72828] transition-colors leading-snug line-clamp-3 sm:line-clamp-2 ${
-              compactMobile
+            className={`font-semibold text-gray-900 group-hover:text-[#d72828] transition-colors leading-snug line-clamp-3 sm:line-clamp-2 ${compactMobile
                 ? "text-[12px] sm:text-sm min-h-[3.15rem] sm:min-h-0 sm:h-[2.4rem]"
                 : "text-xs sm:text-sm h-[2.4rem]"
-            }`}
+              }`}
           >
             {product.name}
           </h4>
         </Link>
 
-        <PriceBlock 
-          price={currentPrice} 
-          mrp={originalPrice} 
+        <PriceBlock
+          price={currentPrice}
+          mrp={originalPrice}
           priceClass={compactMobile ? "text-[13px] sm:text-base" : "text-sm sm:text-base"}
         />
 
@@ -254,20 +252,18 @@ export default function StorefrontProductCard({
         </div>
 
         <div
-          className={`mt-auto ${
-            compactMobile ? "pt-1.5 sm:pt-2 gap-1.5 sm:gap-2" : "pt-2 gap-2"
-          } border-t border-gray-100 flex flex-col`}
+          className={`mt-auto ${compactMobile ? "pt-1.5 sm:pt-2 gap-1.5 sm:gap-2" : "pt-2 gap-2"
+            } border-t border-gray-100 flex flex-col`}
         >
           {isStoreOnly ? (
             <button
               type="button"
               disabled
               aria-disabled="true"
-              className={`w-full text-xs font-bold bg-gray-100 border border-gray-300 text-gray-500 cursor-not-allowed rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-none select-none ${
-                compactMobile
+              className={`w-full text-xs font-bold bg-gray-100 border border-gray-300 text-gray-500 cursor-not-allowed rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-none select-none ${compactMobile
                   ? "!py-0 !mr-0 h-[32px] sm:h-auto min-h-[32px] whitespace-nowrap"
                   : "py-1.5 min-h-[32px]"
-              }`}
+                }`}
               title="Sold Out Online - Available in Store"
             >
               <span>Sold Out Online</span>
@@ -290,8 +286,8 @@ export default function StorefrontProductCard({
           )}
 
           {bestPriceData ? (
-            <BestPriceStrip 
-              effectivePrice={bestPriceData.bestPrice} 
+            <BestPriceStrip
+              effectivePrice={bestPriceData.bestPrice}
               onOffersClick={() => setIsOffersModalOpen(true)}
               compact={compactMobile}
             />

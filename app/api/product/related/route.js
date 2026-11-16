@@ -52,6 +52,7 @@ const OUT_OF_STOCK_STATUSES = ["out of stock", "outofstock"];
 // Product cards: 10+ units can be bought online. Related products should push those.
 const ONLINE_IN_STOCK_FILTER = {
   status: "Active",
+  product_type: { $ne: "gift" },
   stock_status: { $nin: ["Out of Stock", "outofstock"] },
   quantity: { $gte: 10 },
 };

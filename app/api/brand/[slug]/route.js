@@ -34,7 +34,7 @@ export async function GET(request, { params }) {
     await dbConnect();
 
     const { slug } = await params;
-    
+
     // Fetch brand
     let brand = await Brand.findOne({
       $or: [
@@ -62,9 +62,9 @@ export async function GET(request, { params }) {
         { brand: brand._id },
         ...(brandName
           ? [
-              { brand: brandName },
-              { brand: new RegExp(`^${brandName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") },
-            ]
+            { brand: brandName },
+            { brand: new RegExp(`^${brandName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") },
+          ]
           : []),
       ],
     };
@@ -72,55 +72,56 @@ export async function GET(request, { params }) {
     // Get products for this brand (stored as ObjectId string or brand name)
     const products = await Product.find({
       status: "Active",
+      product_type: { $ne: "gift" },
       ...brandMatch,
     }).sort({ createdAt: -1, _id: -1 });
-    
+
     if (!products || products.length === 0) {
       return Response.json({ brand, products: [], categories: [], filters: [] });
     }
-    
-     // ✅ Collect product category + subcategory IDs
+
+    // ✅ Collect product category + subcategory IDs
     // const categoryIds = [...new Set(products.map(p => p.category))];
     // const subCategoryIds = [...new Set(products.map(p => p.sub_category))];
 
     const categoryIds = [
-  ...new Set(
-    products
-      .map(p => p.category)
-      .filter(id => id && id.toString().trim() !== "")
-  ),
-];
+      ...new Set(
+        products
+          .map(p => p.category)
+          .filter(id => id && id.toString().trim() !== "")
+      ),
+    ];
 
-const subCategoryIds = [
-  ...new Set(
-    products
-      .map(p => p.sub_category)
-      .filter(id => id && id.toString().trim() !== "")
-  ),
-];
+    const subCategoryIds = [
+      ...new Set(
+        products
+          .map(p => p.sub_category)
+          .filter(id => id && id.toString().trim() !== "")
+      ),
+    ];
 
 
     // Build tree starting from main categories (Air Conditioner in your case)
     let categoryTree = [];
     for (const catId of categoryIds) {
-  if (!catId || catId.toString().trim() === "") continue; // skip invalid IDs
-  
-  const mainCategory = await ecom_category_info.findOne({ _id: catId }).lean();
-  if (!mainCategory) continue;
+      if (!catId || catId.toString().trim() === "") continue; // skip invalid IDs
 
-  const subTree = await getCategoryTree(mainCategory._id, subCategoryIds);
-  categoryTree.push({
-    ...mainCategory,
-    subCategories: subTree
-  });
-}
+      const mainCategory = await ecom_category_info.findOne({ _id: catId }).lean();
+      if (!mainCategory) continue;
+
+      const subTree = await getCategoryTree(mainCategory._id, subCategoryIds);
+      categoryTree.push({
+        ...mainCategory,
+        subCategories: subTree
+      });
+    }
 
 
-    
+
     // Extract product IDs for filtering
     const productIds = products.map(product => product._id);
     const productFilters = await ProductFilter.find({ product_id: { $in: productIds } });
-    
+
     // Extract unique filter IDs
     const filterIds = [...new Set(productFilters.map(pf => pf.filter_id))];
     const filters = await Filter.find({ _id: { $in: filterIds } }).populate({
@@ -128,7 +129,7 @@ const subCategoryIds = [
       select: 'filtergroup_name filtergroup_slug',
       model: FilterGroup
     }).lean();
-    
+
     // Format filters
     const formattedFilters = filters.map(filter => ({
       ...filter,
@@ -137,11 +138,11 @@ const subCategoryIds = [
       filter_group: filter.filter_group?._id
     }));
 
-    return Response.json({ 
-      brand, 
-      products, 
-      categories: categoryTree, 
-      filters: formattedFilters 
+    return Response.json({
+      brand,
+      products,
+      categories: categoryTree,
+      filters: formattedFilters
     });
   } catch (error) {
     console.error(error);

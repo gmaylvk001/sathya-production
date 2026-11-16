@@ -169,82 +169,83 @@ export async function GET(req) {
        4️⃣ FINAL PRODUCT QUERY
     -------------------------------------------------- */
 
-// const effectiveCategoryIds =
-//   selectedCategoryIds.length > 0
-//     ? selectedCategoryIds
-//     : categoryIdsArray;
+    // const effectiveCategoryIds =
+    //   selectedCategoryIds.length > 0
+    //     ? selectedCategoryIds
+    //     : categoryIdsArray;
 
-// const effectiveSubcategoryIds =
-//   selectedSubcategoryIds.length > 0
-//     ? selectedSubcategoryIds
-//     : null;
-     
-// console.log("=== DEBUG ===");
-// console.log("categorySlug:", categorySlug);
-// console.log("brandSlug:", brandSlug);
-// console.log("selectedCategoryIds:", selectedCategoryIds);
-// console.log("selectedSubcategoryIds:", selectedSubcategoryIds);
-// console.log("categoryIdsArray:", categoryIdsArray);
-// console.log("effectiveCategoryIds:", effectiveCategoryIds);
-// console.log("effectiveSubcategoryIds:", effectiveSubcategoryIds);
+    // const effectiveSubcategoryIds =
+    //   selectedSubcategoryIds.length > 0
+    //     ? selectedSubcategoryIds
+    //     : null;
 
-// const categoryMatchClause = effectiveSubcategoryIds
-//   ? {
-//       $or: [
-//         { category: { $in: effectiveSubcategoryIds } },
-//         { sub_category: { $in: effectiveSubcategoryIds } },
-//       ],
-//     }
-//   : {
-//       $or: [
-//         { category: { $in: effectiveCategoryIds } },
-//         { sub_category: { $in: effectiveCategoryIds } },
-//       ],
-//     };
+    // console.log("=== DEBUG ===");
+    // console.log("categorySlug:", categorySlug);
+    // console.log("brandSlug:", brandSlug);
+    // console.log("selectedCategoryIds:", selectedCategoryIds);
+    // console.log("selectedSubcategoryIds:", selectedSubcategoryIds);
+    // console.log("categoryIdsArray:", categoryIdsArray);
+    // console.log("effectiveCategoryIds:", effectiveCategoryIds);
+    // console.log("effectiveSubcategoryIds:", effectiveSubcategoryIds);
 
-let expandedCategoryIds = categoryIdsArray;
+    // const categoryMatchClause = effectiveSubcategoryIds
+    //   ? {
+    //       $or: [
+    //         { category: { $in: effectiveSubcategoryIds } },
+    //         { sub_category: { $in: effectiveSubcategoryIds } },
+    //       ],
+    //     }
+    //   : {
+    //       $or: [
+    //         { category: { $in: effectiveCategoryIds } },
+    //         { sub_category: { $in: effectiveCategoryIds } },
+    //       ],
+    //     };
 
-if (selectedSubcategoryIds.length > 0) {
-  expandedCategoryIds = selectedSubcategoryIds;
-} else if (selectedCategoryIds.length > 0) {
-  const childrenOfSelected = await ecom_category_info.find({
-    parentid: { $in: selectedCategoryIds },
-    status: "Active",
-  }).lean();
+    let expandedCategoryIds = categoryIdsArray;
 
-  const selectedChildIds = childrenOfSelected.map((c) => c._id.toString());
+    if (selectedSubcategoryIds.length > 0) {
+      expandedCategoryIds = selectedSubcategoryIds;
+    } else if (selectedCategoryIds.length > 0) {
+      const childrenOfSelected = await ecom_category_info.find({
+        parentid: { $in: selectedCategoryIds },
+        status: "Active",
+      }).lean();
 
-  const grandChildrenOfSelected = await ecom_category_info.find({
-    parentid: { $in: selectedChildIds },
-    status: "Active",
-  }).lean();
+      const selectedChildIds = childrenOfSelected.map((c) => c._id.toString());
 
-  const selectedGrandChildIds = grandChildrenOfSelected.map((c) => c._id.toString());
+      const grandChildrenOfSelected = await ecom_category_info.find({
+        parentid: { $in: selectedChildIds },
+        status: "Active",
+      }).lean();
 
-  expandedCategoryIds = [
-    ...new Set([
-      ...selectedCategoryIds,
-      ...selectedChildIds,
-      ...selectedGrandChildIds,
-    ]),
-  ];
-}
+      const selectedGrandChildIds = grandChildrenOfSelected.map((c) => c._id.toString());
 
-const categoryMatchClause = {
-  $or: [
-    { category: { $in: expandedCategoryIds } },
-    { sub_category: { $in: expandedCategoryIds } },
-  ],
-};
+      expandedCategoryIds = [
+        ...new Set([
+          ...selectedCategoryIds,
+          ...selectedChildIds,
+          ...selectedGrandChildIds,
+        ]),
+      ];
+    }
 
-let query = {
-  status: "Active",
-  $and: [
-    brandMatchQuery(find_brand),
-    categoryMatchClause, 
-    priceClause,
-  ],
-};
+    const categoryMatchClause = {
+      $or: [
+        { category: { $in: expandedCategoryIds } },
+        { sub_category: { $in: expandedCategoryIds } },
+      ],
+    };
+
+    let query = {
+      status: "Active",
+      product_type: { $ne: "gift" },
+      $and: [
+        brandMatchQuery(find_brand),
+        categoryMatchClause,
+        priceClause,
+      ],
+    };
 
     let productsQuery = Product.find(query);
 
@@ -320,10 +321,10 @@ let query = {
     } else {
       const sortObj =
         sort === "name-a-z" ? { stock_status: 1, name: 1, _id: -1 } :
-        sort === "name-z-a" ? { stock_status: 1, name: -1, _id: -1 } :
-        sort === "quantity-low-to-high" ? { stock_status: 1, quantity: 1, _id: -1 } :
-        sort === "quantity-high-to-low" ? { stock_status: 1, quantity: -1, _id: -1 } :
-        { stock_status: 1, createdAt: -1, _id: -1 };
+          sort === "name-z-a" ? { stock_status: 1, name: -1, _id: -1 } :
+            sort === "quantity-low-to-high" ? { stock_status: 1, quantity: 1, _id: -1 } :
+              sort === "quantity-high-to-low" ? { stock_status: 1, quantity: -1, _id: -1 } :
+                { stock_status: 1, createdAt: -1, _id: -1 };
 
       products = await productsQuery
         .sort(sortObj)

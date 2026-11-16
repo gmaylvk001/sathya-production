@@ -6,10 +6,10 @@ import { getFiltersForProductIds } from "@/lib/availableProductFilters";
 export async function GET(req) {
   try {
     await dbConnect();
-    
+
     const { searchParams } = new URL(req.url);
-   // console.log(searchParams);
-   // const categoryId = searchParams.get('categoryId');
+    // console.log(searchParams);
+    // const categoryId = searchParams.get('categoryId');
     const sub_category_new = searchParams.get('sub_category_new');
     const brandIds = searchParams.get('brands')?.split(',') || [];
     const minPrice = parseFloat(searchParams.get('minPrice')) || 0;
@@ -19,48 +19,49 @@ export async function GET(req) {
     const limit = parseInt(searchParams.get('limit')) || 5;
     const sort = searchParams.get('sort') || 'featured';
     // Base query - always filter by category
-   let query = { sub_category_new: {
+    let query = {
+      sub_category_new: {
         $regex: sub_category_new,
         $options: "i"
-      }, status: "Active", quantity: { $gt: 0 }
- };
+      }, status: "Active", quantity: { $gt: 0 }, product_type: { $ne: "gift" }
+    };
 
 
     // Add brand filters if any
     if (brandIds.length > 0) {
       query.brand = { $in: brandIds };
     }
-    
+
     // Price range filter 
-query.$or = [
-  // special_price 
-  { 
-    special_price: { $ne: null, $gt: 0, $gte: minPrice, $lte: maxPrice }
-  },
-  // special_price
-  { 
-    $and: [
-      { $or: [{ special_price: null }, { special_price: 0 }] },
-      { price: { $gte: minPrice, $lte: maxPrice } }
-    ]
-  }
-];
-    
+    query.$or = [
+      // special_price 
+      {
+        special_price: { $ne: null, $gt: 0, $gte: minPrice, $lte: maxPrice }
+      },
+      // special_price
+      {
+        $and: [
+          { $or: [{ special_price: null }, { special_price: 0 }] },
+          { price: { $gte: minPrice, $lte: maxPrice } }
+        ]
+      }
+    ];
+
     // First fetch products matching brand and price filters
     // let products = await Product.find(query)
     //   .populate('brand', 'brand_name brand_slug')
     //   .lean();
-    
+
     // // Apply additional filters if any
     // if (filterIds.length > 0) {
     //   const productIds = products.map(p => p._id);
-      
+
     //   // Get all product-filter relationships that match our criteria
     //   const productFilters = await ProductFilter.find({
     //     product_id: { $in: productIds },
     //     filter_id: { $in: filterIds }
     //   });
-      
+
     //   // Group filters by product
     //   const filtersByProduct = productFilters.reduce((acc, pf) => {
     //     const productId = pf.product_id.toString();
@@ -68,7 +69,7 @@ query.$or = [
     //     acc[productId].add(pf.filter_id.toString());
     //     return acc;
     //   }, {});
-      
+
     //   // Filter products to only those that have ALL selected filters
     //   products = products.filter(product => {
     //     const productId = product._id.toString();
@@ -77,42 +78,42 @@ query.$or = [
     //     return filterIds.some(fid => productFilterIds.has(fid));
     //   });
     // }
-    
+
     // return Response.json(products);
 
 
-       let productsQuery = Product.find(query)
-        .populate('brand', 'brand_name brand_slug');
-      
-      // Apply additional filters if any
-      if (filterIds.length > 0) {
-        const productIds = await productsQuery.distinct('_id');
-        
-        const productFilters = await ProductFilter.find({
-          product_id: { $in: productIds },
-          filter_id: { $in: filterIds }
-        });
-        
-        const filtersByProduct = productFilters.reduce((acc, pf) => {
-          const productId = pf.product_id.toString();
-          if (!acc[productId]) acc[productId] = new Set();
-          acc[productId].add(pf.filter_id.toString());
-          return acc;
-        }, {});
-        
-        // Get only product IDs that match all filters
-        const filteredProductIds = productIds.filter(id => {
-          const productId = id.toString();
-          const productFilterIds = filtersByProduct[productId] || new Set();
-          return filterIds.some(fid => productFilterIds.has(fid));
-        });
-        
-        // Update the query to only include filtered products
-        query._id = { $in: filteredProductIds };
-        productsQuery = Product.find(query).populate('brand', 'brand_name brand_slug');
-      }
+    let productsQuery = Product.find(query)
+      .populate('brand', 'brand_name brand_slug');
 
-   
+    // Apply additional filters if any
+    if (filterIds.length > 0) {
+      const productIds = await productsQuery.distinct('_id');
+
+      const productFilters = await ProductFilter.find({
+        product_id: { $in: productIds },
+        filter_id: { $in: filterIds }
+      });
+
+      const filtersByProduct = productFilters.reduce((acc, pf) => {
+        const productId = pf.product_id.toString();
+        if (!acc[productId]) acc[productId] = new Set();
+        acc[productId].add(pf.filter_id.toString());
+        return acc;
+      }, {});
+
+      // Get only product IDs that match all filters
+      const filteredProductIds = productIds.filter(id => {
+        const productId = id.toString();
+        const productFilterIds = filtersByProduct[productId] || new Set();
+        return filterIds.some(fid => productFilterIds.has(fid));
+      });
+
+      // Update the query to only include filtered products
+      query._id = { $in: filteredProductIds };
+      productsQuery = Product.find(query).populate('brand', 'brand_name brand_slug');
+    }
+
+
     const skip = (page - 1) * limit;
     const totalProducts = await Product.countDocuments(query);
     const totalPages = Math.ceil(totalProducts / limit);
@@ -141,10 +142,10 @@ query.$or = [
     } else {
       const sortObj =
         sort === 'name-a-z' ? { stock_status: 1, name: 1, _id: -1 } :
-        sort === 'name-z-a' ? { stock_status: 1, name: -1, _id: -1 } :
-        sort === 'quantity-low-to-high' ? { stock_status: 1, quantity: 1, _id: -1 } :
-        sort === 'quantity-high-to-low' ? { stock_status: 1, quantity: -1, _id: -1 } :
-        { stock_status: 1, createdAt: -1, _id: -1 };
+          sort === 'name-z-a' ? { stock_status: 1, name: -1, _id: -1 } :
+            sort === 'quantity-low-to-high' ? { stock_status: 1, quantity: 1, _id: -1 } :
+              sort === 'quantity-high-to-low' ? { stock_status: 1, quantity: -1, _id: -1 } :
+                { stock_status: 1, createdAt: -1, _id: -1 };
 
       products = await productsQuery
         .sort(sortObj)
@@ -152,7 +153,7 @@ query.$or = [
         .limit(limit)
         .lean();
     }
-    
+
     const allProductIds = await Product.distinct('_id', query);
     const filters = await getFiltersForProductIds(allProductIds);
 
@@ -168,7 +169,7 @@ query.$or = [
       filters,
     });
 
-      
+
   } catch (error) {
     console.error('Error in /api/product/filter:', error);
     return Response.json(

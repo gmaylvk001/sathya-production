@@ -11,7 +11,7 @@ import { getFiltersForProductIds } from "@/lib/availableProductFilters";
 export async function GET(req) {
   try {
     await dbConnect();
-    
+
     const { searchParams } = new URL(req.url);
     const categoryIds = (searchParams.get('categoryIds')?.split(',') || []).filter(Boolean);
     const subcategoryIds = (searchParams.get('subcategoryIds')?.split(',') || []).filter(Boolean);
@@ -24,7 +24,7 @@ export async function GET(req) {
     const sort = searchParams.get('sort') || 'featured';
 
     // Base query
-    let query = { status: "Active" };
+    let query = { status: "Active", product_type: { $ne: "gift" } };
     const andClauses = [];
 
     let expandedCategoryIds = [...categoryIds, ...subcategoryIds];
@@ -36,9 +36,9 @@ export async function GET(req) {
       const childIds = children.map((c) => c._id.toString());
       const grand = childIds.length
         ? await ecom_category_info.find({
-            parentid: { $in: childIds },
-            status: "Active",
-          }).lean()
+          parentid: { $in: childIds },
+          status: "Active",
+        }).lean()
         : [];
       expandedCategoryIds = [
         ...new Set([
@@ -74,17 +74,17 @@ export async function GET(req) {
         ],
       });
     }
-    
+
     // Price range filter (considers both price and special_price)
     andClauses.push({
       $or: [
-        { 
+        {
           $and: [
             { special_price: { $ne: null, $ne: 0 } },
             { special_price: { $gte: minPrice, $lte: maxPrice } }
           ]
         },
-        { 
+        {
           $and: [
             { $or: [{ special_price: null }, { special_price: 0 }] },
             { price: { $gte: minPrice, $lte: maxPrice } }
@@ -93,9 +93,9 @@ export async function GET(req) {
       ]
     });
     query.$and = andClauses;
-    
+
     let productsQuery = Product.find(query);
-  
+
     // Apply additional filters if any
     if (filterIds.length > 0) {
       const productIds = await productsQuery.distinct('_id');
@@ -138,7 +138,7 @@ export async function GET(req) {
       query._id = { $in: [...matchingProductIds] };
       productsQuery = Product.find(query);
     }
-    
+
     // Apply pagination
     const skip = (page - 1) * limit;
     let products;
@@ -165,10 +165,10 @@ export async function GET(req) {
     } else {
       const sortObj =
         sort === 'name-a-z' ? { stock_status: 1, name: 1, _id: -1 } :
-        sort === 'name-z-a' ? { stock_status: 1, name: -1, _id: -1 } :
-        sort === 'quantity-low-to-high' ? { stock_status: 1, quantity: 1, _id: -1 } :
-        sort === 'quantity-high-to-low' ? { stock_status: 1, quantity: -1, _id: -1 } :
-        { stock_status: 1, createdAt: -1, _id: -1 };
+          sort === 'name-z-a' ? { stock_status: 1, name: -1, _id: -1 } :
+            sort === 'quantity-low-to-high' ? { stock_status: 1, quantity: 1, _id: -1 } :
+              sort === 'quantity-high-to-low' ? { stock_status: 1, quantity: -1, _id: -1 } :
+                { stock_status: 1, createdAt: -1, _id: -1 };
 
       products = await productsQuery
         .sort(sortObj)
@@ -176,13 +176,13 @@ export async function GET(req) {
         .limit(limit)
         .lean();
     }
-    
+
     // Get total count for pagination info
     const totalProducts = await Product.countDocuments(query);
     const totalPages = Math.ceil(totalProducts / limit);
     const matchingIds = await Product.distinct("_id", query);
     const filters = await getFiltersForProductIds(matchingIds);
-    
+
     return Response.json({
       products,
       pagination: {

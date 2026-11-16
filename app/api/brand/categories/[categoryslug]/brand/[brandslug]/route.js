@@ -6,13 +6,13 @@ import Filter from "@/models/ecom_filter_infos";
 import FilterGroup from "@/models/ecom_filter_group_infos";
 import ecom_category_info from "@/models/ecom_category_info";
 import { brandMatchQuery } from "@/lib/brandMatchQuery";
- 
+
 async function getCategoryTree(parentId, productCategoryIds = null) {
   const categories = await ecom_category_info
     .find({ parentid: parentId })
     .sort({ position: 1, category_name: 1 })
     .lean();
- 
+
   let filteredCategories = [];
   for (const category of categories) {
     if (productCategoryIds) {
@@ -31,7 +31,7 @@ async function getCategoryTree(parentId, productCategoryIds = null) {
       filteredCategories.push(category);
     }
   }
- 
+
   return filteredCategories;
 }
 
@@ -39,22 +39,22 @@ async function getCategoryTree(parentId, productCategoryIds = null) {
 async function getAllSubCategoryIds(categoryId) {
   const subCategories = await ecom_category_info.find({ parentid: categoryId }).select('_id').lean();
   let allIds = [categoryId.toString()];
-  
+
   for (const subCat of subCategories) {
     const childIds = await getAllSubCategoryIds(subCat._id);
     allIds = [...allIds, ...childIds];
   }
-  
+
   return allIds;
 }
- 
+
 export async function GET(request, { params }) {
   try {
     await dbConnect();
- 
+
     const { categoryslug, brandslug } = await params;
     console.log("Fetching data for:", categoryslug, brandslug);
-   
+
     // Fetch category and brand (supporting bidirectional URL order: category/brand or brand/category)
     let category = await ecom_category_info.findOne({
       $or: [
@@ -93,7 +93,7 @@ export async function GET(request, { params }) {
     if (!category) {
       return Response.json({ error: "Category not found" }, { status: 404 });
     }
-   
+
     if (!brand) {
       return Response.json({ error: "Brand not found" }, { status: 404 });
     }
@@ -101,10 +101,11 @@ export async function GET(request, { params }) {
     // Get ALL category IDs in the current category tree
     const allCategoryIdsInTree = await getAllSubCategoryIds(category._id);
     console.log("Category tree IDs:", allCategoryIdsInTree);
- 
+
     // Get products ONLY from the current category tree
     const products = await Product.find({
       status: "Active",
+      product_type: { $ne: "gift" },
       $and: [
         brandMatchQuery(brand),
         {
@@ -115,7 +116,7 @@ export async function GET(request, { params }) {
         },
       ],
     }).sort({ createdAt: -1, _id: -1 });
-   
+
     if (!products || products.length === 0) {
       return Response.json({
         category,
@@ -126,30 +127,30 @@ export async function GET(request, { params }) {
         allCategoryIds: allCategoryIdsInTree // Important for frontend filtering
       });
     }
-   
+
     // Build category tree with only categories that have products
     const productSubCategoryIds = [...new Set(
       products.map(p => p.sub_category?.toString()).filter(Boolean)
     )];
-    
+
     const categoryTree = await getCategoryTree(
       category._id,
       productSubCategoryIds
     );
-   
+
     // Extract product IDs for filtering
     const productIds = products.map(product => product._id);
-    
+
     // Get product filters ONLY for products in current category tree
-    const productFilters = await ProductFilter.find({ 
-      product_id: { $in: productIds } 
+    const productFilters = await ProductFilter.find({
+      product_id: { $in: productIds }
     });
-   
+
     // Extract unique filter IDs
     const filterIds = [...new Set(productFilters.map(pf => pf.filter_id))];
-    
+
     // Get filters and ensure they're scoped to current category tree
-    const filters = await Filter.find({ 
+    const filters = await Filter.find({
       _id: { $in: filterIds },
       // Add category scoping to filters if your Filter model has category association
       $or: [
@@ -162,7 +163,7 @@ export async function GET(request, { params }) {
       select: 'filtergroup_name filtergroup_slug',
       model: FilterGroup
     }).lean();
-   
+
     // Format filters
     const formattedFilters = filters.map(filter => ({
       ...filter,
@@ -173,7 +174,7 @@ export async function GET(request, { params }) {
 
     console.log(`Found ${formattedFilters.length} filters for category tree`);
     console.log("Filter groups:", [...new Set(formattedFilters.map(f => f.filter_group_name))]);
- 
+
     return Response.json({
       category,
       brand,
