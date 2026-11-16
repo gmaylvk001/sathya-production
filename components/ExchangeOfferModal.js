@@ -166,7 +166,9 @@ export default function ExchangeOfferModal({
             Exchange your old product
           </h3>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close exchange offer modal"
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
             <Icon icon="mdi:close" className="text-xl" />

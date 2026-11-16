@@ -370,6 +370,7 @@ const Footer = () => {
                 <button
                   type="button"
                   onClick={() => toggleSection("about")}
+                  aria-label="About Sathya"
                   className="w-full flex items-center justify-between py-3.5 md:py-0 text-left cursor-pointer md:cursor-default focus:outline-none"
                   aria-expanded={openSections.about}
                 >
@@ -407,6 +408,7 @@ const Footer = () => {
                 <button
                   type="button"
                   onClick={() => toggleSection("categories")}
+                  aria-label="Categories"
                   className="w-full flex items-center justify-between py-3.5 md:py-0 text-left cursor-pointer md:cursor-default focus:outline-none"
                   aria-expanded={openSections.categories}
                 >
@@ -445,6 +447,7 @@ const Footer = () => {
                   <button
                     type="button"
                     onClick={() => toggleSection("policies")}
+                    aria-label="Policies"
                     className="w-full flex items-center justify-between py-3.5 md:py-0 text-left cursor-pointer md:cursor-default focus:outline-none"
                     aria-expanded={openSections.policies}
                   >
@@ -477,6 +480,7 @@ const Footer = () => {
                   <button
                     type="button"
                     onClick={() => toggleSection("offers")}
+                    aria-label="Offers"
                     className="w-full flex items-center justify-between py-3.5 md:py-0 text-left cursor-pointer md:cursor-default focus:outline-none"
                     aria-expanded={openSections.offers}
                   >
@@ -518,6 +522,7 @@ const Footer = () => {
                 <button
                   type="button"
                   onClick={() => toggleSection("contact")}
+                  aria-label="Sales Enquiry"
                   className="w-full flex items-center justify-between py-3.5 md:py-0 text-left cursor-pointer md:cursor-default focus:outline-none"
                   aria-expanded={openSections.contact}
                 >

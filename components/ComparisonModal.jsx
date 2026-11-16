@@ -113,7 +113,14 @@ export default function ComparisonModal({ isOpen, onClose }) {
                       <div className="absolute right-0 top-full mt-2 w-72 sm:w-80 max-h-72 bg-white rounded-xl shadow-2xl border border-gray-200 p-2 overflow-y-auto z-50 text-left">
                         <div className="flex items-center justify-between pb-1.5 border-b border-gray-100 mb-1 px-1">
                           <span className="text-[11px] font-bold text-gray-700 uppercase">Add to Compare</span>
-                          <button onClick={() => setShowSimilarMenu(false)} className="text-gray-400 hover:text-gray-600 text-xs">✕</button>
+                          <button
+                            type="button"
+                            onClick={() => setShowSimilarMenu(false)}
+                            aria-label="Close add to compare menu"
+                            className="text-gray-400 hover:text-gray-600 text-xs"
+                          >
+                            ✕
+                          </button>
                         </div>
                         <div className="space-y-1">
                           {(similarProducts || [])
@@ -146,6 +153,7 @@ export default function ComparisonModal({ isOpen, onClose }) {
                 <button
                   type="button"
                   onClick={fetchComparisonDetails}
+                  aria-label="Refresh comparison data"
                   className="p-1.5 text-gray-400 hover:text-[#d72828] transition-colors rounded-lg hover:bg-gray-100 cursor-pointer"
                   title="Refresh comparison data"
                 >

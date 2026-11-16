@@ -35,6 +35,7 @@ const CarouselControls = ({
           <button
             type="button"
             onClick={onViewAll}
+            aria-label="View all related products"
             className="text-xs font-semibold text-[#d72828] hover:text-red-700 transition-colors inline-flex items-center gap-1 mr-1 sm:mr-2 cursor-pointer"
           >
             View All
@@ -166,9 +167,9 @@ const RelatedProducts = ({
 
         const ids = Array.isArray(relatedProducts)
           ? relatedProducts
-              .map((item) => (typeof item === "object" && item !== null ? item._id || item.id : item))
-              .filter(Boolean)
-              .join(",")
+            .map((item) => (typeof item === "object" && item !== null ? item._id || item.id : item))
+            .filter(Boolean)
+            .join(",")
           : "";
 
         if (!ids && !resolvedCategoryId) {

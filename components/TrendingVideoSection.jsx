@@ -121,17 +121,24 @@ export default function TrendingVideoSection({ config }) {
     };
   }, [currentRegion, config?.videos]);
 
-  // Load Instagram Embed Script once
+  // Load Instagram Embed Script only if blockquote embeds are present
   useEffect(() => {
     if (typeof window !== "undefined") {
-      if (!document.getElementById("instagram-embed-script")) {
-        const script = document.createElement("script");
-        script.id = "instagram-embed-script";
-        script.src = "https://www.instagram.com/embed.js";
-        script.async = true;
-        document.body.appendChild(script);
-      } else if (window.instgrm?.Embeds?.process) {
-        window.instgrm.Embeds.process();
+      const hasBlockquotes = !!document.querySelector(".instagram-media");
+      if (hasBlockquotes) {
+        if (!document.getElementById("instagram-embed-script")) {
+          const script = document.createElement("script");
+          script.id = "instagram-embed-script";
+          script.src = "https://www.instagram.com/embed.js";
+          script.async = true;
+          document.body.appendChild(script);
+        } else if (window.instgrm?.Embeds?.process) {
+          try {
+            window.instgrm.Embeds.process();
+          } catch (_) {
+            // Guard against unmounted container invariant crashes
+          }
+        }
       }
     }
   }, [videos]);
