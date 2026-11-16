@@ -384,6 +384,13 @@ export default function SearchPage() {
             lookupMaps,
             [priceRange[0], priceRange[1]]
           );
+          const intentMin = data?.priceIntent?.applied?.minPrice;
+          const intentMax = data?.priceIntent?.applied?.maxPrice;
+          const hasNlPrice =
+            !hasActiveFilterParams(urlSearch) &&
+            ((intentMin != null && intentMin > 0) ||
+              (intentMax != null && intentMax > 0 && intentMax < 500000));
+
           const nextSelected = {
             categories: urlFilters.categories,
             subcategories: urlFilters.subcategories,
@@ -391,9 +398,20 @@ export default function SearchPage() {
             filters: urlFilters.filters,
             price: hasActiveFilterParams(urlSearch)
               ? urlFilters.price
+              : hasNlPrice
+              ? {
+                  min: intentMin != null && intentMin > 0 ? intentMin : priceRange[0],
+                  max:
+                    intentMax != null && intentMax > 0 && intentMax < 500000
+                      ? intentMax
+                      : priceRange[1],
+                }
               : { min: priceRange[0], max: priceRange[1] },
           };
           setSelectedFilters(nextSelected);
+          if (hasNlPrice) {
+            setValues([nextSelected.price.min, nextSelected.price.max]);
+          }
           setFilterUrlReady(true);
 
           if (hasActiveFilterParams(urlSearch)) {

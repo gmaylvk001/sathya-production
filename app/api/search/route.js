@@ -1,19 +1,35 @@
-// app/api/search/route.js
-import { NextResponse } from "next/server";
-import dbConnect from "@/lib/db";
-import Product from "@/models/product";
-import Category from "@/models/ecom_category_info";
-import ProductFilter from "@/models/ecom_productfilter_info";
-import Filter from "@/models/ecom_filter_infos";
-import FilterGroup from "@/models/ecom_filter_group_infos";
-import mongoose from "mongoose";
-import { buildSearchOrConditions, scoreProductMatch, getBrandSearchConstraints } from "@/lib/searchMatch";
-import { getActiveBrandsForSearch } from "@/lib/brandSearch";
-import { humanLabel, looksLikeMongoId } from "@/lib/humanLabel";
-import { applyRegionPrices, readRequestRegion } from "@/lib/priceResolver";
-
-export const runtime = "nodejs";
-
+// app/api/search/route.js
+
+import { NextResponse } from "next/server";
+
+import dbConnect from "@/lib/db";
+
+import Product from "@/models/product";
+
+import Category from "@/models/ecom_category_info";
+
+import ProductFilter from "@/models/ecom_productfilter_info";
+
+import Filter from "@/models/ecom_filter_infos";
+
+import FilterGroup from "@/models/ecom_filter_group_infos";
+
+import mongoose from "mongoose";
+
+import { buildSearchOrConditions, scoreProductMatch, getBrandSearchConstraints, parseSearchPriceIntent } from "@/lib/searchMatch";
+
+import { getActiveBrandsForSearch } from "@/lib/brandSearch";
+
+import { humanLabel, looksLikeMongoId } from "@/lib/humanLabel";
+
+import { applyRegionPrices, readRequestRegion } from "@/lib/priceResolver";
+
+
+
+export const runtime = "nodejs";
+
+
+
 function escapeRegExp(str = "") {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -33,326 +49,650 @@ async function getCachedCategoryDocs() {
   return cachedCategories;
 }
 
-function cleanMongoFilter(filter) {
-  if (!filter || typeof filter !== "object") return filter;
-  const cleaned = { ...filter };
-  if (Array.isArray(cleaned.$and)) {
-    cleaned.$and = cleaned.$and
-      .map(cleanMongoFilter)
-      .filter((cond) => {
-        if (!cond || typeof cond !== "object") return false;
-        if (Array.isArray(cond.$or) && cond.$or.length === 0) return false;
-        if (Array.isArray(cond.$and) && cond.$and.length === 0) return false;
-        return Object.keys(cond).length > 0;
-      });
-    if (cleaned.$and.length === 0) delete cleaned.$and;
-  }
-  if (Array.isArray(cleaned.$or)) {
-    cleaned.$or = cleaned.$or
-      .map(cleanMongoFilter)
-      .filter((cond) => {
-        if (!cond || typeof cond !== "object") return false;
-        if (Array.isArray(cond.$or) && cond.$or.length === 0) return false;
-        if (Array.isArray(cond.$and) && cond.$and.length === 0) return false;
-        return Object.keys(cond).length > 0;
-      });
-    if (cleaned.$or.length === 0) delete cleaned.$or;
-  }
-  return cleaned;
-}
-
-async function getCategoryTree(parentId, productCategoryIds = null) {
-  const categories = await Category.find({ parentid: parentId })
-    .sort({ position: 1, category_name: 1 })
-    .lean();
-  let filteredCategories = [];
-  for (const category of categories) {
-    if (productCategoryIds) {
-      if (productCategoryIds.includes(category._id.toString())) {
-        category.subCategories = await getCategoryTree(
-          category._id,
-          productCategoryIds,
-        );
-        filteredCategories.push(category);
-      } else {
-        const children = await getCategoryTree(
-          category._id,
-          productCategoryIds,
-        );
-        if (children.length > 0) {
-          category.subCategories = children;
-          filteredCategories.push(category);
-        }
-      }
-    } else {
-      category.subCategories = await getCategoryTree(category._id);
-      filteredCategories.push(category);
-    }
-  }
-  return filteredCategories;
-}
-
-export async function GET(req) {
-  const { searchParams } = new URL(req.url);
-
-  const rawQuery = searchParams.get("query") || searchParams.get("q") || "";
-  const query = rawQuery.trim().replace(/[\x00-\x1F\x7F]/g, "").replace(/\s+/g, " ");
-  const category = (searchParams.get("category") || "").trim();
-  const page = Math.max(1, Number(searchParams.get("page")) || 1);
-  const limit = Math.max(1, Number(searchParams.get("limit")) || 12);
-
-  const brands = (searchParams.get("brands") || "")
-    .split(",")
-    .filter((v) => mongoose.Types.ObjectId.isValid(v));
-
-  const filters = (searchParams.get("filters") || "")
-    .split(",")
-    .filter((v) => mongoose.Types.ObjectId.isValid(v));
-
-  const minPrice = Number(searchParams.get("minPrice") || 0);
-  const maxPrice = Number(searchParams.get("maxPrice") || 1000000);
-  // Default range [0, 500000] is not a user constraint; only apply when explicitly restricted:
-  const hasPriceFilter =
-    (searchParams.has("minPrice") && minPrice > 0) ||
-    (searchParams.has("maxPrice") && maxPrice > 0 && maxPrice < 500000);
-
-  const skip = (page - 1) * limit;
-
-  try {
-    await dbConnect();
-    const allBrands = await getActiveBrandsForSearch();
-
-    let searchFilter = {
-      status: "Active",
-    };
-
-    /* ---------------- TEXT SEARCH ---------------- */
-    if (query) {
-      const brandConstraints = getBrandSearchConstraints(query, allBrands);
-
-      if (brandConstraints?.mode === "brand_product") {
-        const productOrs = buildSearchOrConditions(brandConstraints.productQuery, []);
-        const andConds = [{ brand: brandConstraints.brandId }];
-        if (Array.isArray(productOrs) && productOrs.length > 0) {
-          andConds.push({ $or: productOrs });
-        }
-        searchFilter.$and = [
-          ...(searchFilter.$and || []),
-          ...andConds,
-        ];
-      } else if (brandConstraints?.mode === "exact") {
-        searchFilter.$and = [
-          ...(searchFilter.$and || []),
-          { brand: brandConstraints.brandId },
-        ];
-      } else {
-        const textOrs = buildSearchOrConditions(query, allBrands);
-        if (Array.isArray(textOrs) && textOrs.length > 0) {
-          searchFilter.$and = [
-            ...(searchFilter.$and || []),
-            { $or: textOrs },
-          ];
-        }
-      }
-    }
-
-    /* ---------------- BRAND FILTER ---------------- */
-    if (brands.length > 0) {
-      searchFilter.brand = { $in: brands };
-    }
-
-    /* ---------------- CATEGORY & COMPOUND FILTERING ---------------- */
-    const isAllCat =
-      !category ||
-      category === "All Categories" ||
-      category === "All Category";
-    const categoryIdsRaw = (searchParams.get("categoryIds") || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    const subcategoryIdsRaw = (searchParams.get("subcategoryIds") || "")
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    const hasCategoryConstraint =
-      !isAllCat || categoryIdsRaw.length > 0 || subcategoryIdsRaw.length > 0;
-    let targetCatDocs = [];
-    let explicitCategoryUnmatched = false;
-
-    if (!isAllCat) {
-      let catDoc = null;
-      if (mongoose.Types.ObjectId.isValid(category)) {
-        catDoc = await Category.findOne({ _id: category, status: "Active" }).lean();
-      }
-      if (!catDoc) {
-        catDoc = await Category.findOne({ category_slug: category, status: "Active" }).lean();
-      }
-      if (!catDoc) {
-        catDoc = await Category.findOne({
-          category_name: {
-            $regex: new RegExp(
-              `^${category.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
-              "i"
-            ),
-          },
-          status: "Active",
-        }).lean();
-      }
-      if (!catDoc) {
-        const cleanSlug = category
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-|-$/g, "");
-        catDoc = await Category.findOne({
-          $or: [
-            { category_slug: cleanSlug },
-            { category_slug: { $regex: cleanSlug.replace(/-/g, ".*"), $options: "i" } },
-            { category_name: { $regex: cleanSlug.replace(/-/g, ".*"), $options: "i" } },
-          ],
-          status: "Active",
-        }).lean();
-      }
-      if (!catDoc && /personal/i.test(category) && (/care/i.test(category) || /health/i.test(category))) {
-        catDoc = await Category.findOne({
-          $or: [
-            { category_slug: "personal-care-appliances" },
-            { category_name: /personal care/i },
-          ],
-          status: "Active",
-        }).lean();
-      }
-      if (catDoc) {
-        targetCatDocs.push(catDoc);
-      } else {
-        explicitCategoryUnmatched = true;
-      }
-    }
-
-    if (subcategoryIdsRaw.length > 0) {
-      const validSubIds = subcategoryIdsRaw.filter((id) =>
-        mongoose.Types.ObjectId.isValid(id)
-      );
-      if (validSubIds.length > 0) {
-        const subDocs = await Category.find({
-          _id: { $in: validSubIds.map((id) => new mongoose.Types.ObjectId(id)) },
-        }).lean();
-        targetCatDocs.push(...subDocs);
-      }
-    } else if (categoryIdsRaw.length > 0) {
-      const validCatIds = categoryIdsRaw.filter((id) =>
-        mongoose.Types.ObjectId.isValid(id)
-      );
-      if (validCatIds.length > 0) {
-        const pDocs = await Category.find({
-          _id: { $in: validCatIds.map((id) => new mongoose.Types.ObjectId(id)) },
-        }).lean();
-        targetCatDocs.push(...pDocs);
-      }
-    }
-
-    let categoryConditions = [];
-    if (hasCategoryConstraint) {
-      if (explicitCategoryUnmatched && targetCatDocs.length === 0) {
-        // If there is no search query, return empty. But if user searched for a keyword
-        // and explicit category is unmatched, gracefully ignore the category so products are found.
-        if (!query) {
-          return NextResponse.json({
-            products: [],
-            pagination: {
-              total: 0,
-              currentPage: page,
-              totalPages: 0,
-              hasNext: false,
-              hasPrev: false,
-            },
-            brandSummary: [],
-            filterSummary: [],
-            filterDefs: [],
-            categories: [],
-          });
-        }
-      }
-
-      const getAllChildDocs = async (parentId) => {
-        const children = await Category.find({ parentid: parentId }).lean();
-        let docs = [];
-        for (const child of children) {
-          docs.push(child);
-          const grandChildren = await getAllChildDocs(child._id);
-          docs.push(...grandChildren);
-        }
-        return docs;
-      };
-
-      const allCategoryDocs = [...targetCatDocs];
-      for (const doc of targetCatDocs) {
-        const childDocs = await getAllChildDocs(doc._id);
-        allCategoryDocs.push(...childDocs);
-      }
-
-      const targetIdStrings = new Set();
-      const targetObjIds = [];
-      const targetMd5s = new Set();
-
-      for (const c of allCategoryDocs) {
-        const idStr = c._id.toString();
-        if (!targetIdStrings.has(idStr)) {
-          targetIdStrings.add(idStr);
-          targetObjIds.push(new mongoose.Types.ObjectId(idStr));
-        }
-        if (c.md5_cat_name) {
-          targetMd5s.add(c.md5_cat_name);
-        }
-      }
-
-      const allCategoryInValues = [
-        ...Array.from(targetIdStrings),
-        ...targetObjIds,
-      ];
-
-      categoryConditions = [
-        { category: { $in: allCategoryInValues } },
-        { sub_category: { $in: allCategoryInValues } },
-      ];
-      if (targetMd5s.size > 0) {
-        categoryConditions.push(
-          ...Array.from(targetMd5s).map((md5) => ({
-            sub_category_new: { $regex: md5, $options: "i" },
-          }))
-        );
-      }
-
-      searchFilter.$and = [
-        ...(searchFilter.$and || []),
-        { $or: categoryConditions },
-      ];
-    }
-    /* ---------------- PRICE FILTER ---------------- */
-    if (hasPriceFilter) {
-searchFilter.$and = [
-  ...(searchFilter.$and || []),
-  {
-    $or: [
-      {
-        $and: [
-          { special_price: { $exists: true } },
-          { special_price: { $ne: null } },
-          { special_price: { $ne: 0 } },
-          { special_price: { $gte: minPrice, $lte: maxPrice } },
-        ],
-      },
-      {
-        $and: [
-          { $or: [{ special_price: { $exists: false } }, { special_price: null }, { special_price: 0 }] },
-          { price: { $gte: minPrice, $lte: maxPrice } },
-        ],
-      },
-    ],
-  },
-];
-    }
-
+function cleanMongoFilter(filter) {
+
+  if (!filter || typeof filter !== "object") return filter;
+
+  const cleaned = { ...filter };
+
+  if (Array.isArray(cleaned.$and)) {
+
+    cleaned.$and = cleaned.$and
+
+      .map(cleanMongoFilter)
+
+      .filter((cond) => {
+
+        if (!cond || typeof cond !== "object") return false;
+
+        if (Array.isArray(cond.$or) && cond.$or.length === 0) return false;
+
+        if (Array.isArray(cond.$and) && cond.$and.length === 0) return false;
+
+        return Object.keys(cond).length > 0;
+
+      });
+
+    if (cleaned.$and.length === 0) delete cleaned.$and;
+
+  }
+
+  if (Array.isArray(cleaned.$or)) {
+
+    cleaned.$or = cleaned.$or
+
+      .map(cleanMongoFilter)
+
+      .filter((cond) => {
+
+        if (!cond || typeof cond !== "object") return false;
+
+        if (Array.isArray(cond.$or) && cond.$or.length === 0) return false;
+
+        if (Array.isArray(cond.$and) && cond.$and.length === 0) return false;
+
+        return Object.keys(cond).length > 0;
+
+      });
+
+    if (cleaned.$or.length === 0) delete cleaned.$or;
+
+  }
+
+  return cleaned;
+
+}
+
+
+
+async function getCategoryTree(parentId, productCategoryIds = null) {
+
+  const categories = await Category.find({ parentid: parentId })
+
+    .sort({ position: 1, category_name: 1 })
+
+    .lean();
+
+  let filteredCategories = [];
+
+  for (const category of categories) {
+
+    if (productCategoryIds) {
+
+      if (productCategoryIds.includes(category._id.toString())) {
+
+        category.subCategories = await getCategoryTree(
+
+          category._id,
+
+          productCategoryIds,
+
+        );
+
+        filteredCategories.push(category);
+
+      } else {
+
+        const children = await getCategoryTree(
+
+          category._id,
+
+          productCategoryIds,
+
+        );
+
+        if (children.length > 0) {
+
+          category.subCategories = children;
+
+          filteredCategories.push(category);
+
+        }
+
+      }
+
+    } else {
+
+      category.subCategories = await getCategoryTree(category._id);
+
+      filteredCategories.push(category);
+
+    }
+
+  }
+
+  return filteredCategories;
+
+}
+
+
+
+export async function GET(req) {
+
+  const { searchParams } = new URL(req.url);
+
+
+
+  const rawQuery = searchParams.get("query") || searchParams.get("q") || "";
+  const sanitizedQuery = rawQuery.trim().replace(/[\x00-\x1F\x7F]/g, "").replace(/\s+/g, " ");
+
+  // Amazon-style NL price intent: "under 15000 mobile phone 5g" → max 15000 + text "mobile phone 5g"
+  const priceIntent = parseSearchPriceIntent(sanitizedQuery);
+  const query = priceIntent.cleanedQuery || (priceIntent.hasPriceIntent ? "" : sanitizedQuery);
+
+  const category = (searchParams.get("category") || "").trim();
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const limit = Math.max(1, Number(searchParams.get("limit")) || 12);
+
+  const brands = (searchParams.get("brands") || "")
+    .split(",")
+    .filter((v) => mongoose.Types.ObjectId.isValid(v));
+
+  const filters = (searchParams.get("filters") || "")
+    .split(",")
+    .filter((v) => mongoose.Types.ObjectId.isValid(v));
+
+  const urlMinPrice = Number(searchParams.get("minPrice") || 0);
+  const urlMaxPrice = Number(searchParams.get("maxPrice") || 1000000);
+
+  // Default UI range [0, 500000] is not a user constraint; only apply when explicitly restricted.
+  const urlHasMinPrice = searchParams.has("minPrice") && urlMinPrice > 0;
+  const urlHasMaxPrice =
+    searchParams.has("maxPrice") && urlMaxPrice > 0 && urlMaxPrice < 500000;
+
+  // Explicit sidebar/URL price wins; otherwise apply NL intent from the query text.
+  const minPrice = urlHasMinPrice
+    ? urlMinPrice
+    : priceIntent.minPrice != null
+      ? priceIntent.minPrice
+      : 0;
+  const maxPrice = urlHasMaxPrice
+    ? urlMaxPrice
+    : priceIntent.maxPrice != null
+      ? priceIntent.maxPrice
+      : 1000000;
+
+  const hasPriceFilter =
+    urlHasMinPrice ||
+    urlHasMaxPrice ||
+    (priceIntent.hasPriceIntent &&
+      ((priceIntent.minPrice != null && priceIntent.minPrice > 0) ||
+        (priceIntent.maxPrice != null && priceIntent.maxPrice > 0)));
+
+  const skip = (page - 1) * limit;
+
+
+
+  try {
+
+    await dbConnect();
+
+    const allBrands = await getActiveBrandsForSearch();
+
+
+
+    let searchFilter = {
+
+      status: "Active",
+
+    };
+
+
+
+    /* ---------------- TEXT SEARCH ---------------- */
+
+    if (query) {
+
+      const brandConstraints = getBrandSearchConstraints(query, allBrands);
+
+
+
+      if (brandConstraints?.mode === "brand_product") {
+
+        const productOrs = buildSearchOrConditions(brandConstraints.productQuery, []);
+
+        const andConds = [{ brand: brandConstraints.brandId }];
+
+        if (Array.isArray(productOrs) && productOrs.length > 0) {
+
+          andConds.push({ $or: productOrs });
+
+        }
+
+        searchFilter.$and = [
+
+          ...(searchFilter.$and || []),
+
+          ...andConds,
+
+        ];
+
+      } else if (brandConstraints?.mode === "exact") {
+
+        searchFilter.$and = [
+
+          ...(searchFilter.$and || []),
+
+          { brand: brandConstraints.brandId },
+
+        ];
+
+      } else {
+
+        const textOrs = buildSearchOrConditions(query, allBrands);
+
+        if (Array.isArray(textOrs) && textOrs.length > 0) {
+
+          searchFilter.$and = [
+
+            ...(searchFilter.$and || []),
+
+            { $or: textOrs },
+
+          ];
+
+        }
+
+      }
+
+    }
+
+
+
+    /* ---------------- BRAND FILTER ---------------- */
+
+    if (brands.length > 0) {
+
+      searchFilter.brand = { $in: brands };
+
+    }
+
+
+
+    /* ---------------- CATEGORY & COMPOUND FILTERING ---------------- */
+
+    const isAllCat =
+
+      !category ||
+
+      category === "All Categories" ||
+
+      category === "All Category";
+
+    const categoryIdsRaw = (searchParams.get("categoryIds") || "")
+
+      .split(",")
+
+      .map((s) => s.trim())
+
+      .filter(Boolean);
+
+    const subcategoryIdsRaw = (searchParams.get("subcategoryIds") || "")
+
+      .split(",")
+
+      .map((s) => s.trim())
+
+      .filter(Boolean);
+
+
+
+    const hasCategoryConstraint =
+
+      !isAllCat || categoryIdsRaw.length > 0 || subcategoryIdsRaw.length > 0;
+
+    let targetCatDocs = [];
+
+    let explicitCategoryUnmatched = false;
+
+
+
+    if (!isAllCat) {
+
+      let catDoc = null;
+
+      if (mongoose.Types.ObjectId.isValid(category)) {
+
+        catDoc = await Category.findOne({ _id: category, status: "Active" }).lean();
+
+      }
+
+      if (!catDoc) {
+
+        catDoc = await Category.findOne({ category_slug: category, status: "Active" }).lean();
+
+      }
+
+      if (!catDoc) {
+
+        catDoc = await Category.findOne({
+
+          category_name: {
+
+            $regex: new RegExp(
+
+              `^${category.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+
+              "i"
+
+            ),
+
+          },
+
+          status: "Active",
+
+        }).lean();
+
+      }
+
+      if (!catDoc) {
+
+        const cleanSlug = category
+
+          .toLowerCase()
+
+          .replace(/[^a-z0-9]+/g, "-")
+
+          .replace(/^-|-$/g, "");
+
+        catDoc = await Category.findOne({
+
+          $or: [
+
+            { category_slug: cleanSlug },
+
+            { category_slug: { $regex: cleanSlug.replace(/-/g, ".*"), $options: "i" } },
+
+            { category_name: { $regex: cleanSlug.replace(/-/g, ".*"), $options: "i" } },
+
+          ],
+
+          status: "Active",
+
+        }).lean();
+
+      }
+
+      if (!catDoc && /personal/i.test(category) && (/care/i.test(category) || /health/i.test(category))) {
+
+        catDoc = await Category.findOne({
+
+          $or: [
+
+            { category_slug: "personal-care-appliances" },
+
+            { category_name: /personal care/i },
+
+          ],
+
+          status: "Active",
+
+        }).lean();
+
+      }
+
+      if (catDoc) {
+
+        targetCatDocs.push(catDoc);
+
+      } else {
+
+        explicitCategoryUnmatched = true;
+
+      }
+
+    }
+
+
+
+    if (subcategoryIdsRaw.length > 0) {
+
+      const validSubIds = subcategoryIdsRaw.filter((id) =>
+
+        mongoose.Types.ObjectId.isValid(id)
+
+      );
+
+      if (validSubIds.length > 0) {
+
+        const subDocs = await Category.find({
+
+          _id: { $in: validSubIds.map((id) => new mongoose.Types.ObjectId(id)) },
+
+        }).lean();
+
+        targetCatDocs.push(...subDocs);
+
+      }
+
+    } else if (categoryIdsRaw.length > 0) {
+
+      const validCatIds = categoryIdsRaw.filter((id) =>
+
+        mongoose.Types.ObjectId.isValid(id)
+
+      );
+
+      if (validCatIds.length > 0) {
+
+        const pDocs = await Category.find({
+
+          _id: { $in: validCatIds.map((id) => new mongoose.Types.ObjectId(id)) },
+
+        }).lean();
+
+        targetCatDocs.push(...pDocs);
+
+      }
+
+    }
+
+
+
+    let categoryConditions = [];
+
+    if (hasCategoryConstraint) {
+
+      if (explicitCategoryUnmatched && targetCatDocs.length === 0) {
+
+        // If there is no search query, return empty. But if user searched for a keyword
+
+        // and explicit category is unmatched, gracefully ignore the category so products are found.
+
+        if (!query) {
+
+          return NextResponse.json({
+
+            products: [],
+
+            pagination: {
+
+              total: 0,
+
+              currentPage: page,
+
+              totalPages: 0,
+
+              hasNext: false,
+
+              hasPrev: false,
+
+            },
+
+            brandSummary: [],
+
+            filterSummary: [],
+
+            filterDefs: [],
+
+            categories: [],
+
+          });
+
+        }
+
+      }
+
+
+
+      const getAllChildDocs = async (parentId) => {
+
+        const children = await Category.find({ parentid: parentId }).lean();
+
+        let docs = [];
+
+        for (const child of children) {
+
+          docs.push(child);
+
+          const grandChildren = await getAllChildDocs(child._id);
+
+          docs.push(...grandChildren);
+
+        }
+
+        return docs;
+
+      };
+
+
+
+      const allCategoryDocs = [...targetCatDocs];
+
+      for (const doc of targetCatDocs) {
+
+        const childDocs = await getAllChildDocs(doc._id);
+
+        allCategoryDocs.push(...childDocs);
+
+      }
+
+
+
+      const targetIdStrings = new Set();
+
+      const targetObjIds = [];
+
+      const targetMd5s = new Set();
+
+
+
+      for (const c of allCategoryDocs) {
+
+        const idStr = c._id.toString();
+
+        if (!targetIdStrings.has(idStr)) {
+
+          targetIdStrings.add(idStr);
+
+          targetObjIds.push(new mongoose.Types.ObjectId(idStr));
+
+        }
+
+        if (c.md5_cat_name) {
+
+          targetMd5s.add(c.md5_cat_name);
+
+        }
+
+      }
+
+
+
+      const allCategoryInValues = [
+
+        ...Array.from(targetIdStrings),
+
+        ...targetObjIds,
+
+      ];
+
+
+
+      categoryConditions = [
+
+        { category: { $in: allCategoryInValues } },
+
+        { sub_category: { $in: allCategoryInValues } },
+
+      ];
+
+      if (targetMd5s.size > 0) {
+
+        categoryConditions.push(
+
+          ...Array.from(targetMd5s).map((md5) => ({
+
+            sub_category_new: { $regex: md5, $options: "i" },
+
+          }))
+
+        );
+
+      }
+
+
+
+      searchFilter.$and = [
+
+        ...(searchFilter.$and || []),
+
+        { $or: categoryConditions },
+
+      ];
+
+    }
+
+    /* ---------------- PRICE FILTER ---------------- */
+
+    if (hasPriceFilter) {
+
+searchFilter.$and = [
+
+  ...(searchFilter.$and || []),
+
+  {
+
+    $or: [
+
+      {
+
+        $and: [
+
+          { special_price: { $exists: true } },
+
+          { special_price: { $ne: null } },
+
+          { special_price: { $ne: 0 } },
+
+          { special_price: { $gte: minPrice, $lte: maxPrice } },
+
+        ],
+
+      },
+
+      {
+
+        $and: [
+
+          { $or: [{ special_price: { $exists: false } }, { special_price: null }, { special_price: 0 }] },
+
+          { price: { $gte: minPrice, $lte: maxPrice } },
+
+        ],
+
+      },
+
+    ],
+
+  },
+
+];
+
+    }
+
+
+
     /* ---------------- BASE PRODUCT QUERY ---------------- */
     searchFilter = cleanMongoFilter(searchFilter);
     let productsQuery = Product.find(searchFilter);
@@ -742,10 +1082,26 @@ searchFilter.$and = [
       filterSummary,
       filterDefs: formattedFilterDefs,
       categories: categoryTree,
+      priceIntent: priceIntent.hasPriceIntent
+        ? {
+            minPrice: priceIntent.minPrice,
+            maxPrice: priceIntent.maxPrice,
+            cleanedQuery: query,
+            applied: {
+              minPrice: hasPriceFilter ? minPrice : null,
+              maxPrice: hasPriceFilter ? maxPrice : null,
+            },
+          }
+        : null,
     });
 
-  } catch (error) {
-    console.error("❌ Search API Error:", error);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
-  }
-}
+  } catch (error) {
+
+    console.error("❌ Search API Error:", error);
+
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+
+  }
+
+}
+
