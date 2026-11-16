@@ -104,6 +104,17 @@ function extractListLines(str) {
     .filter(Boolean);
 }
 
+/** Normalize Word/CMS junk before HTML stripping (literal \\n, <o:p>, etc.). */
+function normalizeSpecMarkup(input) {
+  return String(input ?? '')
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '')
+    .replace(/\\t/g, ' ')
+    .replace(/<o:p[^>]*>\s*<\/o:p>/gi, '')
+    .replace(/<\/?o:p[^>]*>/gi, '')
+    .replace(/&nbsp;/gi, ' ');
+}
+
 /**
  * Turn key_specifications / highlights (plain or HTML) into clean lines
  * like "Display: HD LED" / "Connectivity: 2 HDMI | 1 USB".
@@ -111,10 +122,10 @@ function extractListLines(str) {
 function flattenSpecEntries(raw) {
   const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
   // Join array fragments first — CMS often stores broken HTML across array items
-  const joined = list
-    .map((item) => (item === null || item === undefined ? '' : String(item)))
-    .filter((s) => s.trim() !== '')
-    .join('');
+  const normalized = list
+    .map((item) => normalizeSpecMarkup(item))
+    .filter((s) => s.trim() !== '');
+  const joined = normalized.join('');
 
   if (!joined.trim()) return [];
 
@@ -125,10 +136,21 @@ function flattenSpecEntries(raw) {
 
   // Otherwise keep each array item as its own plain line
   const entries = [];
-  list.forEach((item) => {
+  normalized.forEach((item) => {
     extractListLines(item).forEach((line) => entries.push(line));
   });
   return entries;
+}
+
+/**
+ * Storefront Key Features: strip HTML tags / Word artifacts and return clean bullets.
+ * Handles values saved as "<ul><li>...</li></ul>", plain CSV, or array fragments.
+ */
+export function parseKeyFeatureLines(raw) {
+  return flattenSpecEntries(raw)
+    .map((line) => stripHtml(line))
+    .map((line) => line.replace(/^[-•✓*]+\s*/, '').trim())
+    .filter((line) => line.length > 0 && !/^(ul|ol|li)$/i.test(line));
 }
 
 /** Parse "Key: Value" only when key looks like a real label (not leftover HTML junk). */

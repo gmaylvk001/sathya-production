@@ -9,6 +9,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import { useHeaderdetails } from '@/context/HeaderContext';
 import { toast } from 'react-toastify';
 import { getDiscountInfo } from "@/lib/discountHelper";
+import { parseKeyFeatureLines } from "@/utils/compareHelpers";
 
 function StarRating({ value, onChange }) {
   return (
@@ -146,11 +147,8 @@ function parseProductHighlights(highlights) {
 }
 
 function parseKeyFeatures(keySpecs) {
-  if (!Array.isArray(keySpecs)) return [];
-  return keySpecs
-    .flatMap((item) => String(item).split(/,(?![^(]*\))/))
-    .map((f) => String(f).replace(/[{}\[\]"]/g, "").trim())
-    .filter((f) => f.length > 0);
+  // DB may store HTML (<ul><li>...), Word junk (<o:p>), or literal \n — never show raw tags.
+  return parseKeyFeatureLines(keySpecs);
 }
 
 export default function ProductDetailsSection({

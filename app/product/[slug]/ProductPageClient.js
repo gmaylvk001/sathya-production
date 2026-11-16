@@ -19,6 +19,7 @@ import RecentlyViewedProducts from '@/components/RecentlyViewedProducts';
 import RelatedProducts from "@/components/RelatedProducts";
 import RazorpayOffers from "@/components/RazorpayOffers";
 import { isExtendedWarrantyEligible } from "@/lib/productServiceEligibility";
+import { parseKeyFeatureLines } from "@/utils/compareHelpers";
 
 export default function ProductPage(currentProductId) {
   const router = useRouter(); 
@@ -1016,31 +1017,7 @@ const fetchBrand = async () => {
         {showFeatures && (
   <div className="mt-3">
     {(() => {
-      let features = [];
-
-      if (product?.key_specifications) {
-        if (typeof product.key_specifications === "string") {
-          try {
-            const parsed = JSON.parse(product.key_specifications);
-            if (Array.isArray(parsed)) {
-              features = parsed;
-            } else if (parsed) {
-              features = [parsed];
-            }
-          } catch (error) {
-            if (product.key_specifications.trim() !== "") {
-              features = [product.key_specifications];
-            }
-          }
-        } else if (Array.isArray(product.key_specifications)) {
-          features = product.key_specifications;
-        }
-      }
-
-      // 🔥 Clean & filter empty entries
-      const cleanedFeatures = features
-        .map(f => String(f).replace(/[{}\[\]"]/g, "").trim())
-        .filter(f => f.length > 0);
+      const cleanedFeatures = parseKeyFeatureLines(product?.key_specifications);
 
       return cleanedFeatures.length > 0 ? (
         <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
