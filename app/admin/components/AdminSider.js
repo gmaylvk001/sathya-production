@@ -22,7 +22,7 @@ const menuItems = [
       { icon: 'mdi:shape-outline', label: 'Variants', link: 'variants', permission: 'variants', dotColor: 'bg-blue-500' },
       { icon: 'mdi:trademark', label: 'Brand', link: 'brand', permission: 'brand', dotColor: 'bg-red-500' },
       { icon: 'mdi:upload', label: 'Bulk Upload', link: 'product/bulk_upload', permission: 'product/bulk_upload', dotColor: 'bg-yellow-500' },
-      { icon: 'mdi:file-upload-outline', label: 'Filter Bulk Upload', link: 'product/filter_bulk_upload', permission: 'product/filter_bulk_upload', dotColor: 'bg-yellow-500' },
+      //{ icon: 'mdi:file-upload-outline', label: 'Filter Bulk Upload', link: 'product/filter_bulk_upload', permission: 'product/filter_bulk_upload', dotColor: 'bg-yellow-500' },
       { icon: 'mdi:filter-variant', label: 'Filter Group', link: 'filter_group', permission: 'filter_group', dotColor: 'bg-yellow-500' },
       { icon: 'mdi:filter-outline', label: 'Filter', link: 'filter', permission: 'filter', dotColor: 'bg-yellow-500' },
       { icon: 'mdi:plus-box-outline', label: 'New Product', link: 'newproduct', permission: 'newproduct', dotColor: 'bg-green-500' },
@@ -70,15 +70,15 @@ const menuItems = [
       { icon: 'mdi:chevron-double-right', label: 'Leads', id: 'crm-leads', link: 'leads', permission: 'leads', dotColor: 'bg-blue-500' },
     ],
   },
-  {
-    icon: 'mdi:bank-outline',
-    label: 'Finance',
-    submenu: [
-      { icon: 'mdi:chevron-double-right', label: 'Finance Bank', link: 'finance/bank', permission: 'finance/bank', dotColor: 'bg-blue-500' },
-      { icon: 'mdi:chevron-double-right', label: 'EMI Product', link: 'finance/emi-product', permission: 'finance/emi-product', dotColor: 'bg-green-500' },
-      { icon: 'mdi:chevron-double-right', label: 'EMI Scheme', link: 'finance/emi-scheme', permission: 'finance/emi-scheme', dotColor: 'bg-yellow-500' },
-    ],
-  },
+  // {
+  //   icon: 'mdi:bank-outline',
+  //   label: 'Finance',
+  //   submenu: [
+  //     { icon: 'mdi:chevron-double-right', label: 'Finance Bank', link: 'finance/bank', permission: 'finance/bank', dotColor: 'bg-blue-500' },
+  //     { icon: 'mdi:chevron-double-right', label: 'EMI Product', link: 'finance/emi-product', permission: 'finance/emi-product', dotColor: 'bg-green-500' },
+  //     { icon: 'mdi:chevron-double-right', label: 'EMI Scheme', link: 'finance/emi-scheme', permission: 'finance/emi-scheme', dotColor: 'bg-yellow-500' },
+  //   ],
+  // },
   {
     icon: 'mdi:post-outline',
     label: 'Blogs',
