@@ -74,6 +74,7 @@ export default function ExistSathyaOrdersComponent() {
   const [deliveryFilter, setDeliveryFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [apiStatusFilter, setApiStatusFilter] = useState("");
+  const [moveFilter, setMoveFilter] = useState("");
   const [dateFilter, setDateFilter] = useState({ startDate: null, endDate: null });
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -181,6 +182,12 @@ export default function ExistSathyaOrdersComponent() {
     const matchesDelivery = deliveryFilter === "" || String(order.delivery_type || "") === deliveryFilter;
     const matchesType = typeFilter === "" || String(order.type || "") === typeFilter;
     const matchesApiStatus = apiStatusFilter === "" || String(order.api_status || "") === apiStatusFilter;
+    let matchesMove = true;
+    if (moveFilter === "unmoved") {
+      matchesMove = !order.is_moved;
+    } else if (moveFilter === "moved") {
+      matchesMove = Boolean(order.is_moved);
+    }
 
     let matchesDate = true;
     if (dateFilter.startDate && dateFilter.endDate && order.created_at) {
@@ -192,7 +199,7 @@ export default function ExistSathyaOrdersComponent() {
       matchesDate = orderDate >= startDate && orderDate <= endDate;
     }
 
-    return matchesSearch && matchesStatus && matchesDelivery && matchesType && matchesApiStatus && matchesDate;
+    return matchesSearch && matchesStatus && matchesDelivery && matchesType && matchesApiStatus && matchesMove && matchesDate;
   });
 
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -246,6 +253,7 @@ export default function ExistSathyaOrdersComponent() {
     if (deliveryFilter) payload.delivery_type = deliveryFilter;
     if (typeFilter) payload.type = typeFilter;
     if (apiStatusFilter) payload.api_status = apiStatusFilter;
+    if (moveFilter === "moved" || moveFilter === "unmoved") payload.move_status = moveFilter;
     return payload;
   };
 
@@ -256,13 +264,15 @@ export default function ExistSathyaOrdersComponent() {
     if (payload.delivery_type && String(order.delivery_type || "") !== payload.delivery_type) return false;
     if (payload.type && String(order.type || "") !== payload.type) return false;
     if (payload.api_status && String(order.api_status || "") !== payload.api_status) return false;
+    if (payload.move_status === "moved" && !order.is_moved) return false;
+    if (payload.move_status === "unmoved" && order.is_moved) return false;
     return true;
   }).length;
 
   const handleDeleteByFilters = async () => {
     const payload = getFilterPayload();
     if (!Object.keys(payload).length) {
-      setAlertMessage("❌ Select Status, Delivery, Type or API Status first");
+      setAlertMessage("❌ Select Status, Delivery, Type, API Status or Move status first");
       setShowAlert(true);
       setTimeout(() => setShowAlert(false), 3000);
       return;
@@ -273,6 +283,8 @@ export default function ExistSathyaOrdersComponent() {
       deliveryFilter && `Delivery=${deliveryFilter}`,
       typeFilter && `Type=${typeFilter}`,
       apiStatusFilter && `API Status=${apiStatusFilter}`,
+      moveFilter === "moved" && "Move=Moved",
+      moveFilter === "unmoved" && "Move=Not moved",
     ].filter(Boolean).join(", ");
 
     const confirmed = window.confirm(
@@ -345,7 +357,7 @@ export default function ExistSathyaOrdersComponent() {
         <p>Loading...</p>
       ) : (
         <div className="bg-white shadow-md rounded-lg p-5 mb-5 overflow-x-auto border border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-7 gap-4 items-end mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-8 gap-4 items-end mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
               <input
@@ -421,6 +433,21 @@ export default function ExistSathyaOrdersComponent() {
                 {apiStatusOptions.map((value) => (
                   <option key={value} value={value}>{value}</option>
                 ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Move status</label>
+              <select
+                value={moveFilter}
+                onChange={(e) => {
+                  setMoveFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="">All orders</option>
+                <option value="moved">Moved</option>
+                <option value="unmoved">Not moved</option>
               </select>
             </div>
             <div className="md:col-span-2 lg:col-span-3 xl:col-span-2">
@@ -500,6 +527,7 @@ export default function ExistSathyaOrdersComponent() {
                 <th className="p-2">Delivery</th>
                 <th className="p-2">Type</th>
                 <th className="p-2">API Status</th>
+                <th className="p-2">Move</th>
                 <th className="p-2">Owner</th>
                 <th className="p-2">Created At</th>
                 <th className="p-2">Action</th>
@@ -526,6 +554,13 @@ export default function ExistSathyaOrdersComponent() {
                     <td className="p-2">{order.delivery_type || "-"}</td>
                     <td className="p-2">{order.type || "-"}</td>
                     <td className="p-2">{order.api_status || "-"}</td>
+                    <td className="p-2">
+                      {order.is_moved ? (
+                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Moved</span>
+                      ) : (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">Not moved</span>
+                      )}
+                    </td>
                     <td className="p-2">{order.order_owner || "-"}</td>
                     <td className="p-2">{formatDateTime(order.created_at)}</td>
                     <td className="p-2">
@@ -550,7 +585,7 @@ export default function ExistSathyaOrdersComponent() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="14" className="p-2 text-center text-gray-500">No orders found.</td>
+                  <td colSpan="15" className="p-2 text-center text-gray-500">No orders found.</td>
                 </tr>
               )}
             </tbody>
