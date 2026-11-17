@@ -4,6 +4,22 @@ import HomeTopBanner from "@/models/homeTopBanner";
 import HomePage from "@/models/homePage";
 import { saveCategoryTopBannerImage } from "@/lib/categoryTopbannerUpload";
 
+function parseScheduleDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  if (typeof val !== "string") return null;
+  const trimmed = val.trim();
+  if (!trimmed || trimmed === "null" || trimmed === "undefined") return null;
+  // If datetime-local without timezone offset (e.g. YYYY-MM-DDTHH:mm or YYYY-MM-DDTHH:mm:ss)
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(trimmed)) {
+    const isoString = (trimmed.length === 16 ? trimmed + ":00" : trimmed) + "+05:30";
+    const d = new Date(isoString);
+    if (!isNaN(d.getTime())) return d;
+  }
+  const d = new Date(trimmed);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 function withBannerId(item, row) {
   const id = item?._id ? String(item._id) : "";
   if (/^[a-f\d]{24}$/i.test(id)) row._id = id;
@@ -130,8 +146,8 @@ export async function POST(req) {
             url: item.url || "",
             state: item.state || "all",
             isActive: item.isActive !== false,
-            startDate: item.startDate ? new Date(item.startDate) : null,
-            endDate: item.endDate ? new Date(item.endDate) : null,
+            startDate: parseScheduleDate(item.startDate),
+            endDate: parseScheduleDate(item.endDate),
             order: typeof item.order === "number" ? item.order : i,
           })
         );
@@ -147,8 +163,8 @@ export async function POST(req) {
           url: b.url || "",
           state: b.state || "all",
           isActive: b.isActive !== false,
-          startDate: b.startDate ? new Date(b.startDate) : null,
-          endDate: b.endDate ? new Date(b.endDate) : null,
+          startDate: parseScheduleDate(b.startDate),
+          endDate: parseScheduleDate(b.endDate),
           order: typeof b.order === "number" ? b.order : i,
         })
       );

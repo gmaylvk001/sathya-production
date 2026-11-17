@@ -21,6 +21,14 @@ const formatDateTimeForInput = (date) => {
   return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
+const toIsoStringOrNull = (val) => {
+  if (!val || typeof val !== "string") return null;
+  const trimmed = val.trim();
+  if (!trimmed || trimmed === "null" || trimmed === "undefined") return null;
+  const d = new Date(trimmed);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+};
+
 const getBannerTimerStatus = (startDate, endDate) => {
   if (!startDate && !endDate) {
     return { label: "Always Active", color: "bg-gray-100 text-gray-700 border-gray-200" };
@@ -51,6 +59,7 @@ const getBannerTimerStatus = (startDate, endDate) => {
 };
 
 const emptyBanner = () => ({
+  _id: "",
   desktopImage: "",
   mobileImage: "",
   desktopFile: null,
@@ -98,6 +107,7 @@ export default function TopBannerConfigForm({
           setBanners(
             rows.length
               ? rows.map((b) => ({
+                  _id: b._id ? String(b._id) : "",
                   desktopImage: b.desktopImage || "",
                   mobileImage: b.mobileImage || "",
                   desktopFile: null,
@@ -154,13 +164,14 @@ export default function TopBannerConfigForm({
         "bannersMeta",
         JSON.stringify(
           banners.map((b, i) => ({
+            _id: b._id || undefined,
             desktopImage: b.desktopImage || "",
             mobileImage: b.mobileImage || "",
             url: b.url || "",
             state: b.state || "all",
             isActive: b.isActive !== false,
-            startDate: b.startDate || null,
-            endDate: b.endDate || null,
+            startDate: toIsoStringOrNull(b.startDate),
+            endDate: toIsoStringOrNull(b.endDate),
             order: i,
           }))
         )
@@ -183,6 +194,7 @@ export default function TopBannerConfigForm({
         setBanners(
           rows.length
             ? rows.map((b) => ({
+                _id: b._id ? String(b._id) : "",
                 desktopImage: b.desktopImage || "",
                 mobileImage: b.mobileImage || "",
                 desktopFile: null,
