@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import dbConnect from "@/lib/db";
 import ExistSathyaOrder from "@/models/ExistSathyaOrder";
+import { withMovedFlag } from "@/lib/existOrderMoved";
 
 const FILTER_FIELDS = ["order_status", "delivery_type", "type", "api_status"];
 
@@ -31,14 +32,29 @@ export async function DELETE(req) {
       });
     }
 
+    const moveStatus = String(body.move_status || "").trim();
+    const hasMoveFilter = moveStatus === "moved" || moveStatus === "unmoved";
     const filter = buildFilter(body);
-    if (Object.keys(filter).length > 0 && !body.orderId && !body.orderIds) {
-      const result = await ExistSathyaOrder.deleteMany(filter);
+    if ((Object.keys(filter).length > 0 || hasMoveFilter) && !body.orderId && !body.orderIds) {
+      let targets = await ExistSathyaOrder.find(filter).select("_id order_number exist_id").lean();
+      if (hasMoveFilter) {
+        const marked = await withMovedFlag(targets);
+        targets = marked.filter((order) => (moveStatus === "moved" ? order.is_moved : !order.is_moved));
+      }
+
+      let deletedCount = 0;
+      const ids = targets.map((order) => order._id);
+      const chunkSize = 2000;
+      for (let i = 0; i < ids.length; i += chunkSize) {
+        const result = await ExistSathyaOrder.deleteMany({ _id: { $in: ids.slice(i, i + chunkSize) } });
+        deletedCount += result.deletedCount || 0;
+      }
+
       return NextResponse.json({
         success: true,
-        message: `${result.deletedCount} orders deleted successfully`,
-        deletedCount: result.deletedCount,
-        filter,
+        message: `${deletedCount} orders deleted successfully`,
+        deletedCount,
+        filter: hasMoveFilter ? { ...filter, move_status: moveStatus } : filter,
       });
     }
 
