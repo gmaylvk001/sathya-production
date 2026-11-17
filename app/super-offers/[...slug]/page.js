@@ -53,6 +53,16 @@ function timerCoversRegion(timer, currentRegion) {
   );
 }
 
+function cardMatchesPincodeState(card, headerRegion) {
+  const cardState = normalizeStateToken(card?.state);
+  if (cardState === "all") return true;
+  if (!cardState || !headerRegion) return false;
+
+  const regNorm = normalizeStateToken(headerRegion);
+  const aliases = STATE_ALIASES[regNorm] || [regNorm];
+  return aliases.some((alias) => cardState === normalizeStateToken(alias));
+}
+
 // Helper to determine if an offer timer is active for the specified region
 function isTimerActiveForRegion(timer, currentRegion) {
   if (!timer) return false;
@@ -565,13 +575,17 @@ function SuperOffersContent() {
     timer?.offerDescription ||
     (timer ? (timer.offerTitle || timer.offer_title) : "Exclusive Limited Time Offer");
 
-  // Active card offers from this timer (showing logic only)
+  // Active card offers from this timer.
+  // State-wise on: current header pincode state, plus cards marked state = all.
+  // State-wise off: every active card on this timer.
   const cardOffersList = useMemo(() => {
-    if (Array.isArray(timer?.card_offers) && timer.card_offers.length > 0) {
-      return timer.card_offers.filter((c) => c.status !== "inactive");
-    }
-    return [];
-  }, [timer]);
+    if (!Array.isArray(timer?.card_offers) || timer.card_offers.length === 0) return [];
+    const activeCards = timer.card_offers.filter((card) => card.status !== "inactive");
+    if (String(timer.state_wise_card_status || "No") !== "Yes") return activeCards;
+    if (!isInitialized) return [];
+    const headerRegion = region || selectedRegion?.id || "";
+    return activeCards.filter((card) => cardMatchesPincodeState(card, headerRegion));
+  }, [timer, isInitialized, region, selectedRegion?.id]);
 
   // Group by /category/ or /category-division/ menu (first segment).
   // Own row only if >= 4 cards; smaller groups fold into MORE OFFERS — no cards missed.
