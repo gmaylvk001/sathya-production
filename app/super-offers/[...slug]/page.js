@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useRegion } from "@/context/RegionContext";
 import Addtocart from "@/components/AddToCart";
 import AddToWishlistButton from "@/components/ProductCard";
@@ -14,6 +14,44 @@ import {
 import CardOfferCategorySection from "@/components/cardOffers/CardOfferCategorySection";
 import SuperOfferContactSection from "@/components/superOffers/SuperOfferContactSection";
 import { getDiscountInfo } from "@/lib/discountHelper";
+
+const STATE_ALIASES = {
+  kerala: ["kerala", "kl"],
+  tamilnadu: ["tamilnadu", "tamil nadu", "tn"],
+  karnataka: ["karnataka", "ka"],
+  andhra: ["andhra", "andhra pradesh", "ap"],
+  telangana: ["telangana", "ts", "tg"],
+};
+
+function normalizeStateToken(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function explicitStates(list) {
+  return (Array.isArray(list) ? list : [])
+    .map(normalizeStateToken)
+    .filter((token) => token && token !== "all" && token !== "selected");
+}
+
+// True when this offer timer record includes the header pincode's state.
+function timerCoversRegion(timer, currentRegion) {
+  if (!timer) return false;
+  if (!currentRegion || currentRegion === "all") return true;
+
+  const viewStates = explicitStates(timer.offerViewStates);
+  const legacyStates = explicitStates(timer.states);
+  const single = normalizeStateToken(timer.state);
+  const singleState = single && single !== "all" && single !== "selected" ? [single] : [];
+  const listed = viewStates.length ? viewStates : (legacyStates.length ? legacyStates : singleState);
+
+  if (!listed.length) return true;
+
+  const regNorm = normalizeStateToken(currentRegion);
+  const currentAliases = STATE_ALIASES[regNorm] || [regNorm];
+  return currentAliases.some((alias) =>
+    listed.some((token) => token === normalizeStateToken(alias))
+  );
+}
 
 // Helper to determine if an offer timer is active for the specified region
 function isTimerActiveForRegion(timer, currentRegion) {
@@ -27,39 +65,7 @@ function isTimerActiveForRegion(timer, currentRegion) {
   const end = timer.endDate || timer.offer_end;
   if (end && new Date(end).getTime() <= now) return false;
 
-  if (!currentRegion || currentRegion === "all") return true;
-
-  const regNorm = currentRegion.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-  const stateAliases = {
-    kerala: ["kerala", "kl"],
-    tamilnadu: ["tamilnadu", "tamil nadu", "tn"],
-    karnataka: ["karnataka", "ka"],
-    andhra: ["andhra", "andhra pradesh", "ap"],
-    telangana: ["telangana", "ts", "tg"],
-  };
-
-  const currentAliases = stateAliases[regNorm] || [regNorm];
-
-  if (
-    timer.state === "all" ||
-    (Array.isArray(timer.offerViewStates) &&
-      timer.offerViewStates.some((s) => s.toLowerCase() === "all")) ||
-    (Array.isArray(timer.states) &&
-      timer.states.some((s) => s.toLowerCase() === "all"))
-  ) {
-    return true;
-  }
-
-  const timerStates = [
-    ...(Array.isArray(timer.offerViewStates) ? timer.offerViewStates : []),
-    ...(Array.isArray(timer.states) ? timer.states : []),
-    ...(typeof timer.state === "string" ? [timer.state] : []),
-  ].map((s) => s.toLowerCase().replace(/[^a-z0-9]/g, ""));
-
-  return currentAliases.some((alias) =>
-    timerStates.some((ts) => ts === alias.replace(/[^a-z0-9]/g, ""))
-  );
+  return timerCoversRegion(timer, currentRegion);
 }
 
 // Format date into ordinal format e.g. "Sep 8th to 10th, 2026"
@@ -227,7 +233,8 @@ function SuperOfferProductCard({ product, brandMap }) {
 function SuperOffersContent() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const { region, selectedRegion } = useRegion();
+  const router = useRouter();
+  const { region, selectedRegion, isInitialized } = useRegion();
 
   const [timer, setTimer] = useState(null);
   const [timerLoading, setTimerLoading] = useState(true);
@@ -377,6 +384,16 @@ function SuperOffersContent() {
       clearTimeout(timeoutId);
     };
   }, [queryTimerId, urlOfferSlug, activeRegion]);
+
+  // Header pincode state is not on this offer timer: leave the page.
+  useEffect(() => {
+    if (!isInitialized || timerLoading || !timer) return;
+    const headerRegion = region || selectedRegion?.id;
+    if (!headerRegion) return;
+    if (!timerCoversRegion(timer, headerRegion)) {
+      router.replace("/deals-offer");
+    }
+  }, [isInitialized, timerLoading, timer, region, selectedRegion?.id, router]);
 
   // 2. Background fetch for category products and brands
   useEffect(() => {
