@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import ExistSathyaUser, { ensureExistSathyaUserIndexes } from "@/models/ExistSathyaUser";
+import { invalidateExistUsersCache } from "@/lib/existSathyaUsersList";
 import bcrypt from "bcryptjs";
 
 function emptyToNull(value) {
@@ -81,6 +82,7 @@ export async function POST(req) {
 
     await newUser.save();
 
+    invalidateExistUsersCache();
     return NextResponse.json({ message: "User created successfully" }, { status: 201 });
   } catch (error) {
     if (error.code === 11000) {

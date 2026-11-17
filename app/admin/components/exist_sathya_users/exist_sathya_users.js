@@ -19,16 +19,41 @@ const emptyForm = {
   confirmed: "",
 };
 
+const EMPTY_SUMMARY = {
+  total: 0,
+  moved: 0,
+  notMoved: 0,
+  roleOptions: [],
+  notMovedByRole: {},
+};
+
+const EMPTY_ROLE_FILTER = "__empty__";
+
+// Compact page list with ellipses so 30k+ pages do not render as 30k buttons.
+function getPageItems(current, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const items = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) items.push("left-ellipsis");
+  for (let i = start; i <= end; i += 1) items.push(i);
+  if (end < total - 1) items.push("right-ellipsis");
+  items.push(total);
+  return items;
+}
+
 export default function ExistSathyaUsersComponent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
   const [users, setUsers] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
+  const [summary, setSummary] = useState(EMPTY_SUMMARY);
+  const [loadError, setLoadError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [dateFilter, setDateFilter] = useState({
-    startDate: null,
-    endDate: null,
-  });
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [dateRange, setDateRange] = useState({ start: null, end: null });
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(20);
@@ -43,40 +68,107 @@ export default function ExistSathyaUsersComponent() {
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [roleFilter, setRoleFilter] = useState("");
   const [moveFilter, setMoveFilter] = useState("");
+  const [rangeFrom, setRangeFrom] = useState("1");
+  const [rangeTo, setRangeTo] = useState("100");
+  const [isRangeLoading, setIsRangeLoading] = useState(false);
   const [movingUserId, setMovingUserId] = useState(null);
   const [isBulkMoving, setIsBulkMoving] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(null);
   const bulkAbortRef = useRef(false);
 
-  const fetchUsers = async () => {
+  const requestIdRef = useRef(0);
+
+  const buildListParams = () => {
+    const params = { page: currentPage, limit: itemsPerPage };
+    if (debouncedSearch) params.q = debouncedSearch;
+    if (roleFilter) params.role = roleFilter;
+    if (moveFilter) params.move = moveFilter;
+    if (dateRange.start && dateRange.end) {
+      params.start = dateRange.start;
+      params.end = dateRange.end;
+    }
+    return params;
+  };
+
+  const loadUsers = async () => {
+    const requestId = ++requestIdRef.current;
     setIsLoading(true);
+    setLoadError("");
     try {
       const response = await axios.get("/api/exist_sathya_users/get", {
         headers: { "Cache-Control": "no-store" },
-        params: { t: Date.now() },
+        params: { ...buildListParams(), t: Date.now() },
       });
-      setUsers(Array.isArray(response.data) ? response.data : []);
+      if (requestId !== requestIdRef.current) return;
+      const body = response.data || {};
+      setUsers(Array.isArray(body.data) ? body.data : []);
+      setTotalCount(Number(body.total) || 0);
+      setPageCount(Math.max(1, Number(body.totalPages) || 1));
     } catch (error) {
+      if (requestId !== requestIdRef.current) return;
       console.error("Error fetching exist sathya users:", error);
+      setUsers([]);
+      setTotalCount(0);
+      setLoadError(error.response?.data?.message || "Could not load users. Please try again.");
     } finally {
-      setIsLoading(false);
+      if (requestId === requestIdRef.current) setIsLoading(false);
     }
   };
 
+  const loadSummary = async () => {
+    try {
+      const response = await axios.get("/api/exist_sathya_users/summary", {
+        headers: { "Cache-Control": "no-store" },
+        params: { t: Date.now() },
+      });
+      setSummary({ ...EMPTY_SUMMARY, ...(response.data || {}) });
+    } catch (error) {
+      console.error("Error fetching exist sathya users summary:", error);
+    }
+  };
+
+  // Refreshes the current page and the counters. Called after every write.
+  const fetchUsers = () => {
+    loadUsers();
+    loadSummary();
+  };
+
+  const refreshRef = useRef(null);
+  refreshRef.current = fetchUsers;
+
+  // Reload the current page whenever page or filters change.
   useEffect(() => {
-    fetchUsers();
+    loadUsers();
+  }, [currentPage, debouncedSearch, roleFilter, moveFilter, dateRange]);
+
+  // Keep the page in range after the total shrinks (e.g. after deletes).
+  useEffect(() => {
+    if (currentPage > pageCount) setCurrentPage(pageCount);
+  }, [currentPage, pageCount]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+      setCurrentPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    loadSummary();
 
     const refreshIfVisible = () => {
       if (document.visibilityState === "visible") {
-        fetchUsers();
+        refreshRef.current?.();
       }
     };
+    const refreshOnFocus = () => refreshRef.current?.();
 
     document.addEventListener("visibilitychange", refreshIfVisible);
-    window.addEventListener("focus", fetchUsers);
+    window.addEventListener("focus", refreshOnFocus);
     return () => {
       document.removeEventListener("visibilitychange", refreshIfVisible);
-      window.removeEventListener("focus", fetchUsers);
+      window.removeEventListener("focus", refreshOnFocus);
     };
   }, []);
 
@@ -238,10 +330,8 @@ export default function ExistSathyaUsersComponent() {
   };
 
   const handleMoveSelected = async () => {
-    const ids = selectedIds.filter((id) => {
-      const user = users.find((item) => String(item._id) === String(id));
-      return user && !user.is_moved;
-    });
+    // Already-moved rows are skipped by the server, so no client-side filter is needed.
+    const ids = [...selectedIds];
     if (!ids.length) {
       setAlertMessage("❌ No not-moved users selected");
       setShowAlert(true);
@@ -261,6 +351,56 @@ export default function ExistSathyaUsersComponent() {
     );
     if (!confirmed) return;
     await runBulkMove({ mode: "role", roleId: roleFilter });
+  };
+
+  // Move the not-moved users inside a page range, using the current search/filters.
+  const MAX_RANGE_PAGES = 250;
+
+  const showTimedAlert = (message, ms = 4000) => {
+    setAlertMessage(message);
+    setShowAlert(true);
+    setTimeout(() => setShowAlert(false), ms);
+  };
+
+  const handleMoveRange = async () => {
+    const from = parseInt(rangeFrom, 10);
+    const to = parseInt(rangeTo, 10);
+
+    if (!Number.isInteger(from) || !Number.isInteger(to) || from < 1 || to < from) {
+      showTimedAlert("❌ Enter a valid page range (from must be 1 or more, and not above to)");
+      return;
+    }
+    if (to - from + 1 > MAX_RANGE_PAGES) {
+      showTimedAlert(`❌ Select at most ${MAX_RANGE_PAGES} pages at a time`);
+      return;
+    }
+    if (from > pageCount) {
+      showTimedAlert(`❌ Only ${pageCount} page(s) available with the current filters`);
+      return;
+    }
+
+    setIsRangeLoading(true);
+    try {
+      const { page: _page, ...filters } = buildListParams();
+      const response = await axios.get("/api/exist_sathya_users/range-ids", {
+        headers: { "Cache-Control": "no-store" },
+        params: { ...filters, fromPage: from, toPage: Math.min(to, pageCount), t: Date.now() },
+      });
+      const ids = response.data?.ids || [];
+      if (!ids.length) {
+        showTimedAlert("❌ No not-moved users in that page range");
+        return;
+      }
+      const confirmed = window.confirm(
+        `Move ${ids.length} not-moved user(s) from pages ${from} to ${Math.min(to, pageCount)}? This runs in batches of ${BULK_BATCH}.`
+      );
+      if (!confirmed) return;
+      await runBulkMove({ mode: "selected", ids });
+    } catch (error) {
+      showTimedAlert(error.response?.data?.message || "❌ Could not load the page range", 5000);
+    } finally {
+      setIsRangeLoading(false);
+    }
   };
 
   const handleMoveAll = async () => {
@@ -375,65 +515,15 @@ export default function ExistSathyaUsersComponent() {
     }
   };
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      searchQuery === "" ||
-      (user.exist_id && String(user.exist_id).toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (user.first_name && user.first_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (user.last_name && user.last_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (user.phone && user.phone.toLowerCase().includes(searchQuery.toLowerCase()));
-
-    let matchesRole = true;
-    if (roleFilter === "__empty__") {
-      matchesRole = !user.role_id || String(user.role_id).trim() === "";
-    } else if (roleFilter !== "") {
-      matchesRole = String(user.role_id ?? "") === roleFilter;
-    }
-
-    let matchesMove = true;
-    if (moveFilter === "unmoved") {
-      matchesMove = !user.is_moved;
-    } else if (moveFilter === "moved") {
-      matchesMove = Boolean(user.is_moved);
-    }
-
-    let matchesDate = true;
-    if (dateFilter.startDate && dateFilter.endDate && user.created_at) {
-      const userDate = new Date(user.created_at);
-      const startDate = new Date(dateFilter.startDate);
-      const endDate = new Date(dateFilter.endDate);
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-      matchesDate = userDate >= startDate && userDate <= endDate;
-    }
-
-    return matchesSearch && matchesRole && matchesMove && matchesDate;
-  });
-
-  const roleOptions = [...new Set(
-    users
-      .map((user) => (user.role_id === null || user.role_id === undefined ? "" : String(user.role_id).trim()))
-      .filter(Boolean)
-  )].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-
-  const totalEntries = filteredUsers.length;
-  const notMovedCount = users.filter((user) => !user.is_moved).length;
+  // Counters come from the server summary (whole table), not from the current page.
+  const roleOptions = summary.roleOptions || [];
+  const notMovedCount = summary.notMoved || 0;
   const roleNotMovedCount = roleFilter
-    ? users.filter((user) => {
-      if (user.is_moved) return false;
-      if (roleFilter === "__empty__") {
-        return !user.role_id || String(user.role_id).trim() === "";
-      }
-      return String(user.role_id ?? "") === roleFilter;
-    }).length
+    ? (summary.notMovedByRole?.[roleFilter] || 0)
     : 0;
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentUsers = filteredUsers.slice(indexOfFirstItem, indexOfLastItem);
-  const startEntry = indexOfFirstItem + 1;
-  const endEntry = Math.min(indexOfLastItem, totalEntries);
-  const currentPageIds = currentUsers.map((user) => String(user._id));
+  const startEntry = totalCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+  const endEntry = Math.min(currentPage * itemsPerPage, totalCount);
+  const currentPageIds = users.map((user) => String(user._id));
   const allCurrentSelected =
     currentPageIds.length > 0 && currentPageIds.every((id) => selectedIds.includes(id));
 
@@ -445,13 +535,15 @@ export default function ExistSathyaUsersComponent() {
     setSelectedIds((prev) => [...new Set([...prev, ...currentPageIds])]);
   };
 
-  const selectAllFiltered = () => {
-    setSelectedIds(filteredUsers.map((user) => String(user._id)));
+  // Selection is limited to the rows on the current page; bulk actions that span
+  // the whole table use the server-side Move role / Move all actions.
+  const selectAllOnPage = () => {
+    setSelectedIds(currentPageIds);
   };
 
-  const selectNotMovedFiltered = () => {
+  const selectNotMovedOnPage = () => {
     setSelectedIds(
-      filteredUsers.filter((user) => !user.is_moved).map((user) => String(user._id))
+      users.filter((user) => !user.is_moved).map((user) => String(user._id))
     );
   };
 
@@ -490,19 +582,34 @@ export default function ExistSathyaUsersComponent() {
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
+  // Convert the picker's dates into ISO bounds using the browser's local day edges.
+  const toDayBoundary = (value, isEnd) => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    if (isEnd) {
+      date.setHours(23, 59, 59, 999);
+    } else {
+      date.setHours(0, 0, 0, 0);
+    }
+    return date.toISOString();
+  };
+
   const handleDateChange = ({ startDate, endDate }) => {
-    setDateFilter({ startDate, endDate });
+    setDateRange({
+      start: toDayBoundary(startDate, false),
+      end: toDayBoundary(endDate, true),
+    });
     setCurrentPage(1);
   };
 
   const renderPagination = () => {
-    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-    if (totalPages <= 1) return null;
+    if (pageCount <= 1) return null;
 
     return (
       <div className="flex justify-between items-center mt-4">
         <div className="text-sm text-gray-600">
-          Showing {startEntry} to {endEntry} of {filteredUsers.length} entries
+          Showing {startEntry} to {endEntry} of {totalCount} entries
         </div>
         <div className="pagination flex items-center space-x-1">
           <button
@@ -514,22 +621,26 @@ export default function ExistSathyaUsersComponent() {
           >
             «
           </button>
-          {Array.from({ length: totalPages }, (_, i) => (
-            <button
-              key={i + 1}
-              onClick={() => paginate(i + 1)}
-              className={`px-3 py-1.5 border border-gray-300 rounded-md ${
-                currentPage === i + 1 ? "bg-red-500 text-white" : "text-black bg-white hover:bg-gray-100"
-              }`}
-            >
-              {i + 1}
-            </button>
-          ))}
+          {getPageItems(currentPage, pageCount).map((item) =>
+            typeof item === "number" ? (
+              <button
+                key={item}
+                onClick={() => paginate(item)}
+                className={`px-3 py-1.5 border border-gray-300 rounded-md ${
+                  currentPage === item ? "bg-red-500 text-white" : "text-black bg-white hover:bg-gray-100"
+                }`}
+              >
+                {item}
+              </button>
+            ) : (
+              <span key={item} className="px-2 text-gray-500">…</span>
+            )
+          )}
           <button
             onClick={() => paginate(currentPage + 1)}
-            disabled={currentPage === totalPages}
+            disabled={currentPage === pageCount}
             className={`px-3 py-1.5 border border-gray-300 rounded-md ${
-              currentPage === totalPages ? "text-gray-400 cursor-not-allowed" : "text-black bg-white hover:bg-gray-100"
+              currentPage === pageCount ? "text-gray-400 cursor-not-allowed" : "text-black bg-white hover:bg-gray-100"
             }`}
           >
             »
@@ -548,10 +659,7 @@ export default function ExistSathyaUsersComponent() {
         <h2 className="text-2xl font-bold">Sathya Exist Users</h2>
       </div>
 
-      {isLoading ? (
-        <p>Loading...</p>
-      ) : (
-        <>
+      <>
           <div className="bg-white shadow-md rounded-lg p-5 mb-5 overflow-x-auto border border-gray-200">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end mb-4">
               <div>
@@ -560,10 +668,7 @@ export default function ExistSathyaUsersComponent() {
                   type="text"
                   placeholder="Search users..."
                   value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setCurrentPage(1);
-                  }}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full p-2 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500"
                 />
               </div>
@@ -630,6 +735,9 @@ export default function ExistSathyaUsersComponent() {
             )}
             <div className="bg-red-600 text-white px-4 py-2 rounded-md mb-4 font-semibold">
               Not moved users: {notMovedCount}
+              {isLoading && users.length > 0 && (
+                <span className="ml-3 text-xs font-normal opacity-80">Updating...</span>
+              )}
             </div>
             {bulkProgress && (
               <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-2 rounded-md mb-4 text-sm">
@@ -670,23 +778,23 @@ export default function ExistSathyaUsersComponent() {
                   </button>
                 </>
               )}
-              {filteredUsers.some((user) => !user.is_moved) && (
+              {users.some((user) => !user.is_moved) && (
                 <button
                   type="button"
-                  onClick={selectNotMovedFiltered}
+                  onClick={selectNotMovedOnPage}
                   disabled={isBulkMoving}
                   className="p-2 border border-green-600 text-green-700 hover:bg-green-50 rounded-md transition text-sm disabled:opacity-50"
                 >
-                  Select not-moved {roleFilter ? "in this role" : "in view"}
+                  Select not-moved on this page
                 </button>
               )}
-              {filteredUsers.length > 0 && selectedIds.length !== filteredUsers.length && (
+              {users.length > 0 && !allCurrentSelected && (
                 <button
                   type="button"
-                  onClick={selectAllFiltered}
+                  onClick={selectAllOnPage}
                   className="p-2 border border-gray-300 hover:bg-gray-50 rounded-md transition text-sm"
                 >
-                  Select all {filteredUsers.length}
+                  Select all on this page ({users.length})
                 </button>
               )}
               {selectedIds.length > 0 && (
@@ -716,6 +824,35 @@ export default function ExistSathyaUsersComponent() {
               >
                 Move all not-moved
               </button>
+              <div className="inline-flex items-center gap-1 text-sm">
+                <span className="text-gray-700">Move pages</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={rangeFrom}
+                  onChange={(e) => setRangeFrom(e.target.value)}
+                  className="w-20 p-1.5 border border-gray-300 rounded-md"
+                  aria-label="From page"
+                />
+                <span className="text-gray-700">to</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={rangeTo}
+                  onChange={(e) => setRangeTo(e.target.value)}
+                  className="w-20 p-1.5 border border-gray-300 rounded-md"
+                  aria-label="To page"
+                />
+                <button
+                  type="button"
+                  onClick={handleMoveRange}
+                  disabled={isBulkMoving || isRangeLoading}
+                  className="p-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition text-sm disabled:opacity-50"
+                  title={`Moves the not-moved users on those pages (${itemsPerPage} per page), max ${MAX_RANGE_PAGES} pages`}
+                >
+                  {isRangeLoading ? "Loading..." : "Move range"}
+                </button>
+              </div>
               <span className="ml-auto text-xs text-gray-500 inline-flex items-center gap-1">
                 <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: "#fff9c4" }} />
                 Light yellow = password is empty. Move copies password if present; if first/last name exists and password is empty it generates first-letter + 1234567 + first-letter; if no first and last name, password stays null. Email is optional.
@@ -730,7 +867,7 @@ export default function ExistSathyaUsersComponent() {
                       type="checkbox"
                       checked={allCurrentSelected}
                       onChange={toggleSelectCurrentPage}
-                      disabled={currentUsers.length === 0}
+                      disabled={users.length === 0}
                     />
                   </th>
                   <th className="p-2">Exist ID</th>
@@ -746,8 +883,8 @@ export default function ExistSathyaUsersComponent() {
                 </tr>
               </thead>
               <tbody>
-                {currentUsers.length > 0 ? (
-                  currentUsers.map((user, index) => (
+                {users.length > 0 ? (
+                  users.map((user, index) => (
                     <tr
                       key={user._id || index}
                       className="text-center border-b"
@@ -807,15 +944,27 @@ export default function ExistSathyaUsersComponent() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="11" className="p-2 text-center text-gray-500">No users found.</td>
+                    <td colSpan="11" className="p-2 text-center">
+                      {isLoading ? (
+                        <span className="text-gray-500">Loading...</span>
+                      ) : loadError ? (
+                        <span className="text-red-600">
+                          {loadError}
+                          <button type="button" onClick={fetchUsers} className="underline ml-2">
+                            Retry
+                          </button>
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">No users found.</span>
+                      )}
+                    </td>
                   </tr>
                 )}
               </tbody>
             </table>
             {renderPagination()}
           </div>
-        </>
-      )}
+      </>
 
       {isModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">

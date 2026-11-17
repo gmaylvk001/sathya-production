@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import dbConnect from "@/lib/db";
 import ExistSathyaUser from "@/models/ExistSathyaUser";
 import { buildRoleQuery, processExistUserMoves } from "@/lib/moveExistUser";
+import { invalidateExistUsersCache } from "@/lib/existSathyaUsersList";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -69,6 +70,7 @@ export async function POST(req) {
     }
 
     const result = await processExistUserMoves(existUsers);
+    invalidateExistUsersCache();
     const skippedCount = result.skipped.length;
 
     return NextResponse.json({

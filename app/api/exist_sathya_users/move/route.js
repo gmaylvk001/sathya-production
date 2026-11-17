@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import ExistSathyaUser from "@/models/ExistSathyaUser";
 import { liveUserType, processExistUserMoves } from "@/lib/moveExistUser";
+import { invalidateExistUsersCache } from "@/lib/existSathyaUsersList";
 
 export async function POST(req) {
   try {
@@ -18,6 +19,7 @@ export async function POST(req) {
     }
 
     const result = await processExistUserMoves([existUser]);
+    invalidateExistUsersCache();
     const skipReason = result.skipped[0]?.reason;
 
     if (result.moved === 0) {

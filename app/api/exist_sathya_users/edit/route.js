@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import ExistSathyaUser from "@/models/ExistSathyaUser";
+import { invalidateExistUsersCache } from "@/lib/existSathyaUsersList";
 import bcrypt from "bcryptjs";
 
 function emptyToNull(value) {
@@ -96,6 +97,7 @@ export async function PUT(req) {
       runValidators: true,
     });
 
+    invalidateExistUsersCache();
     return NextResponse.json({
       success: true,
       message: "User updated successfully",

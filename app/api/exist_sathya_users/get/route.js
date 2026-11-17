@@ -1,76 +1,66 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import ExistSathyaUser, { ensureExistSathyaUserIndexes } from "@/models/ExistSathyaUser";
-import User from "@/models/User";
+import ExistSathyaUser from "@/models/ExistSathyaUser";
+import {
+  annotateRow,
+  buildListFilter,
+  ensureExistUsersIndexesOnce,
+  findMoveFilteredPage,
+  getLiveSets,
+  LIST_PROJECTION,
+  LIST_SORT,
+  parseListParams,
+} from "@/lib/existSathyaUsersList";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function toKey(value) {
-  if (value === undefined || value === null) return "";
-  return String(value).trim();
-}
+const NO_STORE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+};
 
-function normalizeExistId(value) {
-  const text = toKey(value);
-  if (!text) return "";
-  if (/^\d+(\.0+)?$/.test(text)) {
-    return String(Math.trunc(Number(text)));
-  }
-  return text;
-}
-
-function normalizePhone(value) {
-  const text = toKey(value);
-  return text;
-}
-
-export async function GET() {
+// GET /api/exist_sathya_users/get?page=1&limit=20&q=&role=&move=&start=&end=
+// Returns one page of rows plus the total matching count.
+export async function GET(req) {
   try {
     await dbConnect();
-    await ensureExistSathyaUserIndexes();
-    const users = await ExistSathyaUser.find()
-      .select("-remember_token -confirmation_code")
-      .sort({ created_at: -1 })
-      .lean();
+    await ensureExistUsersIndexesOnce();
 
-    const liveUsers = await User.find({}, { exist_id: 1, email: 1, mobile: 1 }).lean();
-    const movedExistIds = new Set();
-    const movedEmails = new Set();
-    const movedMobiles = new Set();
+    const { page, limit, move, q, role, start, end } = parseListParams(req.nextUrl.searchParams);
+    const filter = buildListFilter({ q, role, start, end });
+    const sets = await getLiveSets();
 
-    for (const live of liveUsers) {
-      const existId = normalizeExistId(live.exist_id);
-      if (existId) movedExistIds.add(existId);
-      const email = toKey(live.email).toLowerCase();
-      if (email) movedEmails.add(email);
-      const mobile = normalizePhone(live.mobile);
-      if (mobile) movedMobiles.add(mobile);
+    let total;
+    let rows;
+
+    if (move) {
+      const result = await findMoveFilteredPage({ filter, move, sets, page, limit });
+      total = result.total;
+      rows = result.rows;
+    } else {
+      [total, rows] = await Promise.all([
+        ExistSathyaUser.countDocuments(filter),
+        ExistSathyaUser.find(filter)
+          .select(LIST_PROJECTION)
+          .sort(LIST_SORT)
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .lean(),
+      ]);
     }
 
-    const data = users.map(({ password, ...user }) => {
-      const existId = normalizeExistId(user.exist_id);
-      const email = toKey(user.email).toLowerCase();
-      const phone = normalizePhone(user.phone);
-      const is_moved = existId
-        ? movedExistIds.has(existId)
-        : (email ? movedEmails.has(email) : false) || (phone ? movedMobiles.has(phone) : false);
-
-      return {
-        ...user,
-        has_password: Boolean(password && String(password).trim()),
-        is_moved,
-      };
-    });
-
-    return NextResponse.json(data, {
-      status: 200,
-      headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+    return NextResponse.json(
+      {
+        data: rows.map((row) => annotateRow(row, sets)),
+        total,
+        page,
+        limit,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
       },
-    });
+      { status: 200, headers: NO_STORE_HEADERS }
+    );
   } catch (error) {
     console.error("Error fetching exist sathya users:", error);
-    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json({ message: "Failed to load exist users" }, { status: 500, headers: NO_STORE_HEADERS });
   }
 }

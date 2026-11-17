@@ -4,6 +4,7 @@ import dbConnect from "@/lib/db";
 import { parseExistUserSheetDate, readExistUserSheetRows } from "@/lib/existUserSheetDates";
 import ExistSathyaUser, { ensureExistSathyaUserIndexes } from "@/models/ExistSathyaUser";
 import ExistSathyaUserSkipped from "@/models/ExistSathyaUserSkipped";
+import { invalidateExistUsersCache } from "@/lib/existSathyaUsersList";
 
 function emptyToNull(value) {
   if (value === undefined || value === null || String(value).trim() === "") {
@@ -420,6 +421,7 @@ export async function POST(req) {
       }
     }
 
+    invalidateExistUsersCache();
     return NextResponse.json({
       success: true,
       message: `Import completed. Added ${addedCount}, dates updated ${datesUpdatedCount}, skipped existing exist_id ${skippedExistIdCount}, skipped existing email and phone ${skippedExistingCount}, other skipped ${skippedCount - skippedExistingCount}.`,

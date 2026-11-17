@@ -127,6 +127,9 @@ ExistSathyaUserSchema.index(
   }
 );
 
+// Admin list is sorted by created_at desc (with _id tie-break) and paginated.
+ExistSathyaUserSchema.index({ created_at: -1, _id: -1 });
+
 if (mongoose.models.ecom_exist_sathya_users) {
   delete mongoose.models.ecom_exist_sathya_users;
 }
