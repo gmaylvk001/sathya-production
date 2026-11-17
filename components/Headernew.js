@@ -3408,12 +3408,15 @@ const Header = () => {
         </div>
         {/* Category listing bar — red bar with yellow line on top (Sathya brand) */}
         <div
-          className="hidden sm:flex relative w-full min-h-[56px] items-center bg-[#ED1C24] shadow"
+          className="hidden sm:flex relative w-full min-h-[56px] items-center justify-center px-6 bg-[#ED1C24] shadow"
           style={{ borderTop: "4px solid #FFF200" }}
         >
+          {/* Menu (when enabled) and the categories form one centred group. Both ends of the
+              group carry the same 8px inset, so the bar stays balanced with Menu on or off. */}
           {menuButtonEnabled && (
             <div
-              className="relative flex-shrink-0 self-stretch pl-10 md:pl-14"
+              // -ml-4 pl-4 adds no width: it only moves the dropdown's left edge so its rows line up with the icon.
+              className="relative flex-shrink-0 self-stretch -ml-4 pl-4"
               data-sathya-menu-toggle
               onMouseEnter={() => {
                 if (menuHoverLeaveTimer.current) {
@@ -3435,7 +3438,7 @@ const Header = () => {
             >
               <button
                 type="button"
-                className="h-full self-stretch px-4 md:px-5 flex items-center gap-2.5 text-white font-bold text-base bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent"
+                className="h-full self-stretch pl-2 pr-6 flex items-center gap-2.5 text-white font-bold text-base bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent"
                 aria-label="Open menu"
                 aria-expanded={showMenu}
                 onClick={() => {
@@ -3458,7 +3461,7 @@ const Header = () => {
               />
             </div>
           )}
-          <div className="w-full relative min-w-0">
+          <div className="relative min-w-0">
             <div className="relative">
               <div className="flex justify-center overflow-x-auto scrollbar-hide">
                 <Swiper
@@ -3469,7 +3472,8 @@ const Header = () => {
                   watchOverflow={true}
                   observer={true}
                   observeParents={true}
-                  className="pl-10 pr-14"
+                  // Swiper puts the 20px gap after every slide, including the last; drop that trailing one.
+                  className="[&_.swiper-slide:last-child]:!mr-0"
                 >
                   {redBarEntries.map((entry) => {
                     if (entry.kind === "custom") return (
