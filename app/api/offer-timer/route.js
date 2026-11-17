@@ -4,7 +4,7 @@ import OfferTimer from "@/models/Offertimer";
 
 const LIST_FIELDS =
   "timerId custom_id offerTitle offer_title offerHeading startDate endDate offer_start offer_end " +
-  "timerDisplayStatus status offerViewStates states state topBanner top_banner_url createdAt updatedAt";
+  "timerDisplayStatus status state_wise_card_status offerViewStates states state topBanner top_banner_url createdAt updatedAt";
 
 export async function GET(req) {
   try {

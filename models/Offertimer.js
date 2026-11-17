@@ -10,6 +10,7 @@ const OfferTimerSchema = new mongoose.Schema(
     state: { type: String, default: "all", trim: true },
     offerViewStates: { type: [String], default: ["all"] },
     timerDisplayStatus: { type: String, enum: ["Yes", "No"], default: "Yes" },
+    state_wise_card_status: { type: String, enum: ["Yes", "No"], default: "No" },
     offerHeading: { type: String, default: "", trim: true },
     offerDescription: { type: String, default: "", trim: true },
     topBanner: { type: String, default: null },
@@ -38,4 +39,8 @@ OfferTimerSchema.index({ custom_id: 1 });
 OfferTimerSchema.index({ timerDisplayStatus: 1, startDate: 1, endDate: 1 });
 OfferTimerSchema.index({ updatedAt: -1 });
 
-export default mongoose.models.OfferTimer || mongoose.model("OfferTimer", OfferTimerSchema);
+if (mongoose.models.OfferTimer) {
+  delete mongoose.models.OfferTimer;
+}
+
+export default mongoose.model("OfferTimer", OfferTimerSchema);

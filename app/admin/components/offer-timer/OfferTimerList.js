@@ -18,6 +18,8 @@ export default function OfferTimerList() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [togglingId, setTogglingId] = useState("");
+  const [toggleError, setToggleError] = useState("");
   const [accessReady, setAccessReady] = useState(false);
   const [isDealsRole, setIsDealsRole] = useState(false);
   const [dealsState, setDealsState] = useState("");
@@ -111,6 +113,38 @@ export default function OfferTimerList() {
     }
   };
 
+  const isStateWiseOn = (timer) => String(timer?.state_wise_card_status || "No") === "Yes";
+
+  const handleToggleStateWise = async (timer) => {
+    const id = String(timer._id);
+    const previous = isStateWiseOn(timer) ? "Yes" : "No";
+    const next = previous === "Yes" ? "No" : "Yes";
+    setToggleError("");
+    setTogglingId(id);
+    setTimers((rows) =>
+      rows.map((row) => (String(row._id) === id ? { ...row, state_wise_card_status: next } : row))
+    );
+
+    try {
+      const response = await fetch("/api/offer-timer/state-wise-card-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, state_wise_card_status: next }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to update state wise card status");
+      }
+    } catch (error) {
+      setTimers((rows) =>
+        rows.map((row) => (String(row._id) === id ? { ...row, state_wise_card_status: previous } : row))
+      );
+      setToggleError(error.message || "Failed to update state wise card status");
+    } finally {
+      setTogglingId("");
+    }
+  };
+
   const visibleTimers = timers.filter((timer) => {
     if (!isDealsRole) return true;
     return Boolean(dealsState) && offerTimerContainsState(timer, dealsState);
@@ -147,6 +181,11 @@ export default function OfferTimerList() {
             </button>
           </div>
 
+          {toggleError && (
+            <div className="bg-red-50 text-red-700 border border-red-200 px-3 py-2 rounded mb-3 text-sm">
+              {toggleError}
+            </div>
+          )}
           <div className="overflow-x-auto md:overflow-visible">
           <table className="w-full border border-gray-200 text-sm">
             <thead>
@@ -158,6 +197,7 @@ export default function OfferTimerList() {
                 <th className="p-2 font-semibold">Offer End</th>
                 <th className="p-2 font-semibold">Timer Status</th>
                 <th className="p-2 font-semibold">View States</th>
+                <th className="p-2 font-semibold">State Wise Card</th>
                 <th className="p-2 font-semibold">Action</th>
               </tr>
             </thead>
@@ -231,6 +271,26 @@ export default function OfferTimerList() {
                     </td>
                     <td className="p-2">{formatOfferStates(timer.offerViewStates)}</td>
                     <td className="p-2">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isStateWiseOn(timer)}
+                        aria-label="State wise card status"
+                        disabled={togglingId === String(timer._id)}
+                        onClick={() => handleToggleStateWise(timer)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition disabled:opacity-60 ${
+                          isStateWiseOn(timer) ? "bg-green-500" : "bg-gray-300"
+                        }`}
+                        title={isStateWiseOn(timer) ? "On" : "Off"}
+                      >
+                        <span
+                          className={`inline-block h-5 w-5 transform rounded-full bg-white transition ${
+                            isStateWiseOn(timer) ? "translate-x-5" : "translate-x-1"
+                          }`}
+                        />
+                      </button>
+                    </td>
+                    <td className="p-2">
                       <div className="flex items-center gap-1.5 justify-center">
                         <button
                           onClick={() => router.push(`/admin/offer-timer/card-offer/${timer._id}`)}
@@ -264,7 +324,7 @@ export default function OfferTimerList() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="8" className="text-center p-4 text-gray-500">No offer timers found</td>
+                  <td colSpan="9" className="text-center p-4 text-gray-500">No offer timers found</td>
                 </tr>
               )}
             </tbody>

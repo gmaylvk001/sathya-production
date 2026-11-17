@@ -70,6 +70,7 @@ export async function POST(req) {
       states: states.offerViewStates,
       timerDisplayStatus,
       status: timerDisplayStatus === "Yes" ? "active" : "inactive",
+      state_wise_card_status: "No",
       offerHeading,
       offerDescription,
       topBanner,
