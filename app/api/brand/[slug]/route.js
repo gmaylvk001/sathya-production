@@ -72,7 +72,8 @@ export async function GET(request, { params }) {
     // Get products for this brand (stored as ObjectId string or brand name)
     const products = await Product.find({
       status: "Active",
-      product_type: { $ne: "gift" },
+      product_type: { $nin: ["gift", "Gift", "GIFT"] },
+      movement: { $not: /gift/i },
       ...brandMatch,
     }).sort({ createdAt: -1, _id: -1 });
 

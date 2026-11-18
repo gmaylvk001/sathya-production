@@ -15,7 +15,7 @@ export async function GET(req) {
 
     const letterParam = searchParams.get("letter");
 
-    let query = { status: { $regex: /^active$/i } };
+    let query = { status: { $regex: /^active$/i }, product_count: { $gt: 0 } };
     if (letterParam && letterParam !== "ALL") {
       query.brand_name = { $regex: new RegExp(`^${letterParam.trim()}`, "i") };
     }
@@ -23,13 +23,13 @@ export async function GET(req) {
     let brands = [];
     try {
       brands = await Brand.find(query)
-        .select("brand_name brand_slug image status")
+        .select("brand_name brand_slug image status product_count")
         .sort({ brand_name: 1 })
         .lean();
     } catch (queryErr) {
       console.warn("Status filter query failed in /api/brand/get, falling back to find all:", queryErr);
-      brands = await Brand.find()
-        .select("brand_name brand_slug image status")
+      brands = await Brand.find({ status: { $regex: /^active$/i }, product_count: { $gt: 0 } })
+        .select("brand_name brand_slug image status product_count")
         .sort({ brand_name: 1 })
         .lean();
     }
@@ -89,6 +89,8 @@ export async function GET(req) {
       const productCounts = await Product.aggregate([
         {
           $match: {
+            product_type: { $nin: ["gift", "Gift", "GIFT"] },
+            movement: { $not: /gift/i },
             $or: [
               { status: { $regex: /^active$/i } },
               { status: { $exists: false } }
@@ -135,13 +137,15 @@ export async function GET(req) {
 
     return NextResponse.json({
       success: true,
-      brands: (brands || []).map(brand => ({
-        id: brand?._id ? brand._id.toString() : "",
-        brand_name: brand?.brand_name || "",
-        brand_slug: brand?.brand_slug || "",
-        image: brand?.image || "",
-        hasOverview: checkBrandOverview(brand),
-      }))
+      brands: (brands || [])
+        .filter((brand) => (brand.product_count ?? 1) > 0)
+        .map(brand => ({
+          id: brand?._id ? brand._id.toString() : "",
+          brand_name: brand?.brand_name || "",
+          brand_slug: brand?.brand_slug || "",
+          image: brand?.image || "",
+          hasOverview: checkBrandOverview(brand),
+        }))
     }, { status: 200 });
 
   } catch (error) {

@@ -89,14 +89,14 @@ export default function BrandPage() {
       fetchInitialData();
     }
   }, [slug]);
-  
+
   const fetchInitialData = async () => {
     try {
       setLoading(true);
       setFilterUrlReady(false);
       const brandRes = await fetch(`/api/brand/${slug}`);
       const brandData = await brandRes.json();
-      
+
       setBrandData({
         ...brandData,
         categoryTree: brandData.categories,
@@ -105,8 +105,13 @@ export default function BrandPage() {
 
       let minPrice = 0;
       let maxPrice = 100000;
-      if (brandData.products?.length > 0) {
-        const prices = brandData.products.map(p => p.special_price || p.price);
+      const initialProducts = (brandData.products || []).filter((p) => {
+        const type = String(p?.product_type || "").trim().toLowerCase();
+        const movement = String(p?.movement || "").trim().toLowerCase();
+        return type !== "gift" && !movement.includes("gift");
+      });
+      if (initialProducts.length > 0) {
+        const prices = initialProducts.map(p => p.special_price || p.price);
         minPrice = Math.min(...prices);
         maxPrice = Math.max(...prices);
         if (minPrice === maxPrice) {
@@ -226,8 +231,16 @@ export default function BrandPage() {
 
       const res = await fetch(`/api/product/filter/brand/main?${query}`);
       const data = await res.json();
-      const products = data.products || [];
+      const rawProducts = data.products || [];
+      const products = rawProducts.filter((p) => {
+        const type = String(p?.product_type || "").trim().toLowerCase();
+        const movement = String(p?.movement || "").trim().toLowerCase();
+        return type !== "gift" && !movement.includes("gift");
+      });
       const paginationData = data.pagination || {};
+      const totalCount = products.length === 0 && rawProducts.length > 0
+        ? 0
+        : (paginationData.totalProducts || products.length);
 
       setProducts(products);
       const groups = buildFilterGroupsFromList(data.filters || []);
@@ -242,7 +255,7 @@ export default function BrandPage() {
         totalPages: paginationData.totalPages || 1,
         hasNext: Boolean(paginationData.hasNext),
         hasPrev: Boolean(paginationData.hasPrev),
-        totalProducts: paginationData.totalProducts || 0
+        totalProducts: totalCount
       });
 
       if (products.length === 0 && pageNum === 1) {
@@ -251,12 +264,12 @@ export default function BrandPage() {
         setNofound(false);
       }
     } catch (error) {
-      toast.error('Error fetching products'+error);
+      toast.error('Error fetching products' + error);
     } finally {
       setIsFiltering(false);
     }
   }, [selectedFilters, brandData.brand]);
-  
+
   const handleProductClick = (product) => {
     const stored = JSON.parse(localStorage.getItem('recentlyViewed')) || [];
 
@@ -272,9 +285,9 @@ export default function BrandPage() {
 
     localStorage.setItem('recentlyViewed', JSON.stringify(limited));
   };
-  
+
   const [brandMap, setBrandMap] = useState([]);
- 
+
   const fetchBrand = async () => {
     try {
       const response = await fetch("/api/brand");
@@ -283,7 +296,7 @@ export default function BrandPage() {
         console.error(result.error);
       } else {
         const data = result.data;
-   
+
         // Store as map for quick access
         const map = {};
         data.forEach((b) => {
@@ -295,7 +308,7 @@ export default function BrandPage() {
       console.error(error.message);
     }
   };
- 
+
   useEffect(() => {
     fetchBrand();
   }, []);
@@ -320,7 +333,7 @@ export default function BrandPage() {
   const getSortedProducts = () => {
     return sortProductsClient(products, sortOption);
   };
-  
+
   const handleFilterChange = (type, value) => {
     setSelectedFilters(prev => {
       const newFilters = { ...prev };
@@ -362,7 +375,7 @@ export default function BrandPage() {
       price: { min, max }
     }));
   };
- 
+
   const [values, setValues] = useState([
     selectedFilters.price.min,
     selectedFilters.price.max,
@@ -466,34 +479,33 @@ export default function BrandPage() {
 
   const renderPagination = () => {
     if (pagination.totalPages <= 1) return null;
-    
+
     const pages = [];
     const maxVisiblePages = 5;
     const hasPrev = pagination.currentPage > 1;
     const hasNext = pagination.currentPage < pagination.totalPages;
     let startPage = Math.max(1, pagination.currentPage - Math.floor(maxVisiblePages / 2));
     let endPage = Math.min(pagination.totalPages, startPage + maxVisiblePages - 1);
-    
+
     if (endPage - startPage + 1 < maxVisiblePages) {
       startPage = Math.max(1, endPage - maxVisiblePages + 1);
     }
-    
+
     for (let i = startPage; i <= endPage; i++) {
       pages.push(
         <button
           key={i}
           onClick={() => handlePageChange(i)}
-          className={`px-3 py-1 rounded-md ${
-            pagination.currentPage === i
+          className={`px-3 py-1 rounded-md ${pagination.currentPage === i
               ? 'bg-blue-600 text-white'
               : 'bg-white text-gray-700 hover:bg-gray-100'
-          }`}
+            }`}
         >
           {i}
         </button>
       );
     }
-    
+
     return (
       <div className="flex justify-center items-center mt-8 space-x-2">
         <button
@@ -503,7 +515,7 @@ export default function BrandPage() {
         >
           <ChevronLeft size={16} />
         </button>
-        
+
         {startPage > 1 && (
           <>
             <button
@@ -515,9 +527,9 @@ export default function BrandPage() {
             {startPage > 2 && <span className="px-2">...</span>}
           </>
         )}
-        
+
         {pages}
-        
+
         {endPage < pagination.totalPages && (
           <>
             {endPage < pagination.totalPages - 1 && <span className="px-2">...</span>}
@@ -529,7 +541,7 @@ export default function BrandPage() {
             </button>
           </>
         )}
-        
+
         <button
           onClick={() => handlePageChange(pagination.currentPage + 1)}
           disabled={!hasNext}
@@ -592,7 +604,7 @@ export default function BrandPage() {
               </div>
             </div>
           </div>
-          
+
           <div className="flex border-b border-gray-300 bg-gray-100 sticky top-0 z-30 lg:hidden mb-3">
             <button
               className="flex items-center justify-center gap-2 py-4 flex-1 text-sm font-medium text-gray-800 border-r border-gray-300 hover:bg-gray-100 active:bg-gray-200 transition-colors"
@@ -675,7 +687,7 @@ export default function BrandPage() {
                 <>
                   <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                     {getSortedProducts().map((product, index) => (
-                      <SharedProductCard 
+                      <SharedProductCard
                         key={`${product._id}-${index}`}
                         product={normalizeProduct(product, brandMap)}
                         onProductClick={handleProductClick}
@@ -689,11 +701,12 @@ export default function BrandPage() {
                 </>
               ) : (
                 <div className="text-center py-10">
-                  <img 
-                    src="/images/no-productbox.png" 
-                    alt="No Products" 
-                    className="mx-auto mb-4 w-32 h-32 md:w-40 md:h-40 object-contain" 
+                  <img
+                    src="/images/no-productbox.png"
+                    alt="No Products"
+                    className="mx-auto mb-4 w-32 h-32 md:w-40 md:h-40 object-contain"
                   />
+                  <p className="text-gray-500 font-medium">No products available for this brand</p>
                 </div>
               )}
 
@@ -707,10 +720,10 @@ export default function BrandPage() {
         </>
       ) : (
         <div className="text-center py-10">
-          <img 
-            src="/images/no-productbox.png" 
-            alt="No Products" 
-            className="mx-auto mb-4 w-32 h-32 md:w-40 md:h-40 object-contain" 
+          <img
+            src="/images/no-productbox.png"
+            alt="No Products"
+            className="mx-auto mb-4 w-32 h-32 md:w-40 md:h-40 object-contain"
           />
         </div>
       )}

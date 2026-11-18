@@ -73,6 +73,9 @@ async function fetchAndBuildCategories() {
     brandByCategory = await Product.aggregate([
       {
         $match: {
+          status: { $regex: /^active$/i },
+          product_type: { $nin: ["gift", "Gift", "GIFT"] },
+          movement: { $not: /gift/i },
           brand: { $exists: true, $nin: [null, ""] },
           category: { $exists: true, $nin: [null, ""] },
         },
@@ -121,7 +124,11 @@ async function fetchAndBuildCategories() {
   try {
     brands =
       allBrandIds.length > 0
-        ? await Brand.find({ _id: { $in: allBrandIds } }).lean()
+        ? await Brand.find({
+          _id: { $in: allBrandIds },
+          status: { $regex: /^active$/i },
+          product_count: { $gt: 0 },
+        }).lean()
         : [];
   } catch (brandErr) {
     console.warn("Brand fetch skipped:", brandErr?.message);

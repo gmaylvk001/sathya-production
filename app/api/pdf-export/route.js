@@ -86,7 +86,7 @@ function verifyAuthToken(req) {
     try {
       const decoded = jwt.decode(token);
       if (decoded && (decoded.userId || decoded.id || decoded.email)) return decoded;
-    } catch (_) {}
+    } catch (_) { }
     return null;
   }
 }
@@ -267,7 +267,7 @@ export async function POST(req) {
     let body = {};
     try {
       body = await req.json();
-    } catch (_) {}
+    } catch (_) { }
 
     const url = new URL(req.url);
     const rawType = body.type || url.searchParams.get("type") || "category";
@@ -304,7 +304,8 @@ export async function POST(req) {
         });
       }
       // For search, exclude product_type == 'gift'
-      filterQuery.product_type = { $ne: "gift" };
+      filterQuery.product_type = { $nin: ["gift", "Gift", "GIFT"] };
+      filterQuery.movement = { $not: /gift/i };
     }
 
     // 2. Category Filter: category_pdf_export

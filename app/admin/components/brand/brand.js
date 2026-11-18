@@ -28,7 +28,7 @@ export default function BrandComponent() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [imageError, setImageError] = useState("");
-  
+
   // New feature states
   const [statusFilter, setStatusFilter] = useState("All");
   const [selectedBrands, setSelectedBrands] = useState([]);
@@ -44,7 +44,7 @@ export default function BrandComponent() {
   // Fetch categories from API
   const fetchBrand = async () => {
     try {
-      const response = await fetch("/api/brand");
+      const response = await fetch("/api/brand?all=true");
       const data = await response.json();
       setBrand(data.data);
       setIsLoading(false);
@@ -536,7 +536,7 @@ export default function BrandComponent() {
     const flattenedCategories = flattenCategories(brand);
     const filteredCategories = flattenedCategories.filter((b) => {
       const matchesSearch = b.brand_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            b.brand_slug.toLowerCase().includes(searchQuery.toLowerCase());
+        b.brand_slug.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesStatus = statusFilter === "All" || b.status === statusFilter;
       return matchesSearch && matchesStatus;
     });
@@ -546,8 +546,8 @@ export default function BrandComponent() {
       .map((brand, index) => (
         <tr key={brand._id} className="text-center border-b hover:bg-gray-50">
           <td className="p-2">
-            <input 
-              type="checkbox" 
+            <input
+              type="checkbox"
               checked={selectedBrands.includes(brand._id)}
               onChange={() => handleSelectBrand(brand._id)}
               className="w-4 h-4 cursor-pointer accent-red-500"
@@ -623,7 +623,7 @@ export default function BrandComponent() {
   const flattenedCategories = flattenCategories(brand);
   const filteredCategories = flattenedCategories.filter((b) => {
     const matchesSearch = b.brand_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          b.brand_slug.toLowerCase().includes(searchQuery.toLowerCase());
+      b.brand_slug.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "All" || b.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
@@ -662,7 +662,7 @@ export default function BrandComponent() {
         body: JSON.stringify({ brandIds: selectedBrands }),
       });
       const result = await response.json();
-      
+
       if (response.ok) {
         setSuccessMessage(result.message);
         setShowSuccessModal(true);

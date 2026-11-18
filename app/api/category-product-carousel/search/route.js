@@ -281,7 +281,8 @@ export async function GET(req) {
 
     const queryObj = {
       ...activeStatusCondition,
-      product_type: { $ne: "gift" },
+      product_type: { $nin: ["gift", "Gift", "GIFT"] },
+      movement: { $not: /gift/i },
       ...(filters.length > 0 ? { $and: filters } : {}),
     };
 

@@ -9,7 +9,7 @@ import mongoose from "mongoose";
 export async function GET(req) {
   try {
     await dbConnect();
-    
+
     const { searchParams } = new URL(req.url);
     const categoryIds = (searchParams.get('categoryIds')?.split(',') || []).filter(
       (id) => id && id.trim()
@@ -72,16 +72,16 @@ export async function GET(req) {
     if (brandIds.length > 0) {
       query.brand = { $in: brandIds };
     }
-    
+
     // First fetch products matching brand and price filters
     // let products = await Product.find(query)
     //   .populate('brand', 'brand_name brand_slug')
     //   .lean();
-    
+
     // // Apply additional filters if any
     // if (filterIds.length > 0) {
     //   const productIds = products.map(p => p._id);
-      
+
     //   // Get all product-filter relationships that match our criteria
     //   const productFilters = await ProductFilter.find({
     //     product_id: { $in: productIds },
@@ -106,97 +106,99 @@ export async function GET(req) {
     //    return filterIds.some(fid => productFilterIds.has(fid));
     //   });
     // }
-    
+
     // return Response.json(products);
     let productsQuery = Product.find(query)
-    .populate('brand', 'brand_name brand_slug');
-  
-  // Apply additional filters if any
-if (filterIds.length > 0) {
-    const preFilterProductIds = await Product.distinct('_id', query);
+      .populate('brand', 'brand_name brand_slug');
 
-    
-    const selectedFilterDocs = await Filter.find({ _id: { $in: filterIds } })
-      .populate({ path: "filter_group", select: "filtergroup_name", model: FilterGroup })
-      .lean();
+    // Apply additional filters if any
+    if (filterIds.length > 0) {
+      const preFilterProductIds = await Product.distinct('_id', query);
 
-  
-    const filtersByGroup = {};
-    selectedFilterDocs.forEach(f => {
-      const groupId = f.filter_group?._id?.toString() || "other";
-      if (!filtersByGroup[groupId]) filtersByGroup[groupId] = [];
-      filtersByGroup[groupId].push(f._id.toString());
-    });
 
-    // Step 3: OR within group, AND across groups
-    const preFilterIdStrings = preFilterProductIds.map(id => id.toString());
-    let matchingProductIds = new Set(preFilterIdStrings);
+      const selectedFilterDocs = await Filter.find({ _id: { $in: filterIds } })
+        .populate({ path: "filter_group", select: "filtergroup_name", model: FilterGroup })
+        .lean();
 
-    for (const groupFilterIds of Object.values(filtersByGroup)) {
-      const groupProductFilters = await ProductFilter.find({
-        $or: [
-          { product_id: { $in: preFilterIdStrings } },
-          { product_id: { $in: preFilterProductIds } },
-        ],
-        filter_id: { $in: groupFilterIds }
-      }).lean();
 
-      const groupMatchingIds = new Set(
-        groupProductFilters.map(pf => pf.product_id.toString())
-      );
+      const filtersByGroup = {};
+      selectedFilterDocs.forEach(f => {
+        const groupId = f.filter_group?._id?.toString() || "other";
+        if (!filtersByGroup[groupId]) filtersByGroup[groupId] = [];
+        filtersByGroup[groupId].push(f._id.toString());
+      });
 
-      matchingProductIds = new Set(
-        [...matchingProductIds].filter(id => groupMatchingIds.has(id))
-      );
+      // Step 3: OR within group, AND across groups
+      const preFilterIdStrings = preFilterProductIds.map(id => id.toString());
+      let matchingProductIds = new Set(preFilterIdStrings);
+
+      for (const groupFilterIds of Object.values(filtersByGroup)) {
+        const groupProductFilters = await ProductFilter.find({
+          $or: [
+            { product_id: { $in: preFilterIdStrings } },
+            { product_id: { $in: preFilterProductIds } },
+          ],
+          filter_id: { $in: groupFilterIds }
+        }).lean();
+
+        const groupMatchingIds = new Set(
+          groupProductFilters.map(pf => pf.product_id.toString())
+        );
+
+        matchingProductIds = new Set(
+          [...matchingProductIds].filter(id => groupMatchingIds.has(id))
+        );
+      }
+
+      query._id = { $in: [...matchingProductIds] };
+      productsQuery = Product.find(query).populate('brand', 'brand_name brand_slug');
     }
 
-    query._id = { $in: [...matchingProductIds] };
-    productsQuery = Product.find(query).populate('brand', 'brand_name brand_slug');
-  }
 
- 
     // Apply sorting: Products with quantity > 0 first, then quantity <= 0
-const sort = searchParams.get('sort') || 'featured';
-    
-const skip = (page - 1) * limit;
+    const sort = searchParams.get('sort') || 'featured';
+
+    const skip = (page - 1) * limit;
     const totalProducts = await Product.countDocuments(query);
     const totalPages = Math.ceil(totalProducts / limit);
 
     let products;
 
-if (sort === 'price-low-high' || sort === 'price-high-low') {
+    if (sort === 'price-low-high' || sort === 'price-high-low') {
       const sortDir = sort === 'price-low-high' ? 1 : -1;
 
-       const aggregateMatch = {
+      const aggregateMatch = {
         status: "Active",
         ...(categoryClauses.length ? { $or: categoryClauses } : {}),
       };
 
       if (brandIds.length > 0) {
-        aggregateMatch.brand = { $in: brandIds.map(id => 
-          mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id
-        )};
+        aggregateMatch.brand = {
+          $in: brandIds.map(id =>
+            mongoose.Types.ObjectId.isValid(id) ? new mongoose.Types.ObjectId(id) : id
+          )
+        };
       }
 
-      
+
       if (query._id) {
         const idList = query._id.$in;
-        aggregateMatch._id = { 
-          $in: idList.map(id => 
-            mongoose.Types.ObjectId.isValid(id.toString()) 
-              ? new mongoose.Types.ObjectId(id.toString()) 
+        aggregateMatch._id = {
+          $in: idList.map(id =>
+            mongoose.Types.ObjectId.isValid(id.toString())
+              ? new mongoose.Types.ObjectId(id.toString())
               : id
           )
         };
       }
-      
+
       products = await Product.aggregate([
         { $match: aggregateMatch },
         {
           $match: {
             $or: [
-              { 
-                special_price: { $gt: 0, $gte: minPrice, $lte: maxPrice } 
+              {
+                special_price: { $gt: 0, $gte: minPrice, $lte: maxPrice }
               },
               {
                 $and: [
@@ -225,10 +227,10 @@ if (sort === 'price-low-high' || sort === 'price-high-low') {
     } else {
       const sortObj =
         sort === 'name-a-z' ? { stock_status: 1, name: 1, _id: -1 } :
-        sort === 'name-z-a' ? { stock_status: 1, name: -1, _id: -1 } :
-        sort === 'quantity-low-to-high' ? { stock_status: 1, quantity: 1, _id: -1 } :
-        sort === 'quantity-high-to-low' ? { stock_status: 1, quantity: -1, _id: -1 } :
-        { stock_status: 1, createdAt: -1, _id: -1 };
+          sort === 'name-z-a' ? { stock_status: 1, name: -1, _id: -1 } :
+            sort === 'quantity-low-to-high' ? { stock_status: 1, quantity: 1, _id: -1 } :
+              sort === 'quantity-high-to-low' ? { stock_status: 1, quantity: -1, _id: -1 } :
+                { stock_status: 1, createdAt: -1, _id: -1 };
 
       products = await productsQuery
         .sort(sortObj)
@@ -237,7 +239,7 @@ if (sort === 'price-low-high' || sort === 'price-high-low') {
         .lean();
     }
 
-const brandAgg = await Product.aggregate([
+    const brandAgg = await Product.aggregate([
       {
         $match: {
           status: "Active",
@@ -250,9 +252,13 @@ const brandAgg = await Product.aggregate([
       brandAgg.map((b) => [b._id?.toString(), b.count])
     );
     const brandIdList = Object.keys(brandCountMap).filter(id => id && id !== "undefined");
-    const brandDocs = await Brand.find({ _id: { $in: brandIdList } }).lean();
+    const brandDocs = await Brand.find({
+      _id: { $in: brandIdList },
+      status: { $regex: /^active$/i },
+    }).lean();
     const brandsWithCount = brandDocs
       .map((b) => ({ ...b, count: brandCountMap[b._id.toString()] || 0 }))
+      .filter((b) => b.count > 0)
       .sort((a, b) => a.brand_name.localeCompare(b.brand_name));
 
 
@@ -341,20 +347,20 @@ const brandAgg = await Product.aggregate([
       filter_group_id: f.filter_group?._id?.toString() || "other",
       count: filterAggMap[f._id.toString()] || 0,
     }));
-  
-  return Response.json({
-    products,
-    pagination: {
-      currentPage: page,
-      totalPages,
-      totalProducts,
-      hasNext: page < totalPages,  
-      hasPrev: page > 1,    
-      hasMore: page < totalPages
-    },
+
+    return Response.json({
+      products,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalProducts,
+        hasNext: page < totalPages,
+        hasPrev: page > 1,
+        hasMore: page < totalPages
+      },
       brands: brandsWithCount,
       filters: filtersWithGroup,
-  });
+    });
   } catch (error) {
     console.error('Error in /api/product/filter:', error);
     return Response.json(

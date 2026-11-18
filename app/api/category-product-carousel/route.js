@@ -36,7 +36,12 @@ export async function GET(req) {
     );
     const ids = refs.map((r) => r.productId).filter(Boolean);
     const found = ids.length
-      ? await Product.find({ _id: { $in: ids }, status: "Active", product_type: { $ne: "gift" } })
+      ? await Product.find({
+        _id: { $in: ids },
+        status: "Active",
+        product_type: { $nin: ["gift", "Gift", "GIFT"] },
+        movement: { $not: /gift/i },
+      })
         .select(
           "name slug images price special_price model_number item_code stock_status quantity brand movement product_type"
         )

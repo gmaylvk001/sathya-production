@@ -40,7 +40,8 @@ export async function GET(req, { params }) {
 
     const products = await Product.find({
       status: "Active",
-      product_type: { $ne: "gift" },
+      product_type: { $nin: ["gift", "Gift", "GIFT"] },
+      movement: { $not: /gift/i },
       $or: catClauses,
     }).sort({ createdAt: -1, _id: -1 });
 
@@ -58,8 +59,11 @@ export async function GET(req, { params }) {
     ];
     let brandsWithCount = [];
     if (brandIds.length > 0) {
-      // Fetch valid brands only
-      const brands = await Brand.find({ _id: { $in: brandIds } });
+      // Fetch valid active brands only
+      const brands = await Brand.find({
+        _id: { $in: brandIds },
+        status: { $regex: /^active$/i },
+      });
       // Count products per brand
       const brandCountMap = products.reduce((acc, product) => {
         const brandId = product.brand?.toString();
@@ -67,11 +71,13 @@ export async function GET(req, { params }) {
         return acc;
       }, {});
 
-      // Attach count to each brand
-      brandsWithCount = brands.map((b) => ({
-        ...b.toObject(),
-        count: brandCountMap[b._id.toString()] || 0,
-      }));
+      // Attach count to each brand and filter out 0 count
+      brandsWithCount = brands
+        .map((b) => ({
+          ...b.toObject(),
+          count: brandCountMap[b._id.toString()] || 0,
+        }))
+        .filter((b) => b.count > 0);
     }
 
     // Extract product IDs for filtering

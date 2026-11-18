@@ -105,7 +105,8 @@ export async function GET(request, { params }) {
     // Get products ONLY from the current category tree
     const products = await Product.find({
       status: "Active",
-      product_type: { $ne: "gift" },
+      product_type: { $nin: ["gift", "Gift", "GIFT"] },
+      movement: { $not: /gift/i },
       $and: [
         brandMatchQuery(brand),
         {

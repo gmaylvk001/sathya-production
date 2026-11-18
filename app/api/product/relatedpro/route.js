@@ -26,7 +26,8 @@ export async function GET(req) {
       category: categoryId,
       brand: brandId,
       status: "Active",
-      product_type: { $ne: "gift" },
+      product_type: { $nin: ["gift", "Gift", "GIFT"] },
+      movement: { $not: /gift/i },
       stock_status: "In Stock",
       quantity: { $gte: 10 },
     };

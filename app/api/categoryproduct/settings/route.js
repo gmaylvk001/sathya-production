@@ -124,7 +124,8 @@ export async function GET() {
     const allProducts = await Product.find({
       _id: { $in: allProductIds },
       status: "Active",
-      product_type: { $ne: "gift" },
+      product_type: { $nin: ["gift", "Gift", "GIFT"] },
+      movement: { $not: /gift/i },
       $or: [
         { quantity: { $gt: 0 } },
         { stock_status: "In Stock" },
@@ -148,7 +149,8 @@ export async function GET() {
 
     const fallbackProducts = await Product.find({
       status: "Active",
-      product_type: { $ne: "gift" },
+      product_type: { $nin: ["gift", "Gift", "GIFT"] },
+      movement: { $not: /gift/i },
       $or: [
         { sub_category: { $in: subcatObjectIds } },
         { category: { $in: subcatObjectIds } },

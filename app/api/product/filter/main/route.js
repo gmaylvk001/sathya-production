@@ -34,7 +34,8 @@ export async function GET(req) {
     // Build base query
     let query = {
       status: "Active",
-      product_type: { $ne: "gift" },
+      product_type: { $nin: ["gift", "Gift", "GIFT"] },
+      movement: { $not: /gift/i },
     };
 
     const categoryClauses = [];
@@ -275,13 +276,17 @@ export async function GET(req) {
       (id) => id && id !== "undefined"
     );
 
-    const brandDocs = await Brand.find({ _id: { $in: brandIdList } }).lean();
+    const brandDocs = await Brand.find({
+      _id: { $in: brandIdList },
+      status: { $regex: /^active$/i },
+    }).lean();
 
     const brandsWithCount = brandDocs
       .map((b) => ({
         ...b,
         count: brandCountMap[b._id.toString()] || 0,
       }))
+      .filter((b) => b.count > 0)
       .sort((a, b) => a.brand_name.localeCompare(b.brand_name));
 
     const baseQuery = {

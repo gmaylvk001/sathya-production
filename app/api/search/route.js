@@ -234,7 +234,8 @@ export async function GET(req) {
     let searchFilter = {
 
       status: "Active",
-      product_type: { $ne: "gift" },
+      product_type: { $nin: ["gift", "Gift", "GIFT"] },
+      movement: { $not: /gift/i },
 
     };
 
@@ -952,7 +953,11 @@ export async function GET(req) {
           if (p.sub_category) productCategoryIds.add(p.sub_category.toString());
         });
       } else if (!query) {
-        const categoryOnlyFilter = { status: "Active", product_type: { $ne: "gift" } };
+        const categoryOnlyFilter = {
+          status: "Active",
+          product_type: { $nin: ["gift", "Gift", "GIFT"] },
+          movement: { $not: /gift/i },
+        };
         if (hasCategoryConstraint && categoryConditions.length > 0) {
           categoryOnlyFilter.$and = [
             ...(categoryOnlyFilter.$and || []),

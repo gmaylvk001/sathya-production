@@ -271,8 +271,8 @@ export default function SearchPage() {
         const activeCatIds = activeFilters.categories.length
           ? activeFilters.categories
           : urlSearch?.get("categoryIds")
-          ? urlSearch.get("categoryIds").split(",").filter(Boolean)
-          : [];
+            ? urlSearch.get("categoryIds").split(",").filter(Boolean)
+            : [];
         if (activeCatIds.length) {
           qs.set("categoryIds", activeCatIds.join(","));
         }
@@ -280,8 +280,8 @@ export default function SearchPage() {
         const activeSubCatIds = activeFilters.subcategories.length
           ? activeFilters.subcategories
           : urlSearch?.get("subcategoryIds")
-          ? urlSearch.get("subcategoryIds").split(",").filter(Boolean)
-          : [];
+            ? urlSearch.get("subcategoryIds").split(",").filter(Boolean)
+            : [];
         if (activeSubCatIds.length) {
           qs.set("subcategoryIds", activeSubCatIds.join(","));
         }
@@ -399,14 +399,14 @@ export default function SearchPage() {
             price: hasActiveFilterParams(urlSearch)
               ? urlFilters.price
               : hasNlPrice
-              ? {
+                ? {
                   min: intentMin != null && intentMin > 0 ? intentMin : priceRange[0],
                   max:
                     intentMax != null && intentMax > 0 && intentMax < 500000
                       ? intentMax
                       : priceRange[1],
                 }
-              : { min: priceRange[0], max: priceRange[1] },
+                : { min: priceRange[0], max: priceRange[1] },
           };
           setSelectedFilters(nextSelected);
           if (hasNlPrice) {
@@ -501,11 +501,10 @@ export default function SearchPage() {
         <button
           disabled={!hasPrev}
           onClick={() => handlePageChange(currentPage - 1)}
-          className={`px-3 py-2 rounded ${
-            hasPrev
-              ? "bg-gray-100 hover:bg-gray-200"
-              : "bg-gray-200 text-gray-400 cursor-not-allowed"
-          }`}
+          className={`px-3 py-2 rounded ${hasPrev
+            ? "bg-gray-100 hover:bg-gray-200"
+            : "bg-gray-200 text-gray-400 cursor-not-allowed"
+            }`}
         >
           Prev
         </button>
@@ -518,11 +517,10 @@ export default function SearchPage() {
             <button
               key={num}
               onClick={() => handlePageChange(num)}
-              className={`px-3 py-2 rounded ${
-                num === currentPage
-                  ? "bg-red-600 text-white"
-                  : "bg-gray-100 hover:bg-gray-200"
-              }`}
+              className={`px-3 py-2 rounded ${num === currentPage
+                ? "bg-red-600 text-white"
+                : "bg-gray-100 hover:bg-gray-200"
+                }`}
             >
               {num}
             </button>
@@ -531,11 +529,10 @@ export default function SearchPage() {
         <button
           disabled={!hasNext}
           onClick={() => handlePageChange(currentPage + 1)}
-          className={`px-3 py-2 rounded ${
-            hasNext
-              ? "bg-gray-100 hover:bg-gray-200"
-              : "bg-gray-200 text-gray-400 cursor-not-allowed"
-          }`}
+          className={`px-3 py-2 rounded ${hasNext
+            ? "bg-gray-100 hover:bg-gray-200"
+            : "bg-gray-200 text-gray-400 cursor-not-allowed"
+            }`}
         >
           Next
         </button>
@@ -567,7 +564,7 @@ export default function SearchPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search products..."
-            className="w-full h-10 pl-4 pr-10 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="w-full h-8 pl-4 pr-10 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
           />
           <button
             type="submit"
@@ -632,9 +629,9 @@ export default function SearchPage() {
           ) : products.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
               {products.map((p, index) => (
-                <SharedProductCard 
-                  key={`${p._id}-${index}`} 
-                  product={normalizeProduct(p, brandMap)} 
+                <SharedProductCard
+                  key={`${p._id}-${index}`}
+                  product={normalizeProduct(p, brandMap)}
                   compactMobile={true}
                 />
               ))}

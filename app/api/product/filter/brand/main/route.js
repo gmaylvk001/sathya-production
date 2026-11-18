@@ -23,8 +23,12 @@ export async function GET(req) {
     const limit = parseInt(searchParams.get('limit')) || 20;
     const sort = searchParams.get('sort') || 'featured';
 
-    // Base query
-    let query = { status: "Active", product_type: { $ne: "gift" } };
+    // Base query - exclude gift products (case-insensitive)
+    let query = {
+      status: "Active",
+      product_type: { $nin: ["gift", "Gift", "GIFT"] },
+      movement: { $not: /gift/i },
+    };
     const andClauses = [];
 
     let expandedCategoryIds = [...categoryIds, ...subcategoryIds];

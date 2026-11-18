@@ -148,7 +148,8 @@ export async function GET() {
               {
                 $match: {
                   status: "Active",
-                  product_type: { $ne: "gift" },
+                  product_type: { $nin: ["gift", "Gift", "GIFT"] },
+                  movement: { $not: /gift/i },
                   name: { $not: /^gift/i },
                   $or: [
                     { category: { $in: targetCatIds } },

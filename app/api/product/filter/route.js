@@ -23,7 +23,11 @@ export async function GET(req) {
       sub_category_new: {
         $regex: sub_category_new,
         $options: "i"
-      }, status: "Active", quantity: { $gt: 0 }, product_type: { $ne: "gift" }
+      },
+      status: "Active",
+      quantity: { $gt: 0 },
+      product_type: { $nin: ["gift", "Gift", "GIFT"] },
+      movement: { $not: /gift/i },
     };
 
 

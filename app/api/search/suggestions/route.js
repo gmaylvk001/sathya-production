@@ -125,7 +125,10 @@ export async function GET(req) {
     }
 
     // Category filter mapping & exclude gift products
-    const nonGiftCondition = { product_type: { $ne: "gift" } };
+    const nonGiftCondition = {
+      product_type: { $nin: ["gift", "Gift", "GIFT"] },
+      movement: { $not: /gift/i },
+    };
     let matchFilter = { $and: [{ $or: orConditions }, nonGiftCondition] };
     const catLower = category.toLowerCase().trim();
     if (category && catLower !== "all category" && catLower !== "all categories") {

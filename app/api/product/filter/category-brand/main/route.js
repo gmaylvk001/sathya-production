@@ -239,7 +239,8 @@ export async function GET(req) {
 
     let query = {
       status: "Active",
-      product_type: { $ne: "gift" },
+      product_type: { $nin: ["gift", "Gift", "GIFT"] },
+      movement: { $not: /gift/i },
       $and: [
         brandMatchQuery(find_brand),
         categoryMatchClause,
