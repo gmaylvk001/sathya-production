@@ -27,6 +27,14 @@ function normalizeStateToken(value) {
   return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+function toStateSlug(value) {
+  return String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 function explicitStates(list) {
   return (Array.isArray(list) ? list : [])
     .map(normalizeStateToken)
@@ -272,7 +280,7 @@ function SuperOffersContent() {
   const urlOfferSlug = slugArray[slugArray.length - 1] || "";
   const urlRegionSlug = slugArray.length > 1 ? slugArray[0] : "";
   const queryTimerId = searchParams?.get("offer_timer_id") || null;
-  const activeRegion = urlRegionSlug || region || selectedRegion?.id || "kerala";
+  const activeRegion = region || selectedRegion?.id || urlRegionSlug || "kerala";
 
   // Derive dynamic fallback title from URL slug (e.g. "dhoni" -> "DHONI")
   const derivedSlugTitle = useMemo(() => {
@@ -395,15 +403,35 @@ function SuperOffersContent() {
     };
   }, [queryTimerId, urlOfferSlug, activeRegion]);
 
-  // Header pincode state is not on this offer timer: leave the page.
+  // Header pincode drives this page. A state that is not on the timer leaves
+  // for deals. A covered state rewrites the first URL segment to that state name.
   useEffect(() => {
     if (!isInitialized || timerLoading || !timer) return;
     const headerRegion = region || selectedRegion?.id;
     if (!headerRegion) return;
     if (!timerCoversRegion(timer, headerRegion)) {
       router.replace("/deals-offer");
+      return;
     }
-  }, [isInitialized, timerLoading, timer, region, selectedRegion?.id, router]);
+
+    const stateSlug = toStateSlug(selectedRegion?.name || headerRegion);
+    if (!stateSlug || !urlOfferSlug) return;
+    if (urlRegionSlug && toStateSlug(urlRegionSlug) === stateSlug) return;
+
+    const query = searchParams?.toString();
+    router.replace(`/super-offers/${stateSlug}/${urlOfferSlug}${query ? `?${query}` : ""}`);
+  }, [
+    isInitialized,
+    timerLoading,
+    timer,
+    region,
+    selectedRegion?.id,
+    selectedRegion?.name,
+    router,
+    urlOfferSlug,
+    urlRegionSlug,
+    searchParams,
+  ]);
 
   // 2. Background fetch for category products and brands
   useEffect(() => {
