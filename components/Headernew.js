@@ -144,7 +144,7 @@ const Header = () => {
 
   // ADD: Cross-tab cart sync helpers
   const CART_COUNT_KEY = 'cartCount';
-  
+
   // ADD: new key for cart data list
   const CART_DATA_KEY = 'cartData';
 
@@ -3487,14 +3487,14 @@ const Header = () => {
                               href={entry.href}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-sm font-bold text-white hover:text-[#FFF200] whitespace-nowrap"
+                              className="inline-block origin-center text-base font-bold text-white hover:scale-105 transition-transform duration-150 whitespace-nowrap"
                             >
                               {entry.label}
                             </a>
                           ) : (
                             <Link
                               href={entry.href}
-                              className="text-sm font-bold text-white hover:text-[#FFF200] whitespace-nowrap"
+                              className="inline-block origin-center text-base font-bold text-white hover:scale-105 transition-transform duration-150 whitespace-nowrap"
                             >
                               {entry.label}
                             </Link>
@@ -3503,6 +3503,7 @@ const Header = () => {
                       </SwiperSlide>
                     );
                     const { category } = entry;
+                    const isHovered = hoveredCategory?._id === category._id;
                     return (
                       <SwiperSlide key={entry.key} className="!w-auto">
                         <div ref={(el) => (slideRefs.current[category._id] = el)} onMouseEnter={() => handleMouseEnter(category._id, category)} onMouseLeave={() => startHide(120)} className="px-2 py-2 flex flex-col items-center text-center" >
@@ -3523,7 +3524,7 @@ const Header = () => {
                                 category._id
                               );
                             }}
-                            className="text-sm font-bold text-white hover:text-[#FFF200] whitespace-nowrap"
+                            className={`inline-block origin-center text-base font-bold text-white hover:scale-105 transition-transform duration-150 whitespace-nowrap ${isHovered ? "!scale-105" : ""}`}
                           >
                             {entry.label}
                           </Link>
@@ -3562,13 +3563,17 @@ const Header = () => {
               <style>{`
         .dd-sidebar::-webkit-scrollbar { display: none; }
         .dd-sidebar { -ms-overflow-style: none; scrollbar-width: none; }
-        .dd-brands::-webkit-scrollbar { width: 3px; }
-        .dd-brands::-webkit-scrollbar-thumb { background: #ED1C24; border-radius: 2px; }
-        .dd-brands::-webkit-scrollbar-track { background: #f1f1f1; }
-        .dd-sub-scroll { overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #ED1C24 #f1f1f1; }
-        .dd-sub-scroll::-webkit-scrollbar { width: 3px; }
-        .dd-sub-scroll::-webkit-scrollbar-thumb { background: #ED1C24; border-radius: 2px; }
-        .dd-sub-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .dd-brands::-webkit-scrollbar { width: 5px; }
+        .dd-brands::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+        .dd-brands::-webkit-scrollbar-track { background: transparent; }
+        .dd-brands::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        .dd-brands::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        .dd-sub-scroll { overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+        .dd-sub-scroll::-webkit-scrollbar { width: 5px; }
+        .dd-sub-scroll::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+        .dd-sub-scroll::-webkit-scrollbar-track { background: transparent; }
+        .dd-sub-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        .dd-sub-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         .dd-child-link { display:block; font-size:13px; color:#374151; text-decoration:none; padding:5px 8px; border-radius:4px; white-space:normal; line-height:1.35; transition: color 0.1s, background 0.1s; }
         .dd-child-link:hover { color:#ED1C24; background:#FEF2F2; }
         .dd-brand-item { display:flex; align-items:center; justify-content:center; padding:5px 6px; border:none; border-radius:6px; text-decoration:none; transition: background 0.1s; }
@@ -3592,12 +3597,12 @@ const Header = () => {
                 >
                   <div style={{
                     padding: '10px 16px',
-                    fontSize: '13px', fontWeight: 700, color: '#C4161D',
+                    fontSize: '13px', fontWeight: 700, color: '#ed1c24',
                     letterSpacing: '0.04em', textTransform: 'uppercase',
                     borderBottom: 'none', flexShrink: 0,
                     paddingTop: "16px"
                   }}>
-                    Shop by Category
+                    Shop by Categorys
                   </div>
 
                   <div className="dd-sidebar" style={{ flex: 1, overflowY: 'auto' }}>
@@ -3634,16 +3639,16 @@ const Header = () => {
                                       height: 30,
                                       objectFit: 'contain',
                                       flexShrink: 0,
-                                      filter: 'brightness(0) saturate(100%) invert(18%) sepia(87%) saturate(3500%) hue-rotate(347deg) brightness(87%) contrast(96%)',
+                                      filter: 'brightness(0)',
                                     }}
                                   />
                                 ) : (
                                   <div style={{
                                     width: 24, height: 24, borderRadius: '4px',
-                                    background: '#FEE2E2', display: 'flex', alignItems: 'center',
+                                    background: '#F3F4F6', display: 'flex', alignItems: 'center',
                                     justifyContent: 'center', flexShrink: 0,
                                   }}>
-                                    <span style={{ fontSize: '10px', color: '#BC2121', fontWeight: 700 }}>
+                                    <span style={{ fontSize: '10px', color: '#111827', fontWeight: 700 }}>
                                       {(sub.category_name || '').charAt(0)}
                                     </span>
                                   </div>
@@ -3658,14 +3663,14 @@ const Header = () => {
                                 style={{
                                   fontSize: '13px',
                                   fontWeight: isActive ? 700 : 600,
-                                  color: isActive ? '#BC2121' : '#BC2121',
+                                  color: '#111827',
                                   textDecoration: 'none', lineHeight: 1.3,
                                 }}
                               >
                                 {splitByNearestSpace(sub.category_name, 24)}
                               </Link>
                             </div>
-                            <FiChevronRight size={13} style={{ color: isActive ? '#BC2121' : '#d1d5db', flexShrink: 0 }} />
+                            <FiChevronRight size={13} style={{ color: isActive ? '#111827' : '#d1d5db', flexShrink: 0 }} />
                           </div>
                         );
                       })}
@@ -3760,6 +3765,7 @@ const Header = () => {
                             display: 'flex',
                             flexDirection: 'column',
                             maxHeight: needsScroll ? `${ROWS_VISIBLE * ROW_HEIGHT_PX}px` : undefined,
+                            paddingRight: needsScroll ? '6px' : '0',
                           }}
                         >
                           {items.map((item) => (
@@ -3786,7 +3792,7 @@ const Header = () => {
                       boxSizing: 'border-box'
                     }}>
                       <div style={{
-                        fontSize: '11px', fontWeight: 700, color: '#C4161D',
+                        fontSize: '11px', fontWeight: 700, color: '#ed1c24',
                         textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px',
                       }}>
                         Top Brands
@@ -3867,7 +3873,7 @@ const Header = () => {
                                   )}
                                   onClick={() => setHoveredCategory(null)}
                                   style={{
-                                    fontSize: '13px', fontWeight: 700, color: '#ED1C24',
+                                    fontSize: '13px', fontWeight: 700, color: '#111827',
                                     textDecoration: 'none', textTransform: 'uppercase', letterSpacing: '0.05em',
                                     whiteSpace: 'normal', lineHeight: 1.35,
                                   }}
@@ -3924,7 +3930,7 @@ const Header = () => {
                                             )}
                                             onClick={() => setHoveredCategory(null)}
                                             style={{
-                                              fontSize: '13px', fontWeight: 700, color: '#ED1C24',
+                                              fontSize: '13px', fontWeight: 700, color: '#111827',
                                               textDecoration: 'none', textTransform: 'uppercase',
                                               letterSpacing: '0.04em', marginBottom: '8px',
                                               paddingBottom: '6px', borderBottom: 'none',
@@ -3974,7 +3980,7 @@ const Header = () => {
                                             onClick={() => setHoveredCategory(null)}
                                             style={{
                                               display: 'block', fontSize: '13px', fontWeight: 700,
-                                              color: '#C4161D', textDecoration: 'none',
+                                              color: '#111827', textDecoration: 'none',
                                               textTransform: 'uppercase', letterSpacing: '0.04em',
                                               marginBottom: '8px', paddingBottom: '6px',
                                               borderBottom: 'none',
@@ -4009,7 +4015,7 @@ const Header = () => {
                                             onClick={() => setHoveredCategory(null)}
                                             style={{
                                               display: 'block', fontSize: '13px', fontWeight: 700,
-                                              color: '#C4161D', textDecoration: 'none',
+                                              color: '#111827', textDecoration: 'none',
                                               textTransform: 'uppercase', letterSpacing: '0.04em',
                                               marginBottom: '8px', paddingBottom: '6px',
                                               borderBottom: 'none',

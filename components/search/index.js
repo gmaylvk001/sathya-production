@@ -502,8 +502,8 @@ export default function SearchPage() {
           disabled={!hasPrev}
           onClick={() => handlePageChange(currentPage - 1)}
           className={`px-3 py-2 rounded ${hasPrev
-            ? "bg-gray-100 hover:bg-gray-200"
-            : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              ? "bg-gray-100 hover:bg-gray-200"
+              : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
         >
           Prev
@@ -518,8 +518,8 @@ export default function SearchPage() {
               key={num}
               onClick={() => handlePageChange(num)}
               className={`px-3 py-2 rounded ${num === currentPage
-                ? "bg-red-600 text-white"
-                : "bg-gray-100 hover:bg-gray-200"
+                  ? "bg-red-600 text-white"
+                  : "bg-gray-100 hover:bg-gray-200"
                 }`}
             >
               {num}
@@ -530,8 +530,8 @@ export default function SearchPage() {
           disabled={!hasNext}
           onClick={() => handlePageChange(currentPage + 1)}
           className={`px-3 py-2 rounded ${hasNext
-            ? "bg-gray-100 hover:bg-gray-200"
-            : "bg-gray-200 text-gray-400 cursor-not-allowed"
+              ? "bg-gray-100 hover:bg-gray-200"
+              : "bg-gray-200 text-gray-400 cursor-not-allowed"
             }`}
         >
           Next
@@ -564,7 +564,7 @@ export default function SearchPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search products..."
-            className="w-full h-8 pl-4 pr-10 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
+            className="w-full h-10 pl-4 pr-10 text-sm text-gray-900 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500"
           />
           <button
             type="submit"
