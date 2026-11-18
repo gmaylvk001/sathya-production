@@ -529,6 +529,14 @@ export default function Blogs() {
       alert("Blog Title is required");
       return;
     }
+    if (!String(formData.metaTitle || "").trim()) {
+      alert("Meta Title is required");
+      return;
+    }
+    if (!String(formData.metaKeywords || "").trim()) {
+      alert("Meta Keywords is required");
+      return;
+    }
 
     if (!normalizeSchemaJson(formData.schemaJson).ok) {
       showSchemaMessage(SCHEMA_INVALID_MESSAGE, "error");
@@ -1048,22 +1056,28 @@ export default function Blogs() {
               <h3 className="text-xl font-light text-gray-700">SEO Details</h3>
               
               <div className="grid grid-cols-[200px_1fr] gap-4 items-start">
-                <label className="font-semibold text-gray-700 mt-2">Meta Title</label>
+                <label className="font-semibold text-gray-700 mt-2">
+                  Meta Title <span className="text-[#ED1C24]">*</span>
+                </label>
                 <input
                   type="text"
                   className="w-full border rounded p-2 focus:outline-none focus:border-blue-400"
                   value={formData.metaTitle}
                   onChange={(e) => setFormData({ ...formData, metaTitle: e.target.value })}
+                  required
                 />
               </div>
 
               <div className="grid grid-cols-[200px_1fr] gap-4 items-start">
-                <label className="font-semibold text-gray-700 mt-2">Meta Keywords</label>
+                <label className="font-semibold text-gray-700 mt-2">
+                  Meta Keywords <span className="text-[#ED1C24]">*</span>
+                </label>
                 <textarea
                   rows="3"
                   className="w-full border rounded p-2 focus:outline-none focus:border-blue-400"
                   value={formData.metaKeywords}
                   onChange={(e) => setFormData({ ...formData, metaKeywords: e.target.value })}
+                  required
                 ></textarea>
               </div>
 

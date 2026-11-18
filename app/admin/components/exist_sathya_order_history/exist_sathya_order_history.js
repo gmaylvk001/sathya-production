@@ -219,6 +219,11 @@ export default function ExistSathyaOrderHistoryComponent({ readOnly = false, ord
     <div className="container mx-auto">
       <div className="flex justify-between items-center mb-5 mt-5">
         <h2 className="text-2xl font-bold">{readOnly ? "Order History" : "Sathya Exist Order History"}</h2>
+        {readOnly && (
+          <span className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-semibold">
+            Total: {rows.length}
+          </span>
+        )}
       </div>
 
       {isLoading ? (
