@@ -3,18 +3,46 @@ import axios from "axios";
 import { Icon } from '@iconify/react';
 import DateRangePicker from '@/components/DateRangePicker';
 
+function getPageItems(current, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const items = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) items.push("left-ellipsis");
+  for (let i = start; i <= end; i += 1) items.push(i);
+  if (end < total - 1) items.push("right-ellipsis");
+  items.push(total);
+  return items;
+}
+
+function toDayBoundary(value, isEnd) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  if (isEnd) date.setHours(23, 59, 59, 999);
+  else date.setHours(0, 0, 0, 0);
+  return date.toISOString();
+}
+
 export default function UserComponent() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
   const [users, setUsers] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
+  const [existUsersCount, setExistUsersCount] = useState(0);
+  const [pendingOrdersFetchCount, setPendingOrdersFetchCount] = useState(0);
+  const [alreadyFetchedOrdersCount, setAlreadyFetchedOrdersCount] = useState(0);
+  const [loadError, setLoadError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [dateFilter, setDateFilter] = useState({
     startDate: null,
     endDate: null
   });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(20);
   const [formData, setFormData] = useState({
@@ -39,18 +67,40 @@ export default function UserComponent() {
   const stopBulkFetchRef = useRef(false);
 
   useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [currentPage, debouncedSearch, statusFilter, dateFilter.startDate, dateFilter.endDate]);
 
   const fetchUsers = async () => {
     setIsLoading(true);
+    setLoadError("");
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
       const headers = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await axios.get("/api/users/get", { headers });
-      setUsers(Array.isArray(response.data) ? response.data : []);
+      const params = { page: currentPage, limit: itemsPerPage };
+      if (debouncedSearch) params.q = debouncedSearch;
+      if (statusFilter !== "All") params.status = statusFilter;
+      if (dateFilter.startDate && dateFilter.endDate) {
+        params.start = toDayBoundary(dateFilter.startDate, false);
+        params.end = toDayBoundary(dateFilter.endDate, true);
+      }
+      const response = await axios.get("/api/users/get", { headers, params });
+      const body = response.data || {};
+      setUsers(Array.isArray(body.data) ? body.data : []);
+      setTotalCount(Number(body.total) || 0);
+      setPageCount(Math.max(1, Number(body.totalPages) || 1));
+      setExistUsersCount(Number(body.existUsersCount) || 0);
+      setPendingOrdersFetchCount(Number(body.pendingOrdersFetchCount) || 0);
+      setAlreadyFetchedOrdersCount(Number(body.alreadyFetchedOrdersCount) || 0);
     } catch (error) {
       console.error("Error fetching users:", error);
+      setUsers([]);
+      setTotalCount(0);
+      setLoadError(error.response?.data?.message || "Could not load users. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -341,49 +391,9 @@ export default function UserComponent() {
     setCurrentUserId(null);
   };
 
-  const filteredUsers = users.filter(user => {
-    // Apply search filter
-    const matchesSearch = searchQuery === "" || 
-      (user.name && user.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (user.last_name && user.last_name.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (user.email && user.email.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (user.mobile && user.mobile.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    // Apply status filter
-    const matchesStatus = statusFilter === "All" || user.status === statusFilter;
-    
-    // Apply date filter
-    let matchesDate = true;
-    if (dateFilter.startDate && dateFilter.endDate && user.createdAt) {
-      const userDate = new Date(user.createdAt);
-      const startDate = new Date(dateFilter.startDate);
-      const endDate = new Date(dateFilter.endDate);
-      
-      // Set time to beginning and end of day for proper date comparison
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-      
-      matchesDate = userDate >= startDate && userDate <= endDate;
-    }
-    
-    return matchesSearch && matchesStatus && matchesDate;
-  });
-
-  const existUsersCount = users.filter((user) => String(user.exist_id || "").trim()).length;
-  const pendingOrdersFetchCount = users.filter(
-    (user) => String(user.exist_id || "").trim() && Number(user.orders_fetched) !== 1
-  ).length;
-  const alreadyFetchedOrdersCount = users.filter(
-    (user) => String(user.exist_id || "").trim() && Number(user.orders_fetched) === 1
-  ).length;
-
-  // Pagination calculations
-  const totalEntries = filteredUsers.length;
-  const indexOfLastUser = currentPage * itemsPerPage;
-  const indexOfFirstUser = indexOfLastUser - itemsPerPage;
-  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
-  const startEntry = indexOfFirstUser + 1;
-  const endEntry = Math.min(indexOfLastUser, totalEntries);
+  const currentUsers = users;
+  const startEntry = totalCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+  const endEntry = Math.min(currentPage * itemsPerPage, totalCount);
   const currentPageIds = currentUsers.map((user) => String(user._id));
   const allCurrentSelected =
     currentPageIds.length > 0 && currentPageIds.every((id) => selectedIds.includes(id));
@@ -394,10 +404,6 @@ export default function UserComponent() {
       return;
     }
     setSelectedIds((prev) => [...new Set([...prev, ...currentPageIds])]);
-  };
-
-  const selectAllFiltered = () => {
-    setSelectedIds(filteredUsers.map((user) => String(user._id)));
   };
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
@@ -416,13 +422,12 @@ export default function UserComponent() {
   };
 
   const renderPagination = () => {
-    const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
-    if (totalPages <= 1) return null;
+    if (pageCount <= 1) return null;
 
     return (
       <div className="flex justify-between items-center mt-4">
         <div className="text-sm text-gray-600">
-          Showing {startEntry} to {endEntry} of {filteredUsers.length} entries
+          Showing {startEntry} to {endEntry} of {totalCount} entries
         </div>
         
         <div className="pagination flex items-center space-x-1">
@@ -439,27 +444,31 @@ export default function UserComponent() {
             «
           </button>
 
-          {Array.from({ length: totalPages }, (_, i) => (
-            <button
-              key={i + 1}
-              onClick={() => paginate(i + 1)}
-              className={`px-3 py-1.5 border border-gray-300 rounded-md ${
-                currentPage === i + 1
-                  ? "bg-red-500 text-white"
-                  : "text-black bg-white hover:bg-gray-100"
-              }`}
-              aria-label={`Page ${i + 1}`}
-              aria-current={currentPage === i + 1 ? "page" : undefined}
-            >
-              {i + 1}
-            </button>
-          ))}
+          {getPageItems(currentPage, pageCount).map((item) =>
+            typeof item === "number" ? (
+              <button
+                key={item}
+                onClick={() => paginate(item)}
+                className={`px-3 py-1.5 border border-gray-300 rounded-md ${
+                  currentPage === item
+                    ? "bg-red-500 text-white"
+                    : "text-black bg-white hover:bg-gray-100"
+                }`}
+                aria-label={`Page ${item}`}
+                aria-current={currentPage === item ? "page" : undefined}
+              >
+                {item}
+              </button>
+            ) : (
+              <span key={item} className="px-2 text-gray-500">…</span>
+            )
+          )}
 
           <button
             onClick={() => paginate(currentPage + 1)}
-            disabled={currentPage === totalPages}
+            disabled={currentPage === pageCount}
             className={`px-3 py-1.5 border border-gray-300 rounded-md ${
-              currentPage === totalPages
+              currentPage === pageCount
                 ? "text-gray-400 cursor-not-allowed"
                 : "text-black bg-white hover:bg-gray-100"
             }`}
@@ -481,10 +490,6 @@ export default function UserComponent() {
         <h2 className="text-2xl font-bold">User List</h2>
       </div>
   
-      {isLoading ? (
-        <p>Loading...</p>
-      ) : (
-        <>
           <div className="bg-white shadow-md rounded-lg p-5 mb-5 overflow-x-auto border border-gray-200">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end mb-4">
               {/* Search Filter */}
@@ -542,6 +547,9 @@ export default function UserComponent() {
                 </button>
               </div>
             </div>
+            {loadError && (
+              <div className="bg-red-50 text-red-700 px-4 py-2 rounded-md mb-4 text-center">{loadError}</div>
+            )}
             {showAlert && !isModalOpen && (
               <div className="bg-green-500 text-white px-4 py-2 rounded-md mb-4 text-center">{alertMessage}</div>
             )}
@@ -557,15 +565,6 @@ export default function UserComponent() {
                     {isBulkDeleting ? "Deleting..." : "Delete selected"}
                   </button>
                 </>
-              )}
-              {filteredUsers.length > 0 && selectedIds.length !== filteredUsers.length && (
-                <button
-                  type="button"
-                  onClick={selectAllFiltered}
-                  className="p-2 border border-gray-300 hover:bg-gray-50 rounded-md transition text-sm"
-                >
-                  Select all {filteredUsers.length}
-                </button>
               )}
               {selectedIds.length > 0 && (
                 <button
@@ -665,7 +664,11 @@ export default function UserComponent() {
                 </tr>
               </thead>
               <tbody>
-                {currentUsers.length > 0 ? (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan="14" className="p-2 text-center text-gray-500">Loading...</td>
+                  </tr>
+                ) : currentUsers.length > 0 ? (
                   currentUsers.map((user, index) => (
                     <tr key={user._id || index} className="text-center border-b">
                       <td className="p-2">
@@ -798,8 +801,6 @@ export default function UserComponent() {
             </table>
             {renderPagination()}
           </div>
-        </>
-      )}
 
       {isModalOpen && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
