@@ -26,7 +26,7 @@ function formatDateTime(value) {
   return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
 }
 
-export default function ExistSathyaOrderHistoryComponent() {
+export default function ExistSathyaOrderHistoryComponent({ readOnly = false, orderIdFilled = false }) {
   const [rows, setRows] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -45,12 +45,14 @@ export default function ExistSathyaOrderHistoryComponent() {
 
   useEffect(() => {
     fetchRows();
-  }, []);
+  }, [orderIdFilled]);
 
   const fetchRows = async () => {
     setIsLoading(true);
     try {
-      const response = await axios.get("/api/exist_sathya_order_history/get");
+      const response = await axios.get("/api/exist_sathya_order_history/get", {
+        params: { order_id: orderIdFilled ? "filled" : "empty" },
+      });
       setRows(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error("Error fetching exist order history:", error);
@@ -216,7 +218,7 @@ export default function ExistSathyaOrderHistoryComponent() {
   return (
     <div className="container mx-auto">
       <div className="flex justify-between items-center mb-5 mt-5">
-        <h2 className="text-2xl font-bold">Sathya Exist Order History</h2>
+        <h2 className="text-2xl font-bold">{readOnly ? "Order History" : "Sathya Exist Order History"}</h2>
       </div>
 
       {isLoading ? (
@@ -253,31 +255,34 @@ export default function ExistSathyaOrderHistoryComponent() {
                 ))}
               </select>
             </div>
-            <div className="flex flex-wrap justify-end gap-2">
-              <button
-                onClick={() => {
-                  setImportResult(null);
-                  setImportFile(null);
-                  setIsImportOpen(true);
-                }}
-                className="p-2 border border-red-500 text-red-500 hover:bg-red-50 rounded-md transition"
-              >
-                Import Excel/CSV/JSON
-              </button>
-              <button
-                onClick={handleDeleteAll}
-                disabled={isBulkDeleting || rows.length === 0}
-                className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-md transition disabled:opacity-50"
-              >
-                {isBulkDeleting ? "Deleting..." : `Delete all (${rows.length})`}
-              </button>
-            </div>
+            {!readOnly && (
+              <div className="flex flex-wrap justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setImportResult(null);
+                    setImportFile(null);
+                    setIsImportOpen(true);
+                  }}
+                  className="p-2 border border-red-500 text-red-500 hover:bg-red-50 rounded-md transition"
+                >
+                  Import Excel/CSV/JSON
+                </button>
+                <button
+                  onClick={handleDeleteAll}
+                  disabled={isBulkDeleting || rows.length === 0}
+                  className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-md transition disabled:opacity-50"
+                >
+                  {isBulkDeleting ? "Deleting..." : `Delete all (${rows.length})`}
+                </button>
+              </div>
+            )}
           </div>
 
           {showAlert && !isImportOpen && (
             <div className="bg-green-500 text-white px-4 py-2 rounded-md mb-4 text-center">{alertMessage}</div>
           )}
 
+          {!readOnly && (
           <div className="flex flex-wrap items-center gap-2 mb-3">
             {selectedIds.length > 0 && (
               <>
@@ -299,13 +304,16 @@ export default function ExistSathyaOrderHistoryComponent() {
               </>
             )}
           </div>
+          )}
 
           <table className="w-full border border-gray-300 min-w-[1100px]">
             <thead>
               <tr className="bg-gray-200">
-                <th className="p-2 w-10">
-                  <input type="checkbox" checked={allCurrentSelected} onChange={toggleSelectCurrentPage} />
-                </th>
+                {!readOnly && (
+                  <th className="p-2 w-10">
+                    <input type="checkbox" checked={allCurrentSelected} onChange={toggleSelectCurrentPage} />
+                  </th>
+                )}
                 <th className="p-2">Exist ID</th>
                 <th className="p-2">Order ID</th>
                 <th className="p-2">Order Number</th>
@@ -320,13 +328,15 @@ export default function ExistSathyaOrderHistoryComponent() {
               {currentRows.length > 0 ? (
                 currentRows.map((row, index) => (
                   <tr key={row._id || index} className="text-center border-b">
-                    <td className="p-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(String(row._id))}
-                        onChange={() => toggleSelect(row._id)}
-                      />
-                    </td>
+                    {!readOnly && (
+                      <td className="p-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(String(row._id))}
+                          onChange={() => toggleSelect(row._id)}
+                        />
+                      </td>
+                    )}
                     <td className="p-2">{row.exist_id || "-"}</td>
                     <td className="p-2">{row.order_id || "-"}</td>
                     <td className="p-2 font-bold">{row.order_number || "-"}</td>
@@ -343,20 +353,22 @@ export default function ExistSathyaOrderHistoryComponent() {
                         >
                           <Icon icon="mingcute:eye-line" />
                         </button>
-                        <button
-                          onClick={() => handleDelete(row._id)}
-                          className="w-7 h-7 bg-pink-100 text-pink-600 rounded-full inline-flex items-center justify-center"
-                          title="Delete"
-                        >
-                          <Icon icon="mingcute:delete-2-line" />
-                        </button>
+                        {!readOnly && (
+                          <button
+                            onClick={() => handleDelete(row._id)}
+                            className="w-7 h-7 bg-pink-100 text-pink-600 rounded-full inline-flex items-center justify-center"
+                            title="Delete"
+                          >
+                            <Icon icon="mingcute:delete-2-line" />
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="9" className="p-2 text-center text-gray-500">No history found.</td>
+                  <td colSpan={readOnly ? 8 : 9} className="p-2 text-center text-gray-500">No history found.</td>
                 </tr>
               )}
             </tbody>

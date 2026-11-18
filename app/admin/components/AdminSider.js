@@ -42,7 +42,7 @@ const menuItems = [
       { icon: 'mdi:cart-off', label: 'Abandoned Order', link: 'abandonedorder', permission: 'abandonedorder', dotColor: 'bg-yellow-500' },
       { icon: 'mdi:cancel', label: 'Cancel Order', link: 'order/cancel-order', permission: 'order/cancel-order', dotColor: 'bg-[#d72828]' },
       { icon: 'mdi:clipboard-check-outline', label: 'Place Orders', link: 'order/place-order', permission: 'order/place-order', dotColor: 'bg-blue-500' },
-      { icon: 'mdi:history', label: 'Order History', link: 'sathya-exist-order-history', permission: 'sathya-exist-order-history', dotColor: 'bg-yellow-500' },
+      { icon: 'mdi:history', label: 'Order History', id: 'sales-order-history', link: 'sales/order-history', permission: 'sathya-exist-order-history', dotColor: 'bg-yellow-500' },
     ],
   },
   {
@@ -53,6 +53,7 @@ const menuItems = [
       { icon: 'mdi:clipboard-list-outline', label: 'Order Details', id: 'exist-sales-order-details', link: 'sathya-exist-orders-details', permission: 'sathya-exist-orders-details', dotColor: 'bg-yellow-500' },
       { icon: 'mdi:credit-card-outline', label: 'Payments', id: 'exist-sales-payments', link: 'sathya-exist-payments', permission: 'sathya-exist-payments', dotColor: 'bg-yellow-500' },
       { icon: 'mdi:cancel', label: 'Cancel Orders', id: 'exist-sales-cancel-orders', link: 'sathya-exist-cancel-orders', permission: 'sathya-exist-cancel-orders', dotColor: 'bg-yellow-500' },
+      { icon: 'mdi:history', label: 'Order History', id: 'exist-sales-order-history', link: 'sathya-exist-order-history', permission: 'sathya-exist-order-history', dotColor: 'bg-yellow-500' },
     ],
   },
   {
