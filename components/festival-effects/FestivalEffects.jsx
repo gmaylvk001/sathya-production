@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import FireworksEffect from "./FireworksEffect";
-import SnowEffect from "./SnowEffect";
+import dynamic from "next/dynamic";
+
+const FireworksEffect = dynamic(() => import("./FireworksEffect"), { ssr: false });
+const SnowEffect = dynamic(() => import("./SnowEffect"), { ssr: false });
 
 const EFFECT_MAP = {
   fireworks: FireworksEffect,

@@ -79,6 +79,9 @@ export default function CategoryTopBanner({
         <img
           src={imageSrc}
           alt="Category banner"
+          fetchPriority="high"
+          loading="eager"
+          decoding="async"
           className="w-full h-auto object-cover max-h-[420px]"
         />
       </picture>

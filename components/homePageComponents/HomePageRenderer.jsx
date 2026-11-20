@@ -3,20 +3,25 @@
 import { useEffect, useRef, useState } from "react";
 import { useRegion } from "@/context/RegionContext";
 import { COMPONENT_TYPES } from "@/lib/categoryPageComponents/registry";
+import dynamic from "next/dynamic";
 import CategoryTopBanner from "@/components/categoryPageComponents/categoryTopbanner";
-import CategoryImageCarousel from "@/components/categoryPageComponents/categoryImageCarousel";
-import CategoryProductCarousel from "@/components/categoryPageComponents/categoryProductCarousel";
-import CategoryBannerSideProducts from "@/components/categoryPageComponents/categoryBannerSideProducts";
-import CategoryBannerFourProducts from "@/components/categoryPageComponents/categoryBannerFourProducts";
-import CategoryBannerGrid from "@/components/categoryPageComponents/categoryBannerGrid";
-import CategoryImageColumns from "@/components/categoryPageComponents/categoryImageColumns";
-import CategorySingleBannerProducts from "@/components/categoryPageComponents/categorySingleBannerProducts";
-import CategoryBrandCarousel from "@/components/categoryPageComponents/categoryBrandCarousel";
-import CategoryImageHotspotBanner from "@/components/categoryPageComponents/categoryImageHotspotBanner";
-import CategoryContentBlock from "@/components/categoryPageComponents/categoryContent";
-import CategorySplitBanner from "@/components/categoryPageComponents/categorySplitBanner";
 import CategoryCircleImageCarousel from "@/components/categoryPageComponents/categoryCircleImageCarousel";
-import TrendingVideoSection from "@/components/TrendingVideoSection";
+
+const CategoryImageCarousel = dynamic(() => import("@/components/categoryPageComponents/categoryImageCarousel"));
+const CategoryProductCarousel = dynamic(() => import("@/components/categoryPageComponents/categoryProductCarousel"));
+const CategoryBannerSideProducts = dynamic(() => import("@/components/categoryPageComponents/categoryBannerSideProducts"));
+const CategoryBannerFourProducts = dynamic(() => import("@/components/categoryPageComponents/categoryBannerFourProducts"));
+const CategoryBannerGrid = dynamic(() => import("@/components/categoryPageComponents/categoryBannerGrid"));
+const CategoryImageColumns = dynamic(() => import("@/components/categoryPageComponents/categoryImageColumns"));
+const CategorySingleBannerProducts = dynamic(() => import("@/components/categoryPageComponents/categorySingleBannerProducts"));
+const CategoryBrandCarousel = dynamic(() => import("@/components/categoryPageComponents/categoryBrandCarousel"));
+const CategoryImageHotspotBanner = dynamic(() => import("@/components/categoryPageComponents/categoryImageHotspotBanner"));
+const CategoryContentBlock = dynamic(() => import("@/components/categoryPageComponents/categoryContent"));
+const CategorySplitBanner = dynamic(() => import("@/components/categoryPageComponents/categorySplitBanner"));
+const TrendingVideoSection = dynamic(() => import("@/components/TrendingVideoSection"));
+
+// In-memory cache to prevent layout shift and avoid re-fetching on client navigation
+const homeRenderCache = new Map();
 
 /**
  * Renders Home Settings page-builder components in saved admin order.
@@ -24,18 +29,22 @@ import TrendingVideoSection from "@/components/TrendingVideoSection";
  */
 export default function HomePageRenderer({ onHasDesign }) {
   const { region } = useRegion();
-  const [components, setComponents] = useState([]);
-  const [loaded, setLoaded] = useState(false);
+  const targetRegion = (region || "all").toLowerCase();
+  const cached = homeRenderCache.get(targetRegion);
+
+  const [components, setComponents] = useState(cached || []);
+  const [loaded, setLoaded] = useState(Boolean(cached && cached.length > 0));
   const onHasDesignRef = useRef(onHasDesign);
   onHasDesignRef.current = onHasDesign;
 
   useEffect(() => {
     let cancelled = false;
-    setLoaded(false);
+    if (!homeRenderCache.has(targetRegion)) {
+      setLoaded(false);
+    }
 
     const load = async () => {
       try {
-        const targetRegion = region || "all";
         const res = await fetch(
           `/api/home-pages/render?region=${encodeURIComponent(targetRegion)}`
         );
@@ -43,11 +52,12 @@ export default function HomePageRenderer({ onHasDesign }) {
         if (cancelled) return;
 
         const list = data.success ? data.components || [] : [];
+        homeRenderCache.set(targetRegion, list);
         setComponents(list);
         onHasDesignRef.current?.(list.length > 0);
       } catch (err) {
         console.error("HomePageRenderer:", err);
-        if (!cancelled) {
+        if (!cancelled && !homeRenderCache.has(targetRegion)) {
           setComponents([]);
           onHasDesignRef.current?.(false);
         }
@@ -60,7 +70,7 @@ export default function HomePageRenderer({ onHasDesign }) {
     return () => {
       cancelled = true;
     };
-  }, [region]);
+  }, [targetRegion]);
 
   if (!loaded) {
     return (
