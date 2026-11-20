@@ -67,16 +67,50 @@ function formatDateTime(value) {
   return formatExistDateYmd(value);
 }
 
+function getPageItems(current, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  const items = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) items.push("left-ellipsis");
+  for (let i = start; i <= end; i += 1) items.push(i);
+  if (end < total - 1) items.push("right-ellipsis");
+  items.push(total);
+  return items;
+}
+
+function toDayBoundary(value, isEnd) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  if (isEnd) date.setHours(23, 59, 59, 999);
+  else date.setHours(0, 0, 0, 0);
+  return date.toISOString();
+}
+
 export default function ExistSathyaOrdersComponent() {
   const [orders, setOrders] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [pageCount, setPageCount] = useState(1);
+  const [collectionTotal, setCollectionTotal] = useState(0);
+  const [filterDeleteCount, setFilterDeleteCount] = useState(0);
+  const [filterOptions, setFilterOptions] = useState({
+    order_status: [],
+    delivery_type: [],
+    type: [],
+    api_status: [],
+  });
+  const [loadError, setLoadError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [deliveryFilter, setDeliveryFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [apiStatusFilter, setApiStatusFilter] = useState("");
   const [moveFilter, setMoveFilter] = useState("");
   const [dateFilter, setDateFilter] = useState({ startDate: null, endDate: null });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(20);
   const [showAlert, setShowAlert] = useState(false);
@@ -90,20 +124,68 @@ export default function ExistSathyaOrdersComponent() {
   const [viewOrder, setViewOrder] = useState(null);
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  const fetchOrders = async () => {
-    setIsLoading(true);
-    try {
-      const response = await axios.get("/api/exist_sathya_orders/get");
-      setOrders(Array.isArray(response.data) ? response.data : []);
-    } catch (error) {
-      console.error("Error fetching exist sathya orders:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadOrders = async () => {
+      setIsLoading(true);
+      setLoadError("");
+      try {
+        const params = { page: currentPage, limit: itemsPerPage };
+        if (debouncedSearch) params.q = debouncedSearch;
+        if (statusFilter) params.order_status = statusFilter;
+        if (deliveryFilter) params.delivery_type = deliveryFilter;
+        if (typeFilter) params.type = typeFilter;
+        if (apiStatusFilter) params.api_status = apiStatusFilter;
+        if (moveFilter) params.move = moveFilter;
+        if (dateFilter.startDate && dateFilter.endDate) {
+          params.start = toDayBoundary(dateFilter.startDate, false);
+          params.end = toDayBoundary(dateFilter.endDate, true);
+        }
+        const response = await axios.get("/api/exist_sathya_orders/get", { params });
+        if (cancelled) return;
+        const body = response.data || {};
+        const nextTotal = Number(body.total) || 0;
+        const nextPageCount = Math.max(1, Number(body.totalPages) || 1);
+        setOrders(Array.isArray(body.data) ? body.data : []);
+        setTotalCount(nextTotal);
+        setPageCount(nextPageCount);
+        setCollectionTotal(Number(body.collectionTotal) || 0);
+        setFilterDeleteCount(Number(body.filterDeleteCount) || 0);
+        if (body.options) setFilterOptions(body.options);
+        if (currentPage > nextPageCount) setCurrentPage(nextPageCount);
+      } catch (error) {
+        if (cancelled) return;
+        console.error("Error fetching exist sathya orders:", error);
+        setOrders([]);
+        setTotalCount(0);
+        setLoadError(error.response?.data?.message || "Could not load orders. Please try again.");
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    loadOrders();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    currentPage,
+    debouncedSearch,
+    statusFilter,
+    deliveryFilter,
+    typeFilter,
+    apiStatusFilter,
+    moveFilter,
+    dateFilter.startDate,
+    dateFilter.endDate,
+    reloadKey,
+    itemsPerPage,
+  ]);
 
   const handleDelete = async (orderId) => {
     try {
@@ -115,7 +197,7 @@ export default function ExistSathyaOrdersComponent() {
         setAlertMessage("✅ Order deleted successfully!");
         setShowAlert(true);
         setTimeout(() => setShowAlert(false), 3000);
-        fetchOrders();
+        setReloadKey((key) => key + 1);
       }
     } catch (error) {
       setAlertMessage("❌ Error deleting order");
@@ -155,7 +237,8 @@ export default function ExistSathyaOrdersComponent() {
       setShowAlert(true);
       setTimeout(() => setShowAlert(false), 4000);
       setImportFile(null);
-      fetchOrders();
+      setCurrentPage(1);
+      setReloadKey((key) => key + 1);
     } catch (error) {
       setAlertMessage(error.response?.data?.error || "❌ Import failed");
       setShowAlert(true);
@@ -165,46 +248,11 @@ export default function ExistSathyaOrdersComponent() {
     }
   };
 
-  const uniqueOptions = (key) => [...new Set(orders.map((order) => order[key]).filter((value) => value !== undefined && value !== null && String(value).trim() !== ""))];
-  const statusOptions = uniqueOptions("order_status");
-  const deliveryOptions = uniqueOptions("delivery_type");
-  const typeOptions = uniqueOptions("type");
-  const apiStatusOptions = uniqueOptions("api_status");
-
-  const filteredOrders = orders.filter((order) => {
-    const q = searchQuery.toLowerCase();
-    const matchesSearch =
-      searchQuery === "" ||
-      [order.exist_id, order.order_number, order.order_username, order.order_phonenumber, order.user_id, order.pickup_type]
-        .some((value) => value && String(value).toLowerCase().includes(q));
-
-    const matchesStatus = statusFilter === "" || String(order.order_status || "") === statusFilter;
-    const matchesDelivery = deliveryFilter === "" || String(order.delivery_type || "") === deliveryFilter;
-    const matchesType = typeFilter === "" || String(order.type || "") === typeFilter;
-    const matchesApiStatus = apiStatusFilter === "" || String(order.api_status || "") === apiStatusFilter;
-    let matchesMove = true;
-    if (moveFilter === "unmoved") {
-      matchesMove = !order.is_moved;
-    } else if (moveFilter === "moved") {
-      matchesMove = Boolean(order.is_moved);
-    }
-
-    let matchesDate = true;
-    if (dateFilter.startDate && dateFilter.endDate && order.created_at) {
-      const orderDate = new Date(order.created_at);
-      const startDate = new Date(dateFilter.startDate);
-      const endDate = new Date(dateFilter.endDate);
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-      matchesDate = orderDate >= startDate && orderDate <= endDate;
-    }
-
-    return matchesSearch && matchesStatus && matchesDelivery && matchesType && matchesApiStatus && matchesMove && matchesDate;
-  });
-
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentOrders = filteredOrders.slice(indexOfFirstItem, indexOfLastItem);
+  const statusOptions = filterOptions.order_status || [];
+  const deliveryOptions = filterOptions.delivery_type || [];
+  const typeOptions = filterOptions.type || [];
+  const apiStatusOptions = filterOptions.api_status || [];
+  const currentOrders = orders;
   const currentPageIds = currentOrders.map((order) => String(order._id));
   const allCurrentSelected =
     currentPageIds.length > 0 && currentPageIds.every((id) => selectedIds.includes(id));
@@ -237,7 +285,7 @@ export default function ExistSathyaOrdersComponent() {
       setTimeout(() => setShowAlert(false), 3000);
       setSelectedIds([]);
       setCurrentPage(1);
-      fetchOrders();
+      setReloadKey((key) => key + 1);
     } catch (error) {
       setAlertMessage(error.response?.data?.error || "❌ Error deleting orders");
       setShowAlert(true);
@@ -256,18 +304,6 @@ export default function ExistSathyaOrdersComponent() {
     if (moveFilter === "moved" || moveFilter === "unmoved") payload.move_status = moveFilter;
     return payload;
   };
-
-  const filterDeleteCount = orders.filter((order) => {
-    const payload = getFilterPayload();
-    if (!Object.keys(payload).length) return false;
-    if (payload.order_status && String(order.order_status || "") !== payload.order_status) return false;
-    if (payload.delivery_type && String(order.delivery_type || "") !== payload.delivery_type) return false;
-    if (payload.type && String(order.type || "") !== payload.type) return false;
-    if (payload.api_status && String(order.api_status || "") !== payload.api_status) return false;
-    if (payload.move_status === "moved" && !order.is_moved) return false;
-    if (payload.move_status === "unmoved" && order.is_moved) return false;
-    return true;
-  }).length;
 
   const handleDeleteByFilters = async () => {
     const payload = getFilterPayload();
@@ -300,7 +336,7 @@ export default function ExistSathyaOrdersComponent() {
       setTimeout(() => setShowAlert(false), 3000);
       setSelectedIds([]);
       setCurrentPage(1);
-      fetchOrders();
+      setReloadKey((key) => key + 1);
     } catch (error) {
       setAlertMessage(error.response?.data?.error || "❌ Error deleting orders");
       setShowAlert(true);
@@ -311,9 +347,9 @@ export default function ExistSathyaOrdersComponent() {
   };
 
   const handleDeleteAll = async () => {
-    if (!orders.length) return;
+    if (!collectionTotal) return;
     const confirmed = window.confirm(
-      `Delete ALL ${orders.length} Sathya Exist Orders? This cannot be undone.`
+      `Delete ALL ${collectionTotal} Sathya Exist Orders? This cannot be undone.`
     );
     if (!confirmed) return;
 
@@ -335,7 +371,7 @@ export default function ExistSathyaOrdersComponent() {
       setTimeout(() => setShowAlert(false), 3000);
       setSelectedIds([]);
       setCurrentPage(1);
-      fetchOrders();
+      setReloadKey((key) => key + 1);
     } catch (error) {
       setAlertMessage(error.response?.data?.error || "❌ Error deleting orders");
       setShowAlert(true);
@@ -345,7 +381,8 @@ export default function ExistSathyaOrdersComponent() {
     }
   };
 
-  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+  const startEntry = totalCount === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+  const endEntry = Math.min(currentPage * itemsPerPage, totalCount);
 
   return (
     <div className="container mx-auto">
@@ -353,10 +390,7 @@ export default function ExistSathyaOrdersComponent() {
         <h2 className="text-2xl font-bold">Sathya Exist Orders</h2>
       </div>
 
-      {isLoading ? (
-        <p>Loading...</p>
-      ) : (
-        <div className="bg-white shadow-md rounded-lg p-5 mb-5 overflow-x-auto border border-gray-200">
+      <div className="bg-white shadow-md rounded-lg p-5 mb-5 overflow-x-auto border border-gray-200">
           <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-8 gap-4 items-end mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
@@ -478,15 +512,18 @@ export default function ExistSathyaOrdersComponent() {
             </button>
             <button
               onClick={handleDeleteAll}
-              disabled={isBulkDeleting || orders.length === 0}
+              disabled={isBulkDeleting || collectionTotal === 0}
               className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-md transition disabled:opacity-50"
             >
-              {isBulkDeleting ? "Deleting..." : `Delete all (${orders.length})`}
+              {isBulkDeleting ? "Deleting..." : `Delete all (${collectionTotal})`}
             </button>
           </div>
 
           {showAlert && !isImportOpen && (
             <div className="bg-green-500 text-white px-4 py-2 rounded-md mb-4 text-center">{alertMessage}</div>
+          )}
+          {loadError && (
+            <div className="bg-red-500 text-white px-4 py-2 rounded-md mb-4 text-center">{loadError}</div>
           )}
 
           <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -534,7 +571,11 @@ export default function ExistSathyaOrdersComponent() {
               </tr>
             </thead>
             <tbody>
-              {currentOrders.length > 0 ? (
+              {isLoading ? (
+                <tr>
+                  <td colSpan="15" className="p-2 text-center text-gray-500">Loading...</td>
+                </tr>
+              ) : currentOrders.length > 0 ? (
                 currentOrders.map((order, index) => (
                   <tr key={order._id || index} className="text-center border-b">
                     <td className="p-2">
@@ -591,10 +632,10 @@ export default function ExistSathyaOrdersComponent() {
             </tbody>
           </table>
 
-          {totalPages > 1 && (
+          {totalCount > 0 && (
             <div className="flex justify-between items-center mt-4">
               <div className="text-sm text-gray-600">
-                Showing {indexOfFirstItem + 1} to {Math.min(indexOfLastItem, filteredOrders.length)} of {filteredOrders.length} entries
+                Showing {startEntry} to {endEntry} of {totalCount} entries
               </div>
               <div className="flex items-center space-x-1">
                 <button
@@ -604,18 +645,22 @@ export default function ExistSathyaOrdersComponent() {
                 >
                   «
                 </button>
-                {Array.from({ length: totalPages }, (_, i) => (
-                  <button
-                    key={i + 1}
-                    onClick={() => setCurrentPage(i + 1)}
-                    className={`px-3 py-1.5 border rounded-md ${currentPage === i + 1 ? "bg-red-500 text-white" : "bg-white"}`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
+                {getPageItems(currentPage, pageCount).map((item) =>
+                  typeof item === "number" ? (
+                    <button
+                      key={item}
+                      onClick={() => setCurrentPage(item)}
+                      className={`px-3 py-1.5 border rounded-md ${currentPage === item ? "bg-red-500 text-white" : "bg-white"}`}
+                    >
+                      {item}
+                    </button>
+                  ) : (
+                    <span key={item} className="px-2 text-gray-500">…</span>
+                  )
+                )}
                 <button
-                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((page) => Math.min(pageCount, page + 1))}
+                  disabled={currentPage === pageCount}
                   className="px-3 py-1.5 border rounded-md disabled:text-gray-400"
                 >
                   »
@@ -624,7 +669,6 @@ export default function ExistSathyaOrdersComponent() {
             </div>
           )}
         </div>
-      )}
 
       {viewOrder && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
