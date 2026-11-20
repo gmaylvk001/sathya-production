@@ -21,6 +21,16 @@ function parseDateValue(value) {
   return parseExistUserSheetDate(value);
 }
 
+function sheetDateIsEmpty(value) {
+  if (value === undefined || value === null || value === "") return true;
+  if (typeof value === "object" && !(value instanceof Date)) {
+    const text = String(value.w ?? "").trim();
+    const raw = value.v;
+    return text === "" && (raw === undefined || raw === null || raw === "");
+  }
+  return false;
+}
+
 function parseExistId(value) {
   if (value === undefined || value === null || value === "") return null;
   if (typeof value === "number" && Number.isFinite(value)) return String(Math.trunc(value));
@@ -87,7 +97,10 @@ function mapRowToDetail(row) {
     const raw = getCell(row, headerMap, fieldAliases(field));
 
     if (DATE_FIELDS.has(field)) {
-      detail[field] = parseDateValue(raw) || now;
+      const parsed = parseDateValue(raw);
+      if (parsed) detail[field] = parsed;
+      else if (sheetDateIsEmpty(raw)) detail[field] = now;
+      else detail[field] = null;
       continue;
     }
     if (EXIST_SATHYA_ORDER_DETAIL_NUMBER_FIELDS.has(field)) {
