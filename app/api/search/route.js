@@ -34,7 +34,7 @@ function escapeRegExp(str = "") {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-const SEARCH_CARD_PROJECTION = "name slug price special_price lsp usingLsp isUnilet stock_status quantity brand brand_name images rating model_number search_keywords item_code category sub_category createdAt product_type movement";
+const SEARCH_CARD_PROJECTION = "name slug price special_price lsp usingLsp isUnilet stock_status quantity brand brand_name images rating model_number search_keywords item_code category sub_category sub_category_new_name createdAt product_type movement";
 
 let cachedCategories = null;
 let categoryCacheTime = 0;
@@ -740,7 +740,7 @@ export async function GET(req) {
     if (query) {
       console.time("search_query");
       try {
-        const candidateLimit = query.length <= 3 ? 300 : 150;
+        const candidateLimit = hasPriceFilter ? 2000 : query.length <= 3 ? 300 : 150;
         candidates = await productsQuery
           .select(SEARCH_CARD_PROJECTION)
           .sort({ createdAt: -1, _id: -1 })

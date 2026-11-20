@@ -1366,7 +1366,13 @@ const Header = () => {
       return;
     }
     setSearchDropdownVisible(false);
-    router.push(`/search?query=${encodeURIComponent(searchTerm)}`);
+    const params = new URLSearchParams();
+    params.set("query", searchTerm);
+    const cat = (selectedCategory || "").trim();
+    if (cat && cat !== "All Category" && cat !== "All Categories") {
+      params.set("category", cat);
+    }
+    router.push(`/search?${params.toString()}`);
   };
   useEffect(() => {
     let mounted = true;

@@ -28,6 +28,13 @@ export default function SearchPage() {
   const router = useRouter();
   const params = useSearchParams();
   const searchQuery = (params.get("query") || params.get("q") || "").replace(/\+/g, " ").trim();
+  const urlCategoryParam = (params.get("category") || "").trim();
+  const categoryFromUrl =
+    urlCategoryParam &&
+    urlCategoryParam !== "All Category" &&
+    urlCategoryParam !== "All Categories"
+      ? urlCategoryParam
+      : "";
   const { region, isInitialized } = useRegion();
 
   useEffect(() => {
@@ -544,7 +551,10 @@ export default function SearchPage() {
     e.preventDefault();
     const searchTerm = (searchInput || "").trim();
     if (!searchTerm) return;
-    router.push(`/search?query=${encodeURIComponent(searchTerm)}`);
+    const next = new URLSearchParams();
+    next.set("query", searchTerm);
+    if (categoryFromUrl) next.set("category", categoryFromUrl);
+    router.push(`/search?${next.toString()}`);
   };
 
   return (
@@ -552,9 +562,9 @@ export default function SearchPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
           Search Results {searchQuery && <span>for &lsquo;{searchQuery}&rsquo;</span>}
-          {selectedCategory && (
+          {(selectedCategory || categoryFromUrl) && (
             <span className="text-sm md:text-base font-normal text-gray-500 block sm:inline sm:ml-2">
-              in <strong className="text-red-600 font-semibold">{selectedCategory}</strong>
+              in <strong className="text-red-600 font-semibold">{selectedCategory || categoryFromUrl}</strong>
             </span>
           )}
         </h1>

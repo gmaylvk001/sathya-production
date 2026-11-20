@@ -3,7 +3,7 @@ import Product from "@/models/product";
 import Category from "@/models/ecom_category_info";
 import { NextResponse } from "next/server";
 import { getActiveBrandsForSearch } from "@/lib/brandSearch";
-import { escapeRegExp } from "@/lib/searchMatch";
+import { escapeRegExp, parseSearchPriceIntent } from "@/lib/searchMatch";
 import { applyRegionPrices, readRequestRegion } from "@/lib/priceResolver";
 
 export const runtime = "nodejs";
@@ -44,11 +44,15 @@ export async function GET(req) {
     const limit = Math.min(24, Math.max(1, parseInt(searchParams.get("limit"), 10) || 8));
     const region = readRequestRegion(req);
 
-    const q = sanitizeInput(rawQuery).replace(/\s+/g, " ");
+    const priceIntent = parseSearchPriceIntent(rawQuery);
+    const q = sanitizeInput(
+      priceIntent.hasPriceIntent ? priceIntent.cleanedQuery : rawQuery
+    ).replace(/\s+/g, " ");
     const category = rawCategory;
+    const hasTextQuery = q.length >= 2;
 
-    // Minimum 2 characters for search query
-    if (!q || q.length < 2) {
+    // Minimum 2 characters unless the query is only a price range.
+    if (!hasTextQuery && !priceIntent.hasPriceIntent) {
       return NextResponse.json({
         success: true,
         results: [],
@@ -62,7 +66,7 @@ export async function GET(req) {
       });
     }
 
-    const cacheKey = `${region}|${q.toLowerCase()}|${category.toLowerCase()}|p${page}|l${limit}`;
+    const cacheKey = `${region}|${q.toLowerCase()}|${category.toLowerCase()}|${priceIntent.minPrice ?? ""}|${priceIntent.maxPrice ?? ""}|p${page}|l${limit}`;
     const cached = getCached(cacheKey);
     if (cached) {
       return NextResponse.json(cached, {
@@ -71,12 +75,21 @@ export async function GET(req) {
     }
 
     await dbConnect();
+
+    let qLower = "";
+    let isShort = false;
+    let escapedQ = "";
+    let tokens = [];
+    let brandId = null;
+    let orConditions = null;
+
+    if (hasTextQuery) {
     const brands = await getActiveBrandsForSearch();
 
-    const qLower = q.toLowerCase();
-    const isShort = q.length <= 2;
-    const escapedQ = escapeRegExp(q);
-    const tokens = qLower.split(/\s+/).filter(Boolean);
+    qLower = q.toLowerCase();
+    isShort = q.length <= 2;
+    escapedQ = escapeRegExp(q);
+    tokens = qLower.split(/\s+/).filter(Boolean);
 
     // Detect matched brand
     const matchedBrand = (brands || []).find((b) => {
@@ -89,13 +102,13 @@ export async function GET(req) {
           (bName.length >= 4 && qLower.startsWith(bName)))
       );
     });
-    const brandId = matchedBrand ? String(matchedBrand._id) : null;
+    brandId = matchedBrand ? String(matchedBrand._id) : null;
 
     // Build database search conditions using indexed fields:
     // 1. Prefix regexes on indexed fields (name, item_code, model_number, sub_category_new_name)
     // 2. Matched brand lookup using indexed status_1_brand_1
     // 3. Text search using product_search_text_idx
-    const orConditions = [
+    orConditions = [
       { status: "Active", name: new RegExp(`^${escapedQ}`, "i") },
       { status: "Active", item_code: new RegExp(`^${escapedQ}`, "i") },
       { status: "Active", model_number: new RegExp(`^${escapedQ}`, "i") },
@@ -123,27 +136,80 @@ export async function GET(req) {
       orConditions.push({ status: "Active", sub_category_new_name: /air condition/i });
       orConditions.push({ status: "Active", search_keywords: /air condition/i });
     }
+    }
 
     // Category filter mapping & exclude gift products
     const nonGiftCondition = {
       product_type: { $nin: ["gift", "Gift", "GIFT"] },
       movement: { $not: /gift/i },
     };
-    let matchFilter = { $and: [{ $or: orConditions }, nonGiftCondition] };
+    const matchFilter = hasTextQuery
+      ? { $and: [{ $or: orConditions }, nonGiftCondition] }
+      : { $and: [{ status: "Active" }, nonGiftCondition] };
     const catLower = category.toLowerCase().trim();
     if (category && catLower !== "all category" && catLower !== "all categories") {
       const categoryDoc = await Category.findOne({
         category_name: { $regex: new RegExp(`^${escapeRegExp(category)}$`, "i") },
         status: "Active",
-      }).select("md5_cat_name");
+      }).select("_id md5_cat_name");
 
-      const categoryFilter = categoryDoc?.md5_cat_name
-        ? { sub_category_new: { $regex: categoryDoc.md5_cat_name, $options: "i" } }
-        : { sub_category_new_name: { $regex: escapeRegExp(category), $options: "i" } };
+      // Price searches use the same category plus its child categories as the results page.
+      // A normal name search keeps the previous single-category suggestion filter.
+      if (priceIntent.hasPriceIntent && categoryDoc?._id) {
+        const collectChildren = async (parentId) => {
+          const children = await Category.find({ parentid: parentId }).select("_id md5_cat_name").lean();
+          const docs = [];
+          for (const child of children) {
+            docs.push(child);
+            docs.push(...(await collectChildren(child._id)));
+          }
+          return docs;
+        };
+        const allDocs = [categoryDoc, ...(await collectChildren(categoryDoc._id))];
+        const idStrings = [];
+        const seen = new Set();
+        for (const doc of allDocs) {
+          const id = String(doc._id);
+          if (!seen.has(id)) {
+            seen.add(id);
+            idStrings.push(id);
+          }
+        }
+        matchFilter.$and.push({
+          $or: [
+            { category: { $in: idStrings } },
+            { sub_category: { $in: idStrings } },
+          ],
+        });
+      } else {
+        const categoryFilter = categoryDoc?.md5_cat_name
+          ? { sub_category_new: { $regex: categoryDoc.md5_cat_name, $options: "i" } }
+          : { sub_category_new_name: { $regex: escapeRegExp(category), $options: "i" } };
+        matchFilter.$and.push(categoryFilter);
+      }
+    }
 
-      matchFilter = {
-        $and: [{ $or: orConditions }, nonGiftCondition, categoryFilter],
-      };
+    if (priceIntent.hasPriceIntent) {
+      const min = priceIntent.minPrice != null ? priceIntent.minPrice : 0;
+      const max = priceIntent.maxPrice != null ? priceIntent.maxPrice : 1000000;
+      matchFilter.$and.push({
+        $or: [
+          {
+            $and: [
+              { special_price: { $exists: true } },
+              { special_price: { $ne: null } },
+              { special_price: { $ne: 0 } },
+              { special_price: { $gte: min, $lte: max } },
+            ],
+          },
+          {
+            $and: [
+              { $or: [{ special_price: { $exists: false } }, { special_price: null }, { special_price: 0 }] },
+              { price: { $gte: min, $lte: max } },
+            ],
+          },
+        ],
+      });
     }
 
     // Token relevance boosts
@@ -167,7 +233,7 @@ export async function GET(req) {
     const skip = (page - 1) * limit;
 
     // Production single-roundtrip aggregation pipeline with relevance ranking and pagination
-    const pipeline = [
+    const textPipeline = [
       { $match: matchFilter },
       {
         $addFields: {
@@ -287,6 +353,36 @@ export async function GET(req) {
         },
       },
     ];
+
+    const pipeline = hasTextQuery
+      ? textPipeline
+      : [
+          { $match: matchFilter },
+          {
+            $facet: {
+              totalCount: [{ $count: "count" }],
+              items: [
+                { $sort: { createdAt: -1, _id: -1 } },
+                { $skip: skip },
+                { $limit: limit },
+                {
+                  $project: {
+                    _id: 1,
+                    name: 1,
+                    slug: 1,
+                    price: 1,
+                    special_price: 1,
+                    images: 1,
+                    brand: 1,
+                    sub_category_new_name: 1,
+                    item_code: 1,
+                    model_number: 1,
+                  },
+                },
+              ],
+            },
+          },
+        ];
 
     const [aggResult] = await Product.aggregate(pipeline);
     const total = aggResult?.totalCount?.[0]?.count || 0;
