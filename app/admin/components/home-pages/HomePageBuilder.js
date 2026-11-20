@@ -193,11 +193,10 @@ export default function HomePageBuilder() {
                   </span>
                   <div className="flex items-center gap-3 shrink-0">
                     <span
-                      className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
-                        c.isActive !== false
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded ${c.isActive !== false
                           ? "bg-green-100 text-green-700"
                           : "bg-red-100 text-red-600"
-                      }`}
+                        }`}
                     >
                       {c.isActive !== false ? "ON" : "OFF"}
                     </span>
@@ -479,7 +478,7 @@ export default function HomePageBuilder() {
       },
       [COMPONENT_TYPES.CIRCLE_IMAGE_CAROUSEL]: {
         Form: CircleImageCarouselConfigForm,
-        label: "Circle Image Carousel",
+        label: "Category Cards Carousel",
         extra: { apiBase: "/api/home-circle-image-carousel" },
       },
     };
@@ -549,11 +548,10 @@ export default function HomePageBuilder() {
                     key={comp.type}
                     type="button"
                     onClick={() => selectComponent(comp.type)}
-                    className={`w-full text-left rounded-xl border overflow-hidden transition hover:border-[#ED1C24] ${
-                      configType === comp.type
+                    className={`w-full text-left rounded-xl border overflow-hidden transition hover:border-[#ED1C24] ${configType === comp.type
                         ? "border-[#ED1C24] ring-1 ring-[#ED1C24]"
                         : "border-gray-200"
-                    }`}
+                      }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img

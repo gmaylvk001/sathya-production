@@ -119,15 +119,15 @@ const splitByNearestSpace = (text, maxChars = 24) => {
 const HEADER_ACTION_LINK_CLASS =
   "group flex flex-col items-center gap-1 rounded-xl px-1 py-0.5 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0 active:scale-95";
 const HEADER_ACTION_ICON_WRAP_CLASS =
-  "relative flex h-9 w-9 items-center justify-center rounded-xl border border-[#ED1C24]/25 bg-gradient-to-b from-[#fffdf5] to-white text-[#ED1C24] shadow-[0_1px_2px_rgba(215,40,40,0.08)] transition-all duration-200 group-hover:border-[#ED1C24] group-hover:bg-[#FFF200] group-hover:text-[#C4161D] group-hover:shadow-[0_4px_10px_rgba(215,40,40,0.18)]";
+  "header-action-icon-wrap relative flex h-9 w-9 items-center justify-center rounded-xl border border-[#ED1C24]/25 bg-gradient-to-b from-[#fffdf5] to-white text-[#ED1C24] shadow-[0_1px_2px_rgba(215,40,40,0.08)] transition-all duration-200 group-hover:border-[#ED1C24] group-hover:bg-[#FFF200] group-hover:text-[#C4161D] group-hover:shadow-[0_4px_10px_rgba(215,40,40,0.18)]";
 const HEADER_ACTION_ICON_WRAP_SM_CLASS =
-  "relative flex h-8 w-8 items-center justify-center rounded-lg border border-[#ED1C24]/25 bg-gradient-to-b from-[#fffdf5] to-white text-[#ED1C24] shadow-[0_1px_2px_rgba(215,40,40,0.08)] transition-all duration-200 group-hover:border-[#ED1C24] group-hover:bg-[#FFF200] group-hover:text-[#C4161D]";
+  "header-action-icon-wrap relative flex h-8 w-8 items-center justify-center rounded-lg border border-[#ED1C24]/25 bg-gradient-to-b from-[#fffdf5] to-white text-[#ED1C24] shadow-[0_1px_2px_rgba(215,40,40,0.08)] transition-all duration-200 group-hover:border-[#ED1C24] group-hover:bg-[#FFF200] group-hover:text-[#C4161D]";
 const HEADER_ACTION_LABEL_CLASS =
-  "text-[#ED1C24] font-semibold leading-none transition-colors duration-200 group-hover:text-[#C4161D]";
+  "header-action-label text-[#ED1C24] font-semibold leading-none transition-colors duration-200 group-hover:text-[#C4161D]";
 const HEADER_ACTION_BADGE_CLASS =
-  "absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 text-[9px] font-bold bg-[#ED1C24] text-[#FFF200] rounded-full flex items-center justify-center ring-2 ring-white";
+  "header-action-badge absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 text-[9px] font-bold bg-[#ED1C24] text-[#FFF200] rounded-full flex items-center justify-center ring-2 ring-white";
 const HEADER_ACTION_BADGE_SM_CLASS =
-  "absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 px-0.5 text-[8px] font-bold bg-[#ED1C24] text-[#FFF200] rounded-full flex items-center justify-center ring-2 ring-white";
+  "header-action-badge absolute -top-1.5 -right-1.5 min-w-[14px] h-3.5 px-0.5 text-[8px] font-bold bg-[#ED1C24] text-[#FFF200] rounded-full flex items-center justify-center ring-2 ring-white";
 
 
 
@@ -922,6 +922,112 @@ const Header = () => {
       .catch(() => { });
     return () => { mounted = false; };
   }, []);
+
+  // Dynamic Navbar & Header Top Bar Styling
+  const [navbarSettings, setNavbarSettings] = useState({
+    bgType: "solid",
+    bgColor: "#ED1C24",
+    gradientStart: "#ED1C24",
+    gradientEnd: "#990000",
+    gradientDirection: "to right",
+    textColor: "#FFFFFF",
+    topBorderColor: "#FFF200",
+    showTopBorder: true,
+    topBarBg: "#FFFFFF",
+    searchBtnBgType: "solid",
+    searchBtnBg: "#ED1C24",
+    searchBtnGradientStart: "#ED1C24",
+    searchBtnGradientEnd: "#8B0000",
+    searchBtnGradientDirection: "to right",
+    searchBtnIconColor: "#FFFFFF",
+    searchBorderColor: "#e5e7eb",
+    searchFocusBorderColor: "#ED1C24",
+    actionIconColor: "#ED1C24",
+    actionIconBorderColor: "#ED1C24",
+    actionIconBg: "#FFFFFF",
+    actionLabelColor: "#ED1C24",
+    badgeBgColor: "#ED1C24",
+    badgeTextColor: "#FFF200",
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    const cacheKey = "sathya_navbar_settings_v1";
+    try {
+      const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
+      if (cached && typeof cached === "object") {
+        setNavbarSettings((prev) => ({ ...prev, ...cached }));
+      }
+    } catch { }
+
+    fetch("/api/navbar-settings", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (!mounted || !json?.data) return;
+        setNavbarSettings((prev) => ({ ...prev, ...json.data }));
+        try { localStorage.setItem(cacheKey, JSON.stringify(json.data)); } catch { }
+      })
+      .catch(() => { });
+
+    const handleStorageChange = (e) => {
+      if (e.key === cacheKey && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (parsed && typeof parsed === "object") {
+            setNavbarSettings((prev) => ({ ...prev, ...parsed }));
+          }
+        } catch { }
+      }
+    };
+    const handleCustomUpdate = () => {
+      try {
+        const cached = JSON.parse(localStorage.getItem(cacheKey) || "null");
+        if (cached && typeof cached === "object") {
+          setNavbarSettings((prev) => ({ ...prev, ...cached }));
+        }
+      } catch { }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("sathya_navbar_settings_updated", handleCustomUpdate);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("sathya_navbar_settings_updated", handleCustomUpdate);
+    };
+  }, []);
+
+  const navbarBackgroundStyle =
+    navbarSettings.bgType === "gradient"
+      ? `linear-gradient(${navbarSettings.gradientDirection || "to right"}, ${navbarSettings.gradientStart || "#ED1C24"}, ${navbarSettings.gradientEnd || "#990000"})`
+      : (navbarSettings.bgColor || "#ED1C24");
+
+  const navbarBorderTopStyle =
+    navbarSettings.showTopBorder !== false
+      ? `4px solid ${navbarSettings.topBorderColor || "#FFF200"}`
+      : "none";
+
+  const navbarTextColorStyle = navbarSettings.textColor || "#FFFFFF";
+
+  const searchBtnBackgroundStyle =
+    navbarSettings.searchBtnBgType === "gradient"
+      ? `linear-gradient(${navbarSettings.searchBtnGradientDirection || "to right"}, ${navbarSettings.searchBtnGradientStart || "#ED1C24"}, ${navbarSettings.searchBtnGradientEnd || "#8B0000"})`
+      : (navbarSettings.searchBtnBg || "#ED1C24");
+
+  const searchBtnIconColorStyle = navbarSettings.searchBtnIconColor || "#FFFFFF";
+  const searchBorderColorStyle = navbarSettings.searchBorderColor || "#e5e7eb";
+  const searchFocusBorderColorStyle = navbarSettings.searchFocusBorderColor || "#ED1C24";
+
+  const actionIconColorStyle = navbarSettings.actionIconColor || "#ED1C24";
+  const actionIconBorderColorStyle = navbarSettings.actionIconBorderColor || "#ED1C24";
+  const actionIconBgStyle = navbarSettings.actionIconBg || "#FFFFFF";
+  const actionLabelColorStyle = navbarSettings.actionLabelColor || "#ED1C24";
+
+  const badgeBgColorStyle = navbarSettings.badgeBgColor || "#ED1C24";
+  const badgeTextColorStyle = navbarSettings.badgeTextColor || "#FFF200";
+
+  const topBarBgStyle = navbarSettings.topBarBg || "#FFFFFF";
 
   // Red bar entries: admin-managed menu when configured, otherwise every active root category.
   // Category items resolve against the header's own tree so the dropdown keeps brands/subcategories.
@@ -3111,8 +3217,12 @@ const Header = () => {
               {/* Mobile Category Block (accordion) */}
               <div className=" bg-white rounded-md border border-gray-200 overflow-hidden">
                 <div
-                  className="text-white bg-[#ED1C24]"
-                  style={{ borderTop: "4px solid #FFF200" }}
+                  className="transition-colors duration-200"
+                  style={{
+                    background: navbarBackgroundStyle,
+                    borderTop: navbarBorderTopStyle,
+                    color: navbarTextColorStyle,
+                  }}
                 >
                   <div className="px-3 py-4 text-[14px] font-semibold tracking-wide">
                     Browse Category
@@ -3408,8 +3518,11 @@ const Header = () => {
         </div>
         {/* Category listing bar — red bar with yellow line on top (Sathya brand) */}
         <div
-          className="hidden sm:flex relative w-full min-h-[56px] items-center justify-center px-6 bg-[#ED1C24] shadow"
-          style={{ borderTop: "4px solid #FFF200" }}
+          className="hidden sm:flex relative w-full min-h-[56px] items-center justify-center px-6 shadow transition-all duration-200"
+          style={{
+            background: navbarBackgroundStyle,
+            borderTop: navbarBorderTopStyle,
+          }}
         >
           {/* Menu (when enabled) and the categories form one centred group. Both ends of the
               group carry the same 8px inset, so the bar stays balanced with Menu on or off. */}
@@ -3438,7 +3551,8 @@ const Header = () => {
             >
               <button
                 type="button"
-                className="h-full self-stretch pl-2 pr-6 flex items-center gap-2.5 text-white font-bold text-base bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent"
+                className="h-full self-stretch pl-2 pr-6 flex items-center gap-2.5 font-bold text-base bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent"
+                style={{ color: navbarTextColorStyle }}
                 aria-label="Open menu"
                 aria-expanded={showMenu}
                 onClick={() => {
@@ -3487,14 +3601,16 @@ const Header = () => {
                               href={entry.href}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-block origin-center text-base font-bold text-white hover:scale-105 transition-transform duration-150 whitespace-nowrap"
+                              style={{ color: navbarTextColorStyle }}
+                              className="inline-block origin-center text-base font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap"
                             >
                               {entry.label}
                             </a>
                           ) : (
                             <Link
                               href={entry.href}
-                              className="inline-block origin-center text-base font-bold text-white hover:scale-105 transition-transform duration-150 whitespace-nowrap"
+                              style={{ color: navbarTextColorStyle }}
+                              className="inline-block origin-center text-base font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap"
                             >
                               {entry.label}
                             </Link>
@@ -3524,7 +3640,8 @@ const Header = () => {
                                 category._id
                               );
                             }}
-                            className={`inline-block origin-center text-base font-bold text-white hover:scale-105 transition-transform duration-150 whitespace-nowrap ${isHovered ? "!scale-105" : ""}`}
+                            style={{ color: navbarTextColorStyle }}
+                            className={`inline-block origin-center text-base font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap ${isHovered ? "!scale-105" : ""}`}
                           >
                             {entry.label}
                           </Link>

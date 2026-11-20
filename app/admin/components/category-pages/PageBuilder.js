@@ -448,11 +448,10 @@ export default function PageBuilder({
                     key={comp.type}
                     type="button"
                     onClick={() => selectComponent(comp.type)}
-                    className={`w-full text-left rounded-xl border overflow-hidden transition hover:border-[#ED1C24] ${
-                      configType === comp.type
+                    className={`w-full text-left rounded-xl border overflow-hidden transition hover:border-[#ED1C24] ${configType === comp.type
                         ? "border-[#ED1C24] ring-1 ring-[#ED1C24]"
                         : "border-gray-200"
-                    }`}
+                      }`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
@@ -1124,7 +1123,7 @@ export default function PageBuilder({
                     label:
                       instanceLabels[c.instanceId] ||
                       c.title ||
-                      "Circle Image Carousel",
+                      "Category Cards Carousel",
                   }))}
                 onAddNew={addNewCircleCarouselSet}
                 onEditSet={(instanceId) => {
@@ -1132,7 +1131,7 @@ export default function PageBuilder({
                   setMessage("");
                 }}
                 onDeleteSet={() => {
-                  setMessage("Circle Image Carousel set deleted.");
+                  setMessage("Category Cards Carousel set deleted.");
                   load();
                 }}
                 onBackToList={() => {
@@ -1140,7 +1139,7 @@ export default function PageBuilder({
                   load();
                 }}
                 onSaved={() => {
-                  setMessage("Circle Image Carousel set saved.");
+                  setMessage("Category Cards Carousel set saved.");
                   load();
                 }}
               />

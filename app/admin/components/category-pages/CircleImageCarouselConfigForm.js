@@ -81,13 +81,13 @@ export default function CircleImageCarouselConfigForm({
           setItems(
             rows.length
               ? rows.map((it) => ({
-                  image: it.image || "",
-                  imageFile: null,
-                  imagePreview: it.image || "",
-                  imageName: it.imageName || "",
-                  slug: it.slug || it.url || "",
-                  isActive: it.isActive !== false,
-                }))
+                image: it.image || "",
+                imageFile: null,
+                imagePreview: it.image || "",
+                imageName: it.imageName || "",
+                slug: it.slug || it.url || "",
+                isActive: it.isActive !== false,
+              }))
               : [emptyItem()]
           );
         } else {
@@ -115,17 +115,17 @@ export default function CircleImageCarouselConfigForm({
     setError("");
     if (!name.trim()) {
       setError(
-        "Component Section Name is required (displayed in red color at the top center of the storefront)."
+        "Component Section Name is required (displayed on the storefront heading)."
       );
       return;
     }
     for (let i = 0; i < items.length; i++) {
       if (!items[i].imageFile && !items[i].image) {
-        setError(`Image #${i + 1}: Image is required.`);
+        setError(`Card #${i + 1}: Image is required.`);
         return;
       }
       if (!items[i].imageName.trim()) {
-        setError(`Image #${i + 1}: Image name is required (displayed at the bottom of the circle).`);
+        setError(`Card #${i + 1}: Category name is required.`);
         return;
       }
     }
@@ -168,17 +168,22 @@ export default function CircleImageCarouselConfigForm({
     }
   };
 
+  const displayTitle = (setLabel || "Category Cards Carousel").replace(
+    /Circle Image Carousel/gi,
+    "Category Cards Carousel"
+  );
+
   if (isListMode) {
     return (
       <div className="bg-white rounded-xl border p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b">
           <div>
             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <Icon icon="mdi:circle-outline" className="text-[#ED1C24] text-xl" />
-              Circle Image Carousel
+              <Icon icon="mdi:view-carousel-outline" className="text-[#ED1C24] text-xl" />
+              Category Cards Carousel
             </h2>
             <p className="text-sm text-gray-500 mt-1">
-              Circular images (radius 100%) with custom slug and image name underneath. Whole component name is displayed in red at top center.
+              Tall category cards carousel (Best Price In the Market) with dynamic starting prices, brands, and arrow link.
             </p>
           </div>
           <button
@@ -201,12 +206,12 @@ export default function CircleImageCarouselConfigForm({
           {existingSets.length === 0 ? (
             <div className="text-center py-12 border-2 border-dashed rounded-xl bg-gray-50">
               <Icon
-                icon="mdi:circle-outline"
+                icon="mdi:view-carousel-outline"
                 className="mx-auto text-4xl text-gray-400 mb-2"
               />
-              <p className="text-gray-500 font-medium">No circle image carousel sets added yet.</p>
+              <p className="text-gray-500 font-medium">No category card carousel sets added yet.</p>
               <p className="text-xs text-gray-400 mt-1">
-                Click &quot;Add New Set&quot; above to create your first circular carousel.
+                Click &quot;Add New Set&quot; above to create your first category cards carousel.
               </p>
             </div>
           ) : (
@@ -216,12 +221,15 @@ export default function CircleImageCarouselConfigForm({
                 className="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-gray-300 bg-white transition shadow-sm"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="h-10 w-10 rounded-full bg-red-50 flex items-center justify-center text-[#ED1C24] font-bold text-sm shrink-0">
+                  <div className="h-10 w-10 rounded-xl bg-red-50 flex items-center justify-center text-[#ED1C24] font-bold text-sm shrink-0">
                     #{idx + 1}
                   </div>
                   <div className="truncate">
                     <h3 className="font-semibold text-gray-900 truncate">
-                      {s.title || s.label || `Circle Carousel Set #${idx + 1}`}
+                      {(s.title || s.label || `Category Cards Set #${idx + 1}`).replace(
+                        /Circle (Image )?Carousel/gi,
+                        "Category Cards Carousel"
+                      )}
                     </h3>
                     <p className="text-xs text-gray-500 mt-0.5">
                       Component Name: <span className="text-[#ED1C24] font-medium">{s.title || "Untitled"}</span>
@@ -279,11 +287,11 @@ export default function CircleImageCarouselConfigForm({
           )}
           <div>
             <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <Icon icon="mdi:circle-outline" className="text-[#ED1C24] text-xl" />
-              {setLabel || "Circle Image Carousel"}
+              <Icon icon="mdi:view-carousel-outline" className="text-[#ED1C24] text-xl" />
+              {displayTitle}
             </h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              Whole component title appears in red color at the top center.
+              Tall category cards carousel (Best Price In the Market) with category name, dynamic starting prices, and brands.
             </p>
           </div>
         </div>
@@ -333,12 +341,12 @@ export default function CircleImageCarouselConfigForm({
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g. Featured Categories / Popular Brands"
+            placeholder="e.g. Best Price In the Market"
             className="w-full rounded-lg border border-gray-300 px-3.5 py-2 text-sm focus:border-[#BC2121] focus:outline-none"
             required
           />
           <p className="text-[11px] text-[#BC2121] mt-1 font-medium">
-            ★ This name will be displayed in RED COLOR at the TOP CENTER of the component on the storefront.
+            ★ This name will be displayed as the main heading on the storefront (e.g. &ldquo;Best Price In the Market. Shop by category.&rdquo;).
           </p>
         </div>
 
@@ -362,10 +370,10 @@ export default function CircleImageCarouselConfigForm({
         <div className="flex items-center justify-between mb-4">
           <div>
             <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">
-              Carousel Circle Images ({items.length})
+              Category Cards ({items.length})
             </h3>
             <p className="text-xs text-gray-500">
-              Each image is displayed in circle format (radius 100%) with the image name underneath and links to the slug.
+              Each category is displayed as a tall card (236×340px) with automatic starting price, brands, and arrow link.
             </p>
           </div>
           <button
@@ -374,7 +382,7 @@ export default function CircleImageCarouselConfigForm({
             className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#ED1C24] hover:bg-red-50 border border-red-200 rounded-lg transition"
           >
             <Icon icon="mdi:plus" />
-            Add Image
+            Add Card
           </button>
         </div>
 
@@ -389,25 +397,38 @@ export default function CircleImageCarouselConfigForm({
                 #{idx + 1}
               </div>
 
-              {/* Circle Image Preview / Upload */}
+              {/* Card Preview / Upload */}
               <div className="flex flex-col items-center gap-2 shrink-0">
                 <div
-                  className="w-20 h-20 overflow-hidden bg-gray-100 border-2 border-[#BC2121] shadow-sm flex items-center justify-center relative group"
-                  style={{ borderRadius: "100%" }}
+                  className="w-20 h-28 rounded-2xl overflow-hidden border border-amber-200/80 shadow-xs flex items-center justify-center relative group bg-gradient-to-b from-[#fbf8f3] via-[#f5ede1] to-[#e8d7c0]"
                 >
                   {item.imagePreview || item.image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={item.imagePreview || item.image}
-                      alt={item.imageName || `Item ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                      style={{ borderRadius: "100%" }}
+                      alt={item.imageName || `Card ${idx + 1}`}
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (
-                    <Icon icon="mdi:image-plus" className="text-2xl text-gray-400" />
+                    <Icon icon="mdi:image-plus" className="text-2xl text-amber-700/40" />
                   )}
-                  <label className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer text-white text-xs font-medium">
-                    Upload
+
+                  {/* Top-right action arrow pill preview */}
+                  <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-white/90 shadow-xs flex items-center justify-center text-gray-700 pointer-events-none">
+                    <Icon icon="mdi:arrow-top-right" className="text-[10px]" />
+                  </div>
+
+                  {/* Bottom dark gradient overlay with category name preview */}
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent p-1 pt-3 pointer-events-none">
+                    <p className="text-white text-[9px] font-semibold truncate leading-tight px-0.5 text-center">
+                      {item.imageName || `Card #${idx + 1}`}
+                    </p>
+                  </div>
+
+                  {/* Hover upload overlay */}
+                  <label className="absolute inset-0 bg-black/55 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition cursor-pointer text-white text-[10px] font-medium z-10">
+                    <Icon icon="mdi:camera" className="text-base mb-0.5" />
+                    Change
                     <input
                       type="file"
                       accept={CATEGORY_PAGE_IMAGE_ACCEPT}
@@ -449,22 +470,22 @@ export default function CircleImageCarouselConfigForm({
                 </label>
               </div>
 
-              {/* Image Name & Slug Fields */}
+              {/* Category Name & Slug Fields */}
               <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1">
-                    Image Name <span className="text-red-500">*</span>
+                    Category Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={item.imageName}
                     onChange={(e) => updateItem(idx, { imageName: e.target.value })}
-                    placeholder="e.g. Air Conditioners"
+                    placeholder="e.g. Air Conditioner"
                     className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-[#BC2121] focus:outline-none"
                     required
                   />
-                  <p className="text-[10px] text-[#BC2121] mt-0.5 font-medium">
-                    Displayed directly in red color at the bottom of the circle image.
+                  <p className="text-[10px] text-gray-500 mt-0.5 font-medium">
+                    Displayed in bold white text on the category card overlay.
                   </p>
                 </div>
 
@@ -476,11 +497,11 @@ export default function CircleImageCarouselConfigForm({
                     type="text"
                     value={item.slug}
                     onChange={(e) => updateItem(idx, { slug: e.target.value })}
-                    placeholder="e.g. air-conditioners or /category/air-conditioners"
+                    placeholder="e.g. air-conditioner or /category/air-conditioner"
                     className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:border-[#BC2121] focus:outline-none"
                   />
                   <p className="text-[10px] text-gray-400 mt-0.5">
-                    URL or slug to navigate when the circle image is clicked.
+                    URL or slug to navigate when the category card is clicked.
                   </p>
                 </div>
               </div>
@@ -535,7 +556,7 @@ export default function CircleImageCarouselConfigForm({
                     }
                   }}
                   className="p-1.5 text-red-500 hover:bg-red-50 rounded transition disabled:opacity-20 ml-1"
-                  title="Remove Image"
+                  title="Remove Card"
                 >
                   <Icon icon="mdi:trash-can-outline" />
                 </button>
@@ -550,7 +571,7 @@ export default function CircleImageCarouselConfigForm({
           className="mt-4 w-full py-2.5 border-2 border-dashed border-gray-300 hover:border-[#ED1C24] text-gray-600 hover:text-[#ED1C24] rounded-xl text-sm font-medium transition flex items-center justify-center gap-2"
         >
           <Icon icon="mdi:plus" />
-          Add Another Image
+          Add Another Card
         </button>
 
         <p className="text-[11px] text-gray-400 text-center mt-2">
