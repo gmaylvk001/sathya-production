@@ -1,17 +1,40 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import Order from "@/models/ecom_order_info";
+import OrderNew from "@/models/orders_new";
 import jwt from "jsonwebtoken";
+
+function toOrderResponse(doc) {
+  const order = typeof doc.toObject === "function" ? doc.toObject() : doc;
+  const created = order.created_at || order.createdAt || null;
+  const updated = order.updated_at || order.updatedAt || null;
+  const items = Array.isArray(order.order_item) ? order.order_item : [];
+  const orderDetails =
+    Array.isArray(order.order_details) && order.order_details.length > 0
+      ? order.order_details
+      : items.map((item) => ({
+          product_name: item?.name || item?.product_name || "",
+          product_price: Number(item?.price ?? item?.product_price ?? 0),
+          quantity: Number(item?.quantity ?? 1),
+          item_code: item?.item_code || null,
+          model: item?.model || null,
+        }));
+
+  return {
+    ...order,
+    createdAt: created,
+    updatedAt: updated,
+    order_details: orderDetails,
+  };
+}
 
 export async function GET(req) {
   await dbConnect();
 
   try {
-    console.log("hai");
     const { searchParams } = new URL(req.url);
-    const authHeader = req.headers.get('authorization');
-    const token = authHeader && authHeader.split(' ')[1];
-    
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader && authHeader.split(" ")[1];
+
     if (!token) {
       return NextResponse.json(
         { error: "Authorization token required" },
@@ -19,13 +42,10 @@ export async function GET(req) {
       );
     }
 
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userId = decoded.userId;
+    jwt.verify(token, process.env.JWT_SECRET);
     const status = searchParams.get("status");
     const order_number = searchParams.get("order_number");
-    console.log(order_number);
-    let query = {};
+    const query = {};
 
     if (status && status !== "all") {
       query.order_status = status;
@@ -35,9 +55,10 @@ export async function GET(req) {
       query.order_number = order_number;
     }
 
-    console.log(query);
-    const orders = await Order.find(query).sort({ createdAt: -1 });
-    
+    const orders = await OrderNew.find(query)
+      .sort({ created_at: -1, _id: -1 })
+      .lean();
+
     if (order_number && orders.length === 0) {
       return NextResponse.json(
         { success: false, error: "Order not found" },
@@ -45,7 +66,10 @@ export async function GET(req) {
       );
     }
 
-    return NextResponse.json({ success: true, orders }, { status: 200 });
+    return NextResponse.json(
+      { success: true, orders: orders.map(toOrderResponse) },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Error fetching orders:", error);
     return NextResponse.json(
