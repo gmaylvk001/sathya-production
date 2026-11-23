@@ -3,7 +3,11 @@ import Product from "@/models/product";
 import Category from "@/models/ecom_category_info";
 import { NextResponse } from "next/server";
 import { getActiveBrandsForSearch } from "@/lib/brandSearch";
-import { escapeRegExp, parseSearchPriceIntent } from "@/lib/searchMatch";
+import {
+  escapeRegExp,
+  expandSearchTerms,
+  parseSearchPriceIntent,
+} from "@/lib/searchMatch";
 import { applyRegionPrices, readRequestRegion } from "@/lib/priceResolver";
 
 export const runtime = "nodejs";
@@ -82,6 +86,7 @@ export async function GET(req) {
     let tokens = [];
     let brandId = null;
     let orConditions = null;
+    let expandedTerms = [];
 
     if (hasTextQuery) {
     const brands = await getActiveBrandsForSearch();
@@ -108,6 +113,7 @@ export async function GET(req) {
     // 1. Prefix regexes on indexed fields (name, item_code, model_number, sub_category_new_name)
     // 2. Matched brand lookup using indexed status_1_brand_1
     // 3. Text search using product_search_text_idx
+    // 4. Synonym / plural expansions (phones → mobile, laptops → laptop, …)
     orConditions = [
       { status: "Active", name: new RegExp(`^${escapedQ}`, "i") },
       { status: "Active", item_code: new RegExp(`^${escapedQ}`, "i") },
@@ -131,10 +137,18 @@ export async function GET(req) {
       orConditions.push({ status: "Active", $text: { $search: cleanSearchText } });
     }
 
-    // Specific optimization for common acronyms like "ac"
-    if (qLower === "ac") {
-      orConditions.push({ status: "Active", sub_category_new_name: /air condition/i });
-      orConditions.push({ status: "Active", search_keywords: /air condition/i });
+    expandedTerms = expandSearchTerms(q).filter(
+      (term) => term && term.toLowerCase() !== qLower
+    );
+    for (const term of expandedTerms.slice(0, 12)) {
+      const safe = escapeRegExp(term);
+      if (!safe) continue;
+      const termRe = new RegExp(safe, "i");
+      orConditions.push(
+        { status: "Active", name: termRe },
+        { status: "Active", search_keywords: termRe },
+        { status: "Active", sub_category_new_name: termRe }
+      );
     }
     }
 
@@ -151,13 +165,15 @@ export async function GET(req) {
       const categoryDoc = await Category.findOne({
         category_name: { $regex: new RegExp(`^${escapeRegExp(category)}$`, "i") },
         status: "Active",
-      }).select("_id md5_cat_name");
+      }).select("_id md5_cat_name category_name");
 
-      // Price searches use the same category plus its child categories as the results page.
-      // A normal name search keeps the previous single-category suggestion filter.
-      if (priceIntent.hasPriceIntent && categoryDoc?._id) {
+      // Always include the selected category + all child categories (same as results page),
+      // so "Mobiles & Wearables" still returns products filed under child "Mobile".
+      if (categoryDoc?._id) {
         const collectChildren = async (parentId) => {
-          const children = await Category.find({ parentid: parentId }).select("_id md5_cat_name").lean();
+          const children = await Category.find({ parentid: parentId })
+            .select("_id md5_cat_name")
+            .lean();
           const docs = [];
           for (const child of children) {
             docs.push(child);
@@ -167,6 +183,7 @@ export async function GET(req) {
         };
         const allDocs = [categoryDoc, ...(await collectChildren(categoryDoc._id))];
         const idStrings = [];
+        const md5s = [];
         const seen = new Set();
         for (const doc of allDocs) {
           const id = String(doc._id);
@@ -174,18 +191,25 @@ export async function GET(req) {
             seen.add(id);
             idStrings.push(id);
           }
+          if (doc.md5_cat_name) md5s.push(doc.md5_cat_name);
         }
-        matchFilter.$and.push({
-          $or: [
-            { category: { $in: idStrings } },
-            { sub_category: { $in: idStrings } },
-          ],
-        });
+        const categoryOr = [
+          { category: { $in: idStrings } },
+          { sub_category: { $in: idStrings } },
+        ];
+        for (const md5 of [...new Set(md5s)]) {
+          categoryOr.push({
+            sub_category_new: { $regex: escapeRegExp(md5), $options: "i" },
+          });
+        }
+        matchFilter.$and.push({ $or: categoryOr });
       } else {
-        const categoryFilter = categoryDoc?.md5_cat_name
-          ? { sub_category_new: { $regex: categoryDoc.md5_cat_name, $options: "i" } }
-          : { sub_category_new_name: { $regex: escapeRegExp(category), $options: "i" } };
-        matchFilter.$and.push(categoryFilter);
+        matchFilter.$and.push({
+          sub_category_new_name: {
+            $regex: escapeRegExp(category),
+            $options: "i",
+          },
+        });
       }
     }
 
@@ -305,22 +329,42 @@ export async function GET(req) {
                   0,
                 ],
               },
-              // "AC" synonym category boost
-              qLower === "ac"
-                ? {
+              // Synonym / plural category boosts (phones → mobile, laptops → laptop, ac → air condition, …)
+              ...(expandedTerms || []).slice(0, 8).map((term) => {
+                const safeTerm = escapeRegExp(term);
+                if (!safeTerm) return 0;
+                return {
                   $cond: [
                     {
-                      $regexMatch: {
-                        input: { $ifNull: ["$sub_category_new_name", ""] },
-                        regex: "air condition",
-                        options: "i",
-                      },
+                      $or: [
+                        {
+                          $regexMatch: {
+                            input: { $ifNull: ["$name", ""] },
+                            regex: safeTerm,
+                            options: "i",
+                          },
+                        },
+                        {
+                          $regexMatch: {
+                            input: { $ifNull: ["$sub_category_new_name", ""] },
+                            regex: safeTerm,
+                            options: "i",
+                          },
+                        },
+                        {
+                          $regexMatch: {
+                            input: { $ifNull: ["$search_keywords", ""] },
+                            regex: safeTerm,
+                            options: "i",
+                          },
+                        },
+                      ],
                     },
-                    90,
+                    35,
                     0,
-                  ]
-                }
-                : 0,
+                  ],
+                };
+              }),
               // Token matches
               ...tokenScoreAdditions,
             ],

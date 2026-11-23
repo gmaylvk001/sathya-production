@@ -15,6 +15,7 @@ import {
   buildFilterLookupMaps,
   searchParamsToSelectedFilters,
   hasActiveFilterParams,
+  hasExplicitPriceParams,
   buildFilterGroupsFromList,
   selectionKey,
   slugifyFilter,
@@ -391,10 +392,14 @@ export default function SearchPage() {
             lookupMaps,
             [priceRange[0], priceRange[1]]
           );
-          const intentMin = data?.priceIntent?.applied?.minPrice;
-          const intentMax = data?.priceIntent?.applied?.maxPrice;
+          // Prefer raw NL intent (min/max may be null independently) over applied defaults.
+          const intentMin =
+            data?.priceIntent?.minPrice ?? data?.priceIntent?.applied?.minPrice;
+          const intentMax =
+            data?.priceIntent?.maxPrice ?? data?.priceIntent?.applied?.maxPrice;
+          const urlHasPrice = hasExplicitPriceParams(urlSearch);
           const hasNlPrice =
-            !hasActiveFilterParams(urlSearch) &&
+            !urlHasPrice &&
             ((intentMin != null && intentMin > 0) ||
               (intentMax != null && intentMax > 0 && intentMax < 500000));
 
@@ -403,11 +408,14 @@ export default function SearchPage() {
             subcategories: urlFilters.subcategories,
             brands: urlFilters.brands,
             filters: urlFilters.filters,
-            price: hasActiveFilterParams(urlSearch)
+            price: urlHasPrice
               ? urlFilters.price
               : hasNlPrice
                 ? {
-                  min: intentMin != null && intentMin > 0 ? intentMin : priceRange[0],
+                  min:
+                    intentMin != null && intentMin > 0
+                      ? intentMin
+                      : priceRange[0],
                   max:
                     intentMax != null && intentMax > 0 && intentMax < 500000
                       ? intentMax
@@ -421,7 +429,9 @@ export default function SearchPage() {
           }
           setFilterUrlReady(true);
 
-          if (hasActiveFilterParams(urlSearch)) {
+          // Re-fetch when URL already had sidebar filters, OR when NL price was
+          // applied so the slider state and result set stay locked to that range.
+          if (hasActiveFilterParams(urlSearch) || hasNlPrice) {
             await fetchResults(1, false, nextSelected);
           }
         }
