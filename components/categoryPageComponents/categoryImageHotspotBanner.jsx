@@ -36,6 +36,8 @@ export default function CategoryImageHotspotBanner({ config }) {
           <img
             src={bannerImage}
             alt={name || "Banner"}
+            loading="lazy"
+            decoding="async"
             className="block w-full h-auto"
             draggable={false}
           />

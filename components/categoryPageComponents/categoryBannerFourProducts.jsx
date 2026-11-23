@@ -340,6 +340,8 @@ function ExactSizeImage({ src, alt = "", maxSide, className = "" }) {
     <img
       src={src}
       alt={alt}
+      loading="lazy"
+      decoding="async"
       onLoad={handleLoad}
       style={style}
       className={`block object-contain ${className}`}

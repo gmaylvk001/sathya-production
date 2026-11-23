@@ -300,6 +300,8 @@ export default function CategorySingleBannerProducts({ config }) {
             <img
               src={bannerDesktop}
               alt={name || ""}
+              loading="lazy"
+              decoding="async"
               className="w-full h-auto object-cover aspect-[16/5] sm:aspect-[16/4]"
             />
           </picture>

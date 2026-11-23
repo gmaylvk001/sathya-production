@@ -287,6 +287,8 @@ export default function CategoryBannerSideProducts({ config }) {
       <img
         src={sideImage}
         alt=""
+        loading="lazy"
+        decoding="async"
         className="w-full h-full min-h-[280px] object-cover rounded-sm"
       />
     </BannerLink>
@@ -304,15 +306,16 @@ export default function CategoryBannerSideProducts({ config }) {
             <img
               src={mainDesktop}
               alt=""
+              loading="lazy"
+              decoding="async"
               className="w-full h-auto object-cover aspect-[16/5] sm:aspect-[16/4]"
             />
           </picture>
         </BannerLink>
 
         <div
-          className={`flex flex-col md:flex-row gap-3 sm:gap-4 items-stretch ${
-            sidePosition === "right" ? "md:flex-row-reverse" : ""
-          }`}
+          className={`flex flex-col md:flex-row gap-3 sm:gap-4 items-stretch ${sidePosition === "right" ? "md:flex-row-reverse" : ""
+            }`}
         >
           {sideBlock}
           <ProductRow products={products} seeAllHref={mainHref} name={name} />

@@ -232,6 +232,8 @@ export default function CategoryBrandCarousel({ config }) {
           <img
             src={item.image}
             alt={item.notes || name || `Brand ${idx + 1}`}
+            loading="lazy"
+            decoding="async"
             className="max-h-8 sm:max-h-9 md:max-h-10 max-w-[85px] sm:max-w-[105px] w-auto h-auto object-contain pointer-events-none select-none transition-transform duration-300 group-hover:scale-105"
             draggable={false}
           />

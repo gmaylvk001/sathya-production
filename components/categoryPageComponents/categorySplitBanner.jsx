@@ -40,6 +40,8 @@ export default function CategorySplitBanner({ config }) {
           <img
             src={banner.image}
             alt="Banner"
+            loading="lazy"
+            decoding="async"
             className="w-full h-auto object-cover"
           />
         </BannerLink>
@@ -56,6 +58,8 @@ export default function CategorySplitBanner({ config }) {
             <img
               src={banner.image}
               alt={idx === 0 ? "Left banner" : "Right banner"}
+              loading="lazy"
+              decoding="async"
               className="w-full h-auto object-cover rounded-lg"
             />
           </BannerLink>

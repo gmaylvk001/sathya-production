@@ -225,6 +225,8 @@ export default function CategoryImageCarousel({ config }) {
       <img
         src={item.image}
         alt={name || `Image ${idx + 1}`}
+        loading="lazy"
+        decoding="async"
         className="block w-full h-auto max-w-[320px] max-h-[430px] object-contain pointer-events-none select-none"
         draggable={false}
       />
