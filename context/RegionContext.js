@@ -229,7 +229,10 @@ export const RegionProvider = ({ children }) => {
         setUserLocation(DEFAULT_LOCATION);
         setSelectedRegion(SOUTH_INDIAN_STATES[0]);
         syncLocationCookie(DEFAULT_LOCATION);
-        setIsRegionModalOpen(true);
+        // Smoothly open automatic popup after initial frame settles to prevent layout shift
+        setTimeout(() => {
+          setIsRegionModalOpen(true);
+        }, 600);
       }
     } catch {
       setUserLocation(DEFAULT_LOCATION);
@@ -327,7 +330,7 @@ export const RegionProvider = ({ children }) => {
           localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(locData));
           localStorage.setItem(PROMPT_KEY, 'true');
           syncLocationCookie(locData);
-        } catch {}
+        } catch { }
 
         setIsRegionModalOpen(false);
         return true;
@@ -358,7 +361,7 @@ export const RegionProvider = ({ children }) => {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultState));
         localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(DEFAULT_LOCATION));
-      } catch {}
+      } catch { }
     }
     setIsRegionModalOpen(false);
     setDetectionError(null);
@@ -406,7 +409,7 @@ export const RegionProvider = ({ children }) => {
               localStorage.setItem(LOCATION_STORAGE_KEY, JSON.stringify(locData));
               localStorage.setItem(PROMPT_KEY, 'true');
               syncLocationCookie(locData);
-            } catch {}
+            } catch { }
 
             setIsRegionModalOpen(false);
           } else {

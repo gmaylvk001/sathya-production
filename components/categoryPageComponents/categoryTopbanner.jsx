@@ -70,7 +70,7 @@ export default function CategoryTopBanner({
   if (!imageSrc) return null;
 
   const content = (
-    <div className="relative w-full overflow-hidden rounded-lg mb-6">
+    <div className="relative w-full overflow-hidden rounded-lg mb-6 min-h-[150px] sm:min-h-[260px] md:min-h-[320px] bg-gray-50">
       <picture>
         {current.mobileImage && (
           <source media="(max-width: 767px)" srcSet={current.mobileImage} />

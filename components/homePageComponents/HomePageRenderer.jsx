@@ -3,22 +3,20 @@
 import { useEffect, useRef, useState } from "react";
 import { useRegion } from "@/context/RegionContext";
 import { COMPONENT_TYPES } from "@/lib/categoryPageComponents/registry";
-import dynamic from "next/dynamic";
 import CategoryTopBanner from "@/components/categoryPageComponents/categoryTopbanner";
+import CategoryImageCarousel from "@/components/categoryPageComponents/categoryImageCarousel";
+import CategoryProductCarousel from "@/components/categoryPageComponents/categoryProductCarousel";
+import CategoryBannerSideProducts from "@/components/categoryPageComponents/categoryBannerSideProducts";
+import CategoryBannerFourProducts from "@/components/categoryPageComponents/categoryBannerFourProducts";
+import CategoryBannerGrid from "@/components/categoryPageComponents/categoryBannerGrid";
+import CategoryImageColumns from "@/components/categoryPageComponents/categoryImageColumns";
+import CategorySingleBannerProducts from "@/components/categoryPageComponents/categorySingleBannerProducts";
+import CategoryBrandCarousel from "@/components/categoryPageComponents/categoryBrandCarousel";
+import CategoryImageHotspotBanner from "@/components/categoryPageComponents/categoryImageHotspotBanner";
+import CategoryContentBlock from "@/components/categoryPageComponents/categoryContent";
+import CategorySplitBanner from "@/components/categoryPageComponents/categorySplitBanner";
 import CategoryCircleImageCarousel from "@/components/categoryPageComponents/categoryCircleImageCarousel";
-
-const CategoryImageCarousel = dynamic(() => import("@/components/categoryPageComponents/categoryImageCarousel"));
-const CategoryProductCarousel = dynamic(() => import("@/components/categoryPageComponents/categoryProductCarousel"));
-const CategoryBannerSideProducts = dynamic(() => import("@/components/categoryPageComponents/categoryBannerSideProducts"));
-const CategoryBannerFourProducts = dynamic(() => import("@/components/categoryPageComponents/categoryBannerFourProducts"));
-const CategoryBannerGrid = dynamic(() => import("@/components/categoryPageComponents/categoryBannerGrid"));
-const CategoryImageColumns = dynamic(() => import("@/components/categoryPageComponents/categoryImageColumns"));
-const CategorySingleBannerProducts = dynamic(() => import("@/components/categoryPageComponents/categorySingleBannerProducts"));
-const CategoryBrandCarousel = dynamic(() => import("@/components/categoryPageComponents/categoryBrandCarousel"));
-const CategoryImageHotspotBanner = dynamic(() => import("@/components/categoryPageComponents/categoryImageHotspotBanner"));
-const CategoryContentBlock = dynamic(() => import("@/components/categoryPageComponents/categoryContent"));
-const CategorySplitBanner = dynamic(() => import("@/components/categoryPageComponents/categorySplitBanner"));
-const TrendingVideoSection = dynamic(() => import("@/components/TrendingVideoSection"));
+import TrendingVideoSection from "@/components/TrendingVideoSection";
 
 // In-memory cache to prevent layout shift and avoid re-fetching on client navigation
 const homeRenderCache = new Map();
@@ -30,18 +28,26 @@ const homeRenderCache = new Map();
 export default function HomePageRenderer({ onHasDesign }) {
   const { region } = useRegion();
   const targetRegion = (region || "all").toLowerCase();
-  const cached = homeRenderCache.get(targetRegion);
 
-  const [components, setComponents] = useState(cached || []);
-  const [loaded, setLoaded] = useState(Boolean(cached && cached.length > 0));
+  // Initialize consistently across SSR and Client to prevent any hydration mismatch
+  const [components, setComponents] = useState([]);
+  const [loaded, setLoaded] = useState(false);
   const onHasDesignRef = useRef(onHasDesign);
   onHasDesignRef.current = onHasDesign;
 
   useEffect(() => {
     let cancelled = false;
-    if (!homeRenderCache.has(targetRegion)) {
-      setLoaded(false);
+
+    // Use client in-memory cache if available
+    const cached = homeRenderCache.get(targetRegion);
+    if (cached && cached.length > 0) {
+      setComponents(cached);
+      setLoaded(true);
+      onHasDesignRef.current?.(true);
+      return;
     }
+
+    setLoaded(false);
 
     const load = async () => {
       try {
@@ -74,8 +80,22 @@ export default function HomePageRenderer({ onHasDesign }) {
 
   if (!loaded) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#d72828]" />
+      <div className="w-full bg-white" suppressHydrationWarning>
+        {/* Banner Skeleton with matching aspect ratio - prevents CLS completely */}
+        <div className="relative w-full overflow-hidden rounded-lg mb-6 min-h-[150px] sm:min-h-[260px] md:min-h-[320px] bg-gray-100 animate-pulse flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#d72828]" />
+        </div>
+        {/* Category Carousel Skeleton placeholder */}
+        <div className="w-full px-4 sm:px-6 mb-8">
+          <div className="h-6 w-48 bg-gray-200 rounded animate-pulse mb-4" />
+          <div className="flex gap-3 overflow-hidden">
+            <div className="h-[240px] sm:h-[290px] md:h-[340px] w-1/2 sm:w-1/3 md:w-1/5 bg-gray-100 rounded-[20px] animate-pulse shrink-0" />
+            <div className="h-[240px] sm:h-[290px] md:h-[340px] w-1/2 sm:w-1/3 md:w-1/5 bg-gray-100 rounded-[20px] animate-pulse shrink-0" />
+            <div className="hidden sm:block h-[240px] sm:h-[290px] md:h-[340px] sm:w-1/3 md:w-1/5 bg-gray-100 rounded-[20px] animate-pulse shrink-0" />
+            <div className="hidden md:block h-[240px] sm:h-[290px] md:h-[340px] md:w-1/5 bg-gray-100 rounded-[20px] animate-pulse shrink-0" />
+            <div className="hidden md:block h-[240px] sm:h-[290px] md:h-[340px] md:w-1/5 bg-gray-100 rounded-[20px] animate-pulse shrink-0" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -83,7 +103,7 @@ export default function HomePageRenderer({ onHasDesign }) {
   if (!components.length) return null;
 
   return (
-    <div className="home-page-builder w-full bg-white">
+    <div className="home-page-builder w-full bg-white" suppressHydrationWarning>
       {components.map((item, idx) => {
         if (item.type === COMPONENT_TYPES.TOP_BANNER) {
           return (

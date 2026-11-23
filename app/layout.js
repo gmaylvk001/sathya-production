@@ -31,6 +31,21 @@ export default function RootLayout({ children }) {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
         <link rel="dns-prefetch" href="https://pixel.adtarbo.com" />
+        {/* Preload Mobile & Desktop Top Banner for fast LCP without layout shift */}
+        <link
+          rel="preload"
+          as="image"
+          href="/uploads/category-topbanner/1793165384619-topbanner.webp"
+          media="(max-width: 767px)"
+          fetchPriority="high"
+        />
+        <link
+          rel="preload"
+          as="image"
+          href="/uploads/category-topbanner/1791971568536-topbanner.webp"
+          media="(min-width: 768px)"
+          fetchPriority="high"
+        />
       </head>
       <body className={`${poppins.className} font-sans antialiased`} suppressHydrationWarning>
         {/* Early inline handler: recovers from intermittent ChunkLoadError timeouts
