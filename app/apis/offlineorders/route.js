@@ -25,6 +25,16 @@ export async function POST(req) {
       return new Response("Mobile number is not valid", { status: 400 });
     }
 
+    const orderNumber = OrderId != null ? String(OrderId).trim() : "";
+    if (orderNumber) {
+      const existingOrder = await OrderNew.findOne({ order_number: orderNumber })
+        .select("_id")
+        .lean();
+      if (existingOrder) {
+        return new Response("Already Ordernumber exist", { status: 400 });
+      }
+    }
+
     // Check if the user exists
     let user = await User.findOne({ mobile: CustomerPhoneNumber });
 
@@ -100,6 +110,13 @@ export async function POST(req) {
       return new Response("error", { status: 500 });
     }
   } catch (error) {
+    const duplicateOrder =
+      error?.code === 11000 &&
+      (error?.keyPattern?.order_number ||
+        String(error?.message || "").includes("order_number"));
+    if (duplicateOrder) {
+      return new Response("Already Ordernumber exist", { status: 400 });
+    }
     console.error("Error in getOfflineorders API:", error);
     return new Response("error", { status: 500 });
   }

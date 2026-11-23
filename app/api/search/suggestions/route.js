@@ -140,14 +140,15 @@ export async function GET(req) {
     expandedTerms = expandSearchTerms(q).filter(
       (term) => term && term.toLowerCase() !== qLower
     );
-    for (const term of expandedTerms.slice(0, 12)) {
+    // Prefix-only on indexed fields. Unanchored regex in the same $or as $text
+    // makes Mongo reject the query, which is why "mobiles" / "mobile" showed an error.
+    for (const term of expandedTerms.slice(0, 8)) {
       const safe = escapeRegExp(term);
-      if (!safe) continue;
-      const termRe = new RegExp(safe, "i");
+      if (!safe || safe.length < 2) continue;
+      const prefixRe = new RegExp(`^${safe}`, "i");
       orConditions.push(
-        { status: "Active", name: termRe },
-        { status: "Active", search_keywords: termRe },
-        { status: "Active", sub_category_new_name: termRe }
+        { status: "Active", name: prefixRe },
+        { status: "Active", sub_category_new_name: prefixRe }
       );
     }
     }
