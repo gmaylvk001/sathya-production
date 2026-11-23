@@ -178,13 +178,13 @@ export default function ProductCard({
             src={currentImg}
             alt={name || "Product Image"}
             fill
-            sizes="(max-width: 640px) 70vw, (max-width: 1024px) 33vw, 20vw"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
             className={`object-contain p-2 group-hover:scale-105 transition-transform duration-300 ease-out ${imgLoaded ? "opacity-100" : "opacity-0"
               }`}
             loading="lazy"
             onLoad={() => setImgLoaded(true)}
             onError={handleImageError}
-            unoptimized
+            unoptimized={retryFailed}
           />
         </Link>
       </div>
