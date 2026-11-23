@@ -852,39 +852,41 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
         }
 
         const additionalProducts = [
-          ...selectedFrequentProducts.map((p) => p._id),
-          ...selectedRelatedProducts.map((p) => p._id),
+          ...selectedFrequentProducts.map((p) => String(p._id)),
+          ...selectedRelatedProducts.map((p) => String(p._id)),
         ].filter(Boolean);
 
-        if (additionalProducts.length > 0) {
-          await Promise.all(
-            additionalProducts.map(async (id) => {
-              try {
-                await fetch("/api/cart", {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                    ...(isLoggedIn && { Authorization: `Bearer ${token}` }),
-                  },
-                  body: JSON.stringify({
-                    productId: id,
-                    quantity: 1,
-                    ...(guestCartId && { guestCartId }),
-                    pincode: effectivePincode,
-                    userState: effectiveUserState,
-                    region: effectiveRegion,
-                  }),
-                });
-              } catch (extraErr) {
-                console.warn("Extra product cart add failed:", extraErr);
-              }
-            })
-          );
+        let addedExtras = 0;
+        for (const id of [...new Set(additionalProducts)]) {
+          try {
+            const extraRes = await fetch("/api/cart", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(isLoggedIn && { Authorization: `Bearer ${token}` }),
+              },
+              body: JSON.stringify({
+                productId: id,
+                quantity: 1,
+                ...(guestCartId && { guestCartId }),
+                pincode: effectivePincode,
+                userState: effectiveUserState,
+                region: effectiveRegion,
+              }),
+            });
+            if (extraRes.ok) addedExtras += 1;
+            else {
+              const errData = await extraRes.json().catch(() => ({}));
+              console.warn("Extra product cart add failed:", id, errData?.error || extraRes.status);
+            }
+          } catch (extraErr) {
+            console.warn("Extra product cart add failed:", extraErr);
+          }
         }
 
         const cartData = await cartResponse.json().catch(() => ({}));
         if (cartData?.cart?.totalItems) {
-          updateCartCount(cartData.cart.totalItems + additionalProducts.length);
+          updateCartCount(cartData.cart.totalItems + addedExtras);
         }
       } catch (cartApiErr) {
         console.warn("Cart API sync warning:", cartApiErr);
@@ -1087,14 +1089,28 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
   const [quantityWarning, setQuantityWarning] = useState(false);
 
   // Add this function to handle frequent product selection
+  const sameProductId = (a, b) =>
+    a != null && b != null && String(a) === String(b);
+
+  const isFrequentItemSelectable = (item) => {
+    if (!item) return false;
+    const qty = Number(item.quantity ?? item.stock ?? 0);
+    const status = String(item.stock_status || "").toLowerCase();
+    if (status && status !== "in stock") return false;
+    return qty > 0;
+  };
+
   const toggleFrequentProduct = (product) => {
-    setSelectedFrequentProducts(prev => {
-      const existingIndex = prev.findIndex(p => p._id === product._id);
-      if (existingIndex >= 0) {
-        return prev.filter(p => p._id !== product._id);
-      } else {
-        return [...prev, product];
+    if (!isFrequentItemSelectable(product)) {
+      toast.error("This add-on is currently out of stock.");
+      return;
+    }
+    setSelectedFrequentProducts((prev) => {
+      const exists = prev.some((p) => sameProductId(p._id, product._id));
+      if (exists) {
+        return prev.filter((p) => !sameProductId(p._id, product._id));
       }
+      return [...prev, { ...product, _id: String(product._id) }];
     });
   };
 
@@ -2011,7 +2027,10 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
                       quantity={quantity}
                       special_price={displaySellingPrice}
                       display_stock={product.display_stock}
-                      additionalProducts={[...selectedFrequentProducts.map((p) => p._id), ...selectedRelatedProducts.map((p) => p._id)]}
+                      additionalProducts={[
+                        ...selectedFrequentProducts.map((p) => String(p._id)),
+                        ...selectedRelatedProducts.map((p) => String(p._id)),
+                      ].filter(Boolean)}
                       extendedWarranty={isExtendedWarrantyEligible(product) ? selectedWarrantyAmount : 0}
                       selectedFrequentProducts={selectedFrequentProducts}
                       selectedRelatedProducts={selectedRelatedProducts}
@@ -2163,16 +2182,20 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
           </div>
 
           {/* 5. Frequently Bought Together */}
-          {featuredProducts?.filter(item => item.stock_status === "In Stock").length > 0 && (
+          {featuredProducts?.filter(isFrequentItemSelectable).length > 0 && (
             <div className="mt-4 border border-gray-300 rounded-lg bg-white p-3">
               <h3 className="font-bold text-xs text-gray-900 border-b border-gray-200 pb-2 mb-3 uppercase tracking-wide">Frequently Bought Together:</h3>
               <div className="space-y-3">
-                {featuredProducts.slice(0, 2).map((item, index) => (
-                  <div key={item._id || index} className={`flex items-start gap-2.5 pb-2.5 border-b border-gray-100 last:border-0 ${(!isInStock || !isMovementAllowed) ? 'opacity-60' : ''}`}>
+                {featuredProducts.filter(isFrequentItemSelectable).slice(0, 2).map((item, index) => (
+                  <div key={String(item._id || index)} className={`flex items-start gap-2.5 pb-2.5 border-b border-gray-100 last:border-0 ${(!isInStock || !isMovementAllowed) ? 'opacity-60' : ''}`}>
                     <input
                       type="checkbox"
                       className="mt-1 accent-[#d72828] cursor-pointer w-4 h-4 disabled:cursor-not-allowed disabled:opacity-50"
-                      checked={(!isInStock || !isMovementAllowed) ? false : selectedFrequentProducts.some(p => p._id === item._id)}
+                      checked={
+                        isInStock &&
+                        isMovementAllowed &&
+                        selectedFrequentProducts.some((p) => sameProductId(p._id, item._id))
+                      }
                       onChange={() => {
                         if (isInStock && isMovementAllowed) toggleFrequentProduct(item);
                       }}
@@ -2264,7 +2287,10 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
                 quantity={quantity}
                 special_price={displaySellingPrice}
                 display_stock={product.display_stock}
-                additionalProducts={[...selectedFrequentProducts.map((p) => p._id), ...selectedRelatedProducts.map((p) => p._id)]}
+                additionalProducts={[
+                  ...selectedFrequentProducts.map((p) => String(p._id)),
+                  ...selectedRelatedProducts.map((p) => String(p._id)),
+                ].filter(Boolean)}
                 extendedWarranty={selectedWarrantyAmount}
                 selectedFrequentProducts={selectedFrequentProducts}
                 selectedRelatedProducts={selectedRelatedProducts}
@@ -2603,18 +2629,22 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
                 <div className="flex flex-col gap-2.5">
 
                   {/* 1. FREQUENTLY BOUGHT TOGETHER (EXACTLY 2 PRODUCTS, BACKEND CONTROLLED) - 1ST POSITION */}
-                  {featuredProducts && featuredProducts.filter(item => item.stock_status === "In Stock").length > 0 && (
+                  {featuredProducts && featuredProducts.filter(isFrequentItemSelectable).length > 0 && (
                     <div className="border border-gray-200 rounded-lg shadow-sm bg-white p-3">
                       <h3 className="font-bold text-xs text-gray-900 border-b border-gray-200 pb-2 mb-3 uppercase tracking-wide">
                         Frequently Bought Together:
                       </h3>
                       <div className="space-y-3">
-                        {featuredProducts.slice(0, 2).map((item, index) => (
-                          <div key={item._id || index} className={`flex items-start gap-2.5 pb-2.5 border-b border-gray-100 last:border-0 ${(!isInStock || !isMovementAllowed) ? 'opacity-60' : ''}`}>
+                        {featuredProducts.filter(isFrequentItemSelectable).slice(0, 2).map((item, index) => (
+                          <div key={String(item._id || index)} className={`flex items-start gap-2.5 pb-2.5 border-b border-gray-100 last:border-0 ${(!isInStock || !isMovementAllowed) ? 'opacity-60' : ''}`}>
                             <input
                               type="checkbox"
                               className="mt-1 accent-[#d72828] cursor-pointer w-4 h-4 disabled:cursor-not-allowed disabled:opacity-50"
-                              checked={(!isInStock || !isMovementAllowed) ? false : selectedFrequentProducts.some(p => p._id === item._id)}
+                              checked={
+                                isInStock &&
+                                isMovementAllowed &&
+                                selectedFrequentProducts.some((p) => sameProductId(p._id, item._id))
+                              }
                               onChange={() => {
                                 if (isInStock && isMovementAllowed) toggleFrequentProduct(item);
                               }}
@@ -2780,7 +2810,10 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
                             quantity={quantity}
                             special_price={displaySellingPrice}
                             display_stock={product.display_stock}
-                            additionalProducts={[...selectedFrequentProducts.map((p) => p._id), ...selectedRelatedProducts.map((p) => p._id)]}
+                            additionalProducts={[
+                              ...selectedFrequentProducts.map((p) => String(p._id)),
+                              ...selectedRelatedProducts.map((p) => String(p._id)),
+                            ].filter(Boolean)}
                             extendedWarranty={isExtendedWarrantyEligible(product) ? selectedWarrantyAmount : 0}
                             selectedFrequentProducts={selectedFrequentProducts}
                             selectedRelatedProducts={selectedRelatedProducts}

@@ -138,26 +138,41 @@ const AddToCartButton = ({
 
       toast.success("Product added!");
 
-      // ✅ Add additional products (if any)
-      if (additionalProducts.length > 0) {
-        await Promise.all(
-          additionalProducts.map(async (additionalId) => {
-            const res = await fetch("/api/cart", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                ...(token && { Authorization: `Bearer ${token}` }),
-                ...(effectiveGuestCartId && { guestCartId: effectiveGuestCartId }),
-              },
-              body: JSON.stringify({
-                productId: additionalId,
-                quantity: 1,
-                guestCartId: effectiveGuestCartId || undefined,
-              }),
-            });
-            if (!res.ok) throw new Error("Failed to add additional product");
-          }),
-        );
+      // ✅ Add additional products (if any) — same region context; don't abort on one failure
+      const uniqueAdditionalIds = [
+        ...new Set(
+          (additionalProducts || [])
+            .map((id) => (id != null ? String(id) : ""))
+            .filter(Boolean)
+        ),
+      ];
+      let addedExtras = 0;
+      for (const additionalId of uniqueAdditionalIds) {
+        try {
+          const res = await fetch("/api/cart", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token && { Authorization: `Bearer ${token}` }),
+              ...(effectiveGuestCartId && { guestCartId: effectiveGuestCartId }),
+            },
+            body: JSON.stringify({
+              productId: additionalId,
+              quantity: 1,
+              guestCartId: effectiveGuestCartId || undefined,
+              pincode: effectivePincode,
+              userState: effectiveUserState,
+              region: effectiveRegion,
+            }),
+          });
+          if (res.ok) addedExtras += 1;
+          else {
+            const errData = await res.json().catch(() => ({}));
+            console.warn("Additional cart add failed:", additionalId, errData?.error || res.status);
+          }
+        } catch (extraErr) {
+          console.warn("Additional cart add error:", additionalId, extraErr);
+        }
       }
 
       const responseData = await cartResponse.json();
@@ -168,7 +183,7 @@ const AddToCartButton = ({
       const totalItemsCount =
         (responseData?.cart?.totalItems != null
           ? responseData.cart.totalItems
-          : 1) + additionalProducts.length;
+          : 1) + addedExtras;
       updateCartCount(totalItemsCount);
       console.log("🔔 About to call ga4AddToCart");
 

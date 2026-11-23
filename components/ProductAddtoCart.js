@@ -146,43 +146,56 @@ const AddToCartButton = ({ productId, quantity = 1, warranty, additionalProducts
 
       toast.success("Product added!");
 
-      // console.log(cartResponse);
-      // Add additional products if any
-      /*
-      if (additionalProducts.length > 0) {
-        await Promise.all(
-          additionalProducts.map(async (additionalId) => {
-            const res = await fetch('/api/cart', {
-              method: 'POST',
-              headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-              },
-              body: JSON.stringify({ productId: additionalId, quantity: 1 }),
-            });
-            if (!res.ok) throw new Error('Failed to add additional product');
-          })
-        );
+      // Add Frequently Bought / related products one-by-one.
+      // Must send the same region/pincode as the main product, and must NOT
+      // abort the whole batch when one add-on fails (that was dropping the 2nd item).
+      const uniqueAdditionalIds = [
+        ...new Set(
+          (additionalProducts || [])
+            .map((id) => (id != null ? String(id) : ""))
+            .filter(Boolean)
+        ),
+      ];
+      let addedExtras = 0;
+      let failedExtras = 0;
+      for (const additionalId of uniqueAdditionalIds) {
+        try {
+          const res = await fetch("/api/cart", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(isLoggedIn && { Authorization: `Bearer ${token}` }),
+            },
+            body: JSON.stringify({
+              productId: additionalId,
+              quantity: 1,
+              ...(guestCartId && { guestCartId }),
+              pincode: effectivePincode,
+              userState: effectiveUserState,
+              region: effectiveRegion,
+            }),
+          });
+          if (!res.ok) {
+            failedExtras += 1;
+            const errData = await res.json().catch(() => ({}));
+            console.warn(
+              "FBT/related cart add failed:",
+              additionalId,
+              errData?.error || res.status
+            );
+            continue;
+          }
+          addedExtras += 1;
+        } catch (extraErr) {
+          failedExtras += 1;
+          console.warn("FBT/related cart add error:", additionalId, extraErr);
+        }
       }
-        */
-
-      if (additionalProducts.length > 0) {
-        await Promise.all(
-          additionalProducts.map(async (additionalId) => {
-            const res = await fetch("/api/cart", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                ...(isLoggedIn && { Authorization: `Bearer ${token}` }),
-              },
-              body: JSON.stringify({
-                productId: additionalId,
-                quantity: 1,
-                ...(guestCartId && { guestCartId }),
-              }),
-            });
-            if (!res.ok) throw new Error("Failed to add additional product");
-          })
+      if (failedExtras > 0 && uniqueAdditionalIds.length > 0) {
+        toast.warning(
+          addedExtras > 0
+            ? `${addedExtras} add-on(s) added; ${failedExtras} could not be added.`
+            : "Selected add-on product(s) could not be added to cart."
         );
       }
 
@@ -190,7 +203,7 @@ const AddToCartButton = ({ productId, quantity = 1, warranty, additionalProducts
       const totalItemsCount =
         (responseData?.cart?.totalItems != null
           ? responseData.cart.totalItems
-          : 1) + additionalProducts.length;
+          : 1) + addedExtras;
       updateCartCount(totalItemsCount);
 
       // Find added item safely
@@ -267,7 +280,9 @@ const AddToCartButton = ({ productId, quantity = 1, warranty, additionalProducts
 
       // ✅ Store selected product IDs for persistence
       if (selectedFrequentProducts?.length > 0) {
-        const ids = selectedFrequentProducts.map(p => p._id);
+        const ids = selectedFrequentProducts
+          .map((p) => (p?._id != null ? String(p._id) : ""))
+          .filter(Boolean);
         localStorage.setItem("selectedFrequentProductIds", JSON.stringify(ids));
       } else {
         localStorage.removeItem("selectedFrequentProductIds");
