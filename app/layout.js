@@ -69,53 +69,86 @@ export default function RootLayout({ children }) {
         <ClientLayout>{children}</ClientLayout>
         <VisitorTracker />
 
-        {/* Third-party Analytics & Tracking Scripts placed in body to prevent ChunkLoad timeouts */}
+        {/* Unified Non-Blocking Analytics & Tracking Loader (GTM, Adtarbo, GA4) */}
         <Script
-          id="adtarbo-script"
-          strategy="lazyOnload"
+          id="sathya-unified-tracking"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
-              (function(dd, ss, idd) {
-                var js, ajs = dd.getElementsByTagName(ss)[0];
-                if (dd.getElementById(idd)) {return;}
-                js = dd.createElement(ss);
-                js.id = idd;
-                js.aun_id = "GXNFAIR40psC";
-                js.src = "https://pixel.adtarbo.com/pixelTrack1.js";
-                if (ajs && ajs.parentNode) {
-                  ajs.parentNode.insertBefore(js, ajs);
-                } else if (dd.head) {
-                  dd.head.appendChild(js);
+              (function() {
+                // Initialize DataLayer and gtag early so any event calls are safely queued
+                window.dataLayer = window.dataLayer || [];
+                window.gtag = window.gtag || function() { window.dataLayer.push(arguments); };
+                window.gtag('js', new Date());
+                window.gtag('config', 'G-15V9VS13Q7');
+
+                var loaded = false;
+                function loadAllTracking() {
+                  if (loaded) return;
+                  loaded = true;
+
+                  // 1. Load Google Tag Manager
+                  try {
+                    (function(w,d,s,l,i){
+                      w[l]=w[l]||[];
+                      w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});
+                      var f=d.getElementsByTagName(s)[0],
+                      j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
+                      j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+                      if (f && f.parentNode) f.parentNode.insertBefore(j,f);
+                    })(window,document,'script','dataLayer','GTM-P7LW8D7X');
+                  } catch (e) {}
+
+                  // 2. Load Adtarbo Pixel
+                  try {
+                    (function(dd, ss, idd) {
+                      var js, ajs = dd.getElementsByTagName(ss)[0];
+                      if (dd.getElementById(idd)) return;
+                      js = dd.createElement(ss);
+                      js.id = idd;
+                      js.async = true;
+                      js.aun_id = "GXNFAIR40psC";
+                      js.src = "https://pixel.adtarbo.com/pixelTrack1.js";
+                      if (ajs && ajs.parentNode) ajs.parentNode.insertBefore(js, ajs);
+                      else if (dd.head) dd.head.appendChild(js);
+                    })(document, 'script', 'adtarbo-js-v2');
+                  } catch (e) {}
+
+                  // 3. Load Google Analytics
+                  try {
+                    var gs = document.createElement('script');
+                    gs.async = true;
+                    gs.src = 'https://www.googletagmanager.com/gtag/js?id=G-15V9VS13Q7';
+                    var first = document.getElementsByTagName('script')[0];
+                    if (first && first.parentNode) first.parentNode.insertBefore(gs, first);
+                  } catch (e) {}
                 }
-              } (document, 'script', 'adtarbo-js-v2'));
+
+                // Trigger 1: User interaction (immediate activation on scroll, touch, or click)
+                var events = ['scroll', 'touchstart', 'pointerdown', 'keydown'];
+                var cleanup = function() {
+                  events.forEach(function(evt) {
+                    window.removeEventListener(evt, onUserAction, { passive: true });
+                  });
+                };
+                var onUserAction = function() {
+                  cleanup();
+                  loadAllTracking();
+                };
+                events.forEach(function(evt) {
+                  window.addEventListener(evt, onUserAction, { once: true, passive: true });
+                });
+
+                // Trigger 2: Idle fallback (fires after 2.5s or on idle, whichever is first)
+                if ('requestIdleCallback' in window) {
+                  requestIdleCallback(function() {
+                    setTimeout(loadAllTracking, 1500);
+                  }, { timeout: 3000 });
+                } else {
+                  setTimeout(loadAllTracking, 2500);
+                }
+              })();
             `,
-          }}
-        />
-        <Script
-          id="gtag-base"
-          strategy="lazyOnload"
-          src="https://www.googletagmanager.com/gtag/js?id=G-15V9VS13Q7"
-        />
-        <Script id="gtm-new" strategy="lazyOnload">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-15V9VS13Q7');
-          `}
-        </Script>
-        <Script
-          id="gtm-script"
-          strategy="lazyOnload"
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function(w,d,s,l,i){w[l]=w[l]||[];
-              w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});
-              var f=d.getElementsByTagName(s)[0],
-              j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
-              j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
-              f.parentNode.insertBefore(j,f);
-              })(window,document,'script','dataLayer','GTM-P7LW8D7X');`,
           }}
         />
       </body>
