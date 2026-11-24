@@ -556,12 +556,22 @@ export default function ProductDetailsSection({
 
     const decodeAndCleanHtml = (html) => {
       if (!html) return "";
-      let cleaned = html;
+      let cleaned = String(html);
       cleaned = cleaned.replace(/^"+|"+$/g, "");
       cleaned = cleaned.replace(/^<p>"/, "").replace(/"<\/p>$/, "");
       cleaned = cleaned.replace(/\\"/g, '"');
       cleaned = cleaned.replace(/\\\//g, "/");
       cleaned = cleaned.replace(/\\u200e/g, "");
+      // CMS/import often stores literal "\n" / "\r" / "\t" as text — do not show them
+      cleaned = cleaned
+        .replace(/\\r\\n/gi, " ")
+        .replace(/\\n/gi, " ")
+        .replace(/\\r/gi, " ")
+        .replace(/\\t/gi, " ")
+        .replace(/\r\n/g, " ")
+        .replace(/[\r\n\t]+/g, " ")
+        .replace(/ {2,}/g, " ")
+        .trim();
       if (typeof document !== "undefined") {
         try {
           const txt = document.createElement("textarea");
