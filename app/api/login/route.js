@@ -3,41 +3,67 @@ import User from "@/models/User";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
+import { consumeRateLimit, getClientIp, tooManyRequests } from "@/lib/rateLimit";
+import { startAdminSession } from "@/lib/adminSession";
+
+const INVALID_LOGIN = "Invalid email or password";
+const WINDOW_MS = 15 * 60 * 1000;
 
 export async function POST(req) {
   try {
-    const { email, password } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const email = String(body?.email || "").trim().toLowerCase();
+    const password = String(body?.password || "");
+
+    if (!email || !password) {
+      return NextResponse.json({ error: INVALID_LOGIN }, { status: 400 });
+    }
 
     await connectDB();
 
+    const ip = getClientIp(req);
+    const ipLimit = await consumeRateLimit(`admin-login:ip:${ip}`, 30, WINDOW_MS);
+    if (!ipLimit.allowed) {
+      return tooManyRequests("Too many login attempts. Please try again later.", ipLimit.retryAfter);
+    }
+
+    const emailLimit = await consumeRateLimit(`admin-login:email:${email}`, 8, WINDOW_MS);
+    if (!emailLimit.allowed) {
+      return tooManyRequests("Too many login attempts. Please try again later.", emailLimit.retryAfter);
+    }
+
     const existingUser = await User.findOne({ email });
 
-    if (!existingUser) {
-      return NextResponse.json({ error: "Admin not found" }, { status: 400 });
+    let passwordOk = false;
+    if (existingUser?.user_type === "admin" && existingUser.password) {
+      try {
+        passwordOk = await bcrypt.compare(password, existingUser.password);
+      } catch {
+        passwordOk = false;
+      }
     }
 
-    if (existingUser.user_type !== "admin") {
-      return NextResponse.json({ error: "Access denied: Admin credentials required" }, { status: 403 });
+    if (!passwordOk) {
+      return NextResponse.json({ error: INVALID_LOGIN }, { status: 400 });
     }
 
-    const isPassword = await bcrypt.compare(password, existingUser.password);
+    if (existingUser.status === "Inactive") {
+      return NextResponse.json({ error: "This account is inactive" }, { status: 403 });
+    }
 
-    if (!isPassword) return NextResponse.json({ error: "Incorrect Password" }, { status: 400 });
-
-    // Create a JWT token with user_type embedded
+    const sid = await startAdminSession(existingUser._id);
     const token = jwt.sign(
       {
         userId: existingUser._id,
         email: existingUser.email,
         user_type: existingUser.user_type,
         role: existingUser.user_type,
+        sid,
       },
       process.env.JWT_SECRET,
       { expiresIn: "24h" }
     );
 
-    // Client still enforces single-browser session before calling this.
-    // Set cookies here too (properly encoded) so middleware accepts /admin routes.
     const response = NextResponse.json(
       {
         message: "User Login",

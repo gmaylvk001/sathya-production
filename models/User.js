@@ -56,6 +56,9 @@ const UserSchema = new mongoose.Schema({
   avatar: { type: String, required: false, default: null },
   avatar_original: { type: String, required: false, default: null },
   orders_fetched: { type: Number, required: false, default: 0 },
+  // Current admin login id. A new login or logout replaces it, so an older token stops working.
+  admin_session_id: { type: String, required: false, default: null },
+  admin_active_at: { type: Date, required: false, default: null },
 }, { timestamps: true });
 
 UserSchema.index(

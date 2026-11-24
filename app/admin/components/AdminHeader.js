@@ -88,9 +88,16 @@ const AdminHeader = ({ toggleSidebar, sidebarCollapsed = true, mobileOpen = fals
     setNotifOpen((prev) => !prev);
   };
 
-  const handleSignOut = (e) => {
+  const handleSignOut = async (e) => {
     e.preventDefault();
     try {
+      const token = localStorage.getItem('token');
+      if (token) {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
       document.cookie = 'session_store=; path=/; max-age=0; SameSite=Lax';
       clearBrowserAuth();
       sessionStorage.clear();
