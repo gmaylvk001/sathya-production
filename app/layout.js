@@ -35,14 +35,14 @@ export default function RootLayout({ children }) {
         <link
           rel="preload"
           as="image"
-          href="/uploads/category-topbanner/1793165384619-topbanner.webp"
+          href="/uploads/category-topbanner/1793106394422-topbanner.webp"
           media="(max-width: 767px)"
           fetchPriority="high"
         />
         <link
           rel="preload"
           as="image"
-          href="/uploads/category-topbanner/1791971568536-topbanner.webp"
+          href="/uploads/category-topbanner/1791971158267-topbanner.webp"
           media="(min-width: 768px)"
           fetchPriority="high"
         />
@@ -139,13 +139,13 @@ export default function RootLayout({ children }) {
                   window.addEventListener(evt, onUserAction, { once: true, passive: true });
                 });
 
-                // Trigger 2: Idle fallback (fires after 2.5s or on idle, whichever is first)
+                // Trigger 2: Idle fallback (fires after 4.0s or on idle, whichever is first)
                 if ('requestIdleCallback' in window) {
                   requestIdleCallback(function() {
-                    setTimeout(loadAllTracking, 1500);
-                  }, { timeout: 3000 });
+                    setTimeout(loadAllTracking, 2500);
+                  }, { timeout: 4000 });
                 } else {
-                  setTimeout(loadAllTracking, 2500);
+                  setTimeout(loadAllTracking, 4000);
                 }
               })();
             `,

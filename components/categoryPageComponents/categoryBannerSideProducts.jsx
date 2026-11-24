@@ -74,6 +74,29 @@ function BannerLink({ href, children, className = "" }) {
   );
 }
 
+let globalBrandMapPromise = null;
+function getGlobalBrandMap() {
+  if (!globalBrandMapPromise) {
+    globalBrandMapPromise = fetch('/api/brand')
+      .then((res) => res.json())
+      .then((result) => {
+        if (!result.error && Array.isArray(result.data)) {
+          const map = {};
+          result.data.forEach((b) => {
+            map[b._id] = b.brand_name;
+          });
+          return map;
+        }
+        return {};
+      })
+      .catch((err) => {
+        console.error('Error fetching brand map:', err);
+        return {};
+      });
+  }
+  return globalBrandMapPromise;
+}
+
 function ProductRow({ products, seeAllHref, name }) {
   const perPage = usePerPage();
   const isMobile = useIsMobile();
@@ -83,22 +106,13 @@ function ProductRow({ products, seeAllHref, name }) {
   const [brandMap, setBrandMap] = useState({});
 
   useEffect(() => {
-    const fetchBrand = async () => {
-      try {
-        const response = await fetch('/api/brand');
-        const result = await response.json();
-        if (!result.error && Array.isArray(result.data)) {
-          const map = {};
-          result.data.forEach((b) => {
-            map[b._id] = b.brand_name;
-          });
-          setBrandMap(map);
-        }
-      } catch (error) {
-        console.error('Error fetching brand map:', error);
-      }
+    let mounted = true;
+    getGlobalBrandMap().then((map) => {
+      if (mounted && map) setBrandMap(map);
+    });
+    return () => {
+      mounted = false;
     };
-    fetchBrand();
   }, []);
 
   const handleProductClick = (product) => {
