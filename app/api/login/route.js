@@ -4,7 +4,6 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { NextResponse } from "next/server";
 import { consumeRateLimit, getClientIp, tooManyRequests } from "@/lib/rateLimit";
-import { startAdminSession } from "@/lib/adminSession";
 
 const INVALID_LOGIN = "Invalid email or password";
 const WINDOW_MS = 15 * 60 * 1000;
@@ -51,14 +50,12 @@ export async function POST(req) {
       return NextResponse.json({ error: "This account is inactive" }, { status: 403 });
     }
 
-    const sid = await startAdminSession(existingUser._id);
     const token = jwt.sign(
       {
         userId: existingUser._id,
         email: existingUser.email,
         user_type: existingUser.user_type,
         role: existingUser.user_type,
-        sid,
       },
       process.env.JWT_SECRET,
       { expiresIn: "24h" }

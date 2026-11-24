@@ -3,7 +3,6 @@ import jwt from 'jsonwebtoken';
 import connectDB from '@/lib/db';
 import User from '@/models/User';
 import { getUserAccess } from '@/lib/permissions';
-import { evaluateAdminSession } from '@/lib/adminSession';
 
 export async function GET(req) {
   const token = req.headers.get('Authorization')?.split(' ')[1]; // Extract token from Authorization header
@@ -28,10 +27,6 @@ export async function GET(req) {
       modules: [],
     };
     if (userRole.user_type === 'admin') {
-      const sessionOk = await evaluateAdminSession(decoded.userId, decoded.sid);
-      if (!sessionOk) {
-        return Response.json({ loggedIn: false }, { status: 200 });
-      }
       try {
         access = await getUserAccess(decoded.userId);
       } catch {

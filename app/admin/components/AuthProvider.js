@@ -57,24 +57,16 @@ export default function AuthProvider({ children }) {
 
         if (response.ok) {
           const data = await response.json();
-          if (data.loggedIn && data.role === 'admin') {
-            setAuthStatus('authenticated');
-            return;
-          }
-          if (data.loggedIn && data.role !== 'admin') {
+          if (data.role !== 'admin') {
             router.replace('/admin/unauthorized');
             setAuthStatus('unauthenticated');
             return;
           }
+          setAuthStatus('authenticated');
+        } else {
+          router.replace('/admin/login');
+          setAuthStatus('unauthenticated');
         }
-        try {
-          const { clearBrowserAuth } = await import('@/lib/clientAuthSession');
-          clearBrowserAuth();
-        } catch {
-          localStorage.removeItem('token');
-        }
-        router.replace('/admin/login');
-        setAuthStatus('unauthenticated');
       } catch (error) {
         console.error('Authentication error:', error);
         router.replace('/admin/login');
@@ -100,18 +92,9 @@ export default function AuthProvider({ children }) {
     const events = ['click', 'keydown', 'scroll', 'touchstart'];
     events.forEach((eventName) => window.addEventListener(eventName, markActive, { passive: true }));
 
-    const endSession = async () => {
-      const token = localStorage.getItem('token');
-      try {
-        if (token) {
-          await fetch('/api/auth/logout', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}` },
-          });
-        }
-      } catch {
-        /* the browser session is cleared either way */
-      }
+    const timer = setInterval(async () => {
+      if (Date.now() - lastActivityRef.current < IDLE_MS) return;
+      clearInterval(timer);
       try {
         const { clearBrowserAuth } = await import('@/lib/clientAuthSession');
         clearBrowserAuth();
@@ -120,31 +103,6 @@ export default function AuthProvider({ children }) {
       }
       router.replace('/admin/login');
       setAuthStatus('unauthenticated');
-    };
-
-    const timer = setInterval(async () => {
-      const idleFor = Date.now() - lastActivityRef.current;
-      if (idleFor >= IDLE_MS) {
-        clearInterval(timer);
-        await endSession();
-        return;
-      }
-      // Only a recent click, key, scroll, or touch keeps the server session alive.
-      if (idleFor > 60 * 1000) return;
-      const token = localStorage.getItem('token');
-      if (!token) return;
-      try {
-        const response = await fetch('/api/auth/check', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const data = await response.json();
-        if (!data?.loggedIn || data?.role !== 'admin') {
-          clearInterval(timer);
-          await endSession();
-        }
-      } catch {
-        /* a network blip should not sign the admin out */
-      }
     }, 60 * 1000);
 
     return () => {
