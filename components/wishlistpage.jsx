@@ -13,6 +13,29 @@ import { useHeaderdetails } from "@/context/HeaderContext";
 import { trackAddToCart, ga4AddToCart } from "@/utils/nextjs-event-tracking";
 import ProductCard from "@/components/product/ProductCard";
 import { normalizeProduct } from "@/lib/normalizeProduct";
+import LowStockEnquiryPopup, {
+  ENQUIRY_VARIANT_NORMAL,
+  ENQUIRY_VARIANT_CUSORDER,
+  isCusOrderMovement,
+} from "@/components/LowStockEnquiryPopup";
+import OpenBoxPopup from "@/components/OpenBoxPopup";
+import { isOpenBoxEligible } from "@/lib/openBoxHelper";
+
+function isEnquiryOnlyProduct(item) {
+  if (isCusOrderMovement(item?.movement)) return true;
+  if (String(item?.display_stock || "").toLowerCase() === "yes") return true;
+  if (isOpenBoxEligible({ movement: item?.movement, quantity: item?.quantity })) return true;
+  return false;
+}
+
+function enquiryButtonLabel(item) {
+  if (isOpenBoxEligible({ movement: item?.movement, quantity: item?.quantity })) {
+    return "Enquire to Buy";
+  }
+  if (isCusOrderMovement(item?.movement)) return "Order Now";
+  if (String(item?.display_stock || "").toLowerCase() === "yes") return "Order Now";
+  return "Add to Cart";
+}
 
 function formatPrice(n) {
   return new Intl.NumberFormat("en-IN").format(n);
@@ -221,11 +244,30 @@ function WishlistProductCard({
 }) {
   const [addingToCart, setAddingToCart] = useState(false);
   const [cartAdded, setCartAdded] = useState(false);
+  const [showEnquiry, setShowEnquiry] = useState(false);
+  const [showOpenBox, setShowOpenBox] = useState(false);
   const brandData = brandMap?.[item.brand] || null;
   const brandName = brandData?.brand_name || item.brand || "";
+  const isCusOrder = isCusOrderMovement(item.movement);
+  const isOpenBox = isOpenBoxEligible({ movement: item.movement, quantity: item.quantity });
+  const isDisplayStockEnquiry = String(item.display_stock || "").toLowerCase() === "yes";
+  const enquiryOnly = isEnquiryOnlyProduct(item);
+  const actionLabel = enquiryButtonLabel(item);
+  const inStock = String(item.stockStatus || "").toLowerCase() === "in stock";
 
   const handleCartClick = async () => {
-    if (item.stockStatus !== "In Stock") return;
+    if (!inStock) return;
+
+    // Match product page: CUS-Order / display_stock / open box → enquiry, never cart
+    if (isOpenBox) {
+      setShowOpenBox(true);
+      return;
+    }
+    if (isCusOrder || isDisplayStockEnquiry) {
+      setShowEnquiry(true);
+      return;
+    }
+
     setAddingToCart(true);
     try {
       await onAddToCart(item);
@@ -246,6 +288,24 @@ function WishlistProductCard({
           : "border-gray-200/80 hover:border-gray-300 shadow-2xs hover:shadow-xs"
       }`}
     >
+      {showEnquiry && (
+        <LowStockEnquiryPopup
+          onClose={() => setShowEnquiry(false)}
+          productName={item.name}
+          productSlug={item.slug}
+          productCategory={item.category || ""}
+          stockQuantity={item.quantity || 0}
+          variant={isCusOrder ? ENQUIRY_VARIANT_CUSORDER : ENQUIRY_VARIANT_NORMAL}
+        />
+      )}
+      {showOpenBox && (
+        <OpenBoxPopup
+          onClose={() => setShowOpenBox(false)}
+          productName={item.name}
+          productSlug={item.slug}
+          stockQuantity={item.quantity || 0}
+        />
+      )}
       <div className="flex items-center gap-3 w-full sm:w-auto">
         {/* Checkbox */}
         <div className="flex-shrink-0">
@@ -338,13 +398,13 @@ function WishlistProductCard({
 
       {/* Right Side Action Buttons */}
       <div className="flex items-center gap-2 flex-shrink-0 sm:ml-auto self-end sm:self-center mt-2 sm:mt-0">
-        {/* Add to Cart Button */}
+        {/* Cart / Order Now / Enquire — same rules as product page */}
         <button
           onClick={handleCartClick}
-          disabled={addingToCart || item.stockStatus !== "In Stock"}
-          title={cartAdded ? "Added to Cart" : "Add to Cart"}
+          disabled={addingToCart || !inStock}
+          title={cartAdded ? "Added to Cart" : actionLabel}
           className={`h-9 px-4 sm:h-10 flex items-center justify-center gap-2 rounded-lg border font-bold text-xs sm:text-sm transition-all duration-200 shadow-2xs ${
-            item.stockStatus !== "In Stock"
+            !inStock
               ? "border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed"
               : cartAdded
               ? "border-emerald-600 bg-emerald-600 text-white"
@@ -382,6 +442,8 @@ function WishlistProductCard({
               </svg>
               <span>Added</span>
             </>
+          ) : enquiryOnly ? (
+            <span>{actionLabel}</span>
           ) : (
             <>
               <svg
@@ -1006,6 +1068,10 @@ export default function WishlistPage() {
   };
 
   const handleAddToCart = async (item) => {
+    if (isEnquiryOnlyProduct(item)) {
+      toast.info("This product needs an enquiry. Use Order Now on the item.");
+      return;
+    }
     await addProductToCart({
       productId: item.productId,
       quantity: 1,
@@ -1017,11 +1083,23 @@ export default function WishlistPage() {
 
   const handleMoveToCart = async () => {
     const selectedItems = items.filter((i) => selectedIds.includes(i.id));
+    const cartableItems = selectedItems.filter((i) => !isEnquiryOnlyProduct(i));
+    const enquiryItems = selectedItems.filter((i) => isEnquiryOnlyProduct(i));
+
+    if (!cartableItems.length) {
+      toast.info(
+        enquiryItems.length
+          ? "Selected products cannot be added to cart. Use Order Now / Enquire on each item."
+          : "No cartable products selected"
+      );
+      return;
+    }
+
     try {
-      await Promise.all(selectedItems.map((item) => handleAddToCart(item)));
+      await Promise.all(cartableItems.map((item) => handleAddToCart(item)));
       const token = localStorage.getItem("token");
       await Promise.all(
-        selectedItems.map((item) =>
+        cartableItems.map((item) =>
           fetch(`/api/wishlist/delete`, {
             method: "DELETE",
             headers: {
@@ -1032,8 +1110,14 @@ export default function WishlistPage() {
           }),
         ),
       );
-      setItems((prev) => prev.filter((i) => !selectedIds.includes(i.id)));
-      setSelectedIds([]);
+      const movedIds = new Set(cartableItems.map((i) => i.id));
+      setItems((prev) => prev.filter((i) => !movedIds.has(i.id)));
+      setSelectedIds((prev) => prev.filter((id) => !movedIds.has(id)));
+      if (enquiryItems.length) {
+        toast.info(
+          `${enquiryItems.length} enquiry-only product(s) were left in wishlist`
+        );
+      }
       router.push("/cart");
     } catch (e) {
       console.error(e);

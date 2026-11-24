@@ -71,6 +71,9 @@ export async function GET(req) {
         badge: product.featured_products ? "Best Seller" : "",
         stockStatus: product.stock_status,
         quantity: product.quantity || 0,
+        movement: product.movement || "",
+        display_stock: product.display_stock || "",
+        category: product.category || "",
         related_product_ids: product.related_products || [],
       };
     });
