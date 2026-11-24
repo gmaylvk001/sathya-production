@@ -16,7 +16,7 @@ export default function AuthProvider({ children }) {
         const token = localStorage.getItem('token');
 
         // Public routes that don't require authentication
-        const publicRoutes = ['/admin/login', '/admin/register'];
+        const publicRoutes = ['/admin/login'];
 
         // If on a public route, allow access
         if (publicRoutes.includes(pathname)) {

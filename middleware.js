@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
-const PUBLIC_ADMIN_PATHS = ["/admin/login", "/admin/register", "/admin/unauthorized"];
+const PUBLIC_ADMIN_PATHS = ["/admin/login", "/admin/unauthorized"];
 
 export async function middleware(req) {
   const { pathname } = req.nextUrl;
+
+  // Register page file stays in the project. The URL is closed.
+  if (pathname === "/admin/register" || pathname.startsWith("/admin/register/")) {
+    return NextResponse.redirect(new URL("/admin/login", req.url));
+  }
 
   // Only protect /admin routes
   if (pathname.startsWith("/admin")) {
