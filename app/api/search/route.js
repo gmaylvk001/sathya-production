@@ -741,11 +741,23 @@ export async function GET(req) {
       console.time("search_query");
       try {
         const candidateLimit = hasPriceFilter ? 2000 : query.length <= 3 ? 300 : 150;
-        candidates = await productsQuery
-          .select(SEARCH_CARD_PROJECTION)
-          .sort({ createdAt: -1, _id: -1 })
-          .limit(candidateLimit)
-          .lean();
+        const loadCandidates = async (filter) => {
+          try {
+            return await Product.find(filter)
+              .select(SEARCH_CARD_PROJECTION)
+              .sort({ createdAt: -1, _id: -1 })
+              .limit(candidateLimit)
+              .lean();
+          } catch (sortErr) {
+            // A text match cannot always be sorted in the database. Rank in memory instead.
+            if (!/text/i.test(String(sortErr?.message || ""))) throw sortErr;
+            return await Product.find(filter)
+              .select(SEARCH_CARD_PROJECTION)
+              .limit(candidateLimit)
+              .lean();
+          }
+        };
+        candidates = await loadCandidates(searchFilter);
 
         // Graceful fallback: If category constraint yielded 0 candidates for this text query,
         // search across all categories so products are not dropped.
@@ -757,11 +769,7 @@ export async function GET(req) {
             );
             if (fallbackFilter.$and.length === 0) delete fallbackFilter.$and;
           }
-          candidates = await Product.find(fallbackFilter)
-            .select(SEARCH_CARD_PROJECTION)
-            .sort({ createdAt: -1, _id: -1 })
-            .limit(candidateLimit)
-            .lean();
+          candidates = await loadCandidates(fallbackFilter);
         }
       } catch (candErr) {
         console.error("❌ search_query candidates fetch error:", candErr);
