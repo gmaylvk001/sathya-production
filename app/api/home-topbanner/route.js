@@ -4,6 +4,9 @@ import HomeTopBanner from "@/models/homeTopBanner";
 import HomePage from "@/models/homePage";
 import { saveCategoryTopBannerImage } from "@/lib/categoryTopbannerUpload";
 
+const ALLOWED_MODES = new Set(["single", "big-left", "big-right"]);
+const ALLOWED_ALIGNMENTS = new Set(["bottom-left", "center-left", "bottom-center"]);
+
 function parseScheduleDate(val) {
   if (!val) return null;
   if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
@@ -24,6 +27,84 @@ function withBannerId(item, row) {
   const id = item?._id ? String(item._id) : "";
   if (/^[a-f\d]{24}$/i.test(id)) row._id = id;
   return row;
+}
+
+function hasOwn(obj, key) {
+  return Boolean(obj && Object.prototype.hasOwnProperty.call(obj, key));
+}
+
+async function resolveUploadSlot(formData, fileKey, fallbackValue) {
+  if (formData) {
+    const file = formData.get(fileKey);
+    if (file && typeof file === "object" && file.size > 0) {
+      return await saveCategoryTopBannerImage(file);
+    }
+  }
+  return String(fallbackValue || "").trim();
+}
+
+function isSlideRenderable(banner) {
+  const mode = ALLOWED_MODES.has(banner?.mode) ? banner.mode : "single";
+  const mainImg = Boolean(banner?.desktopImage || banner?.mobileImage);
+  if (mode === "single") return mainImg;
+  const small1Img = Boolean(banner?.smallBanner1?.desktopImage || banner?.smallBanner1?.mobileImage);
+  const small2Img = Boolean(banner?.smallBanner2?.desktopImage || banner?.smallBanner2?.mobileImage);
+  return mainImg && small1Img && small2Img;
+}
+
+async function normalizeSlidePayload(item, index, formData, existingSlide) {
+  const rawMode = hasOwn(item, "mode") ? item.mode : existingSlide?.mode;
+  const mode = ALLOWED_MODES.has(rawMode) ? rawMode : "single";
+
+  const desktopImage = await resolveUploadSlot(formData, `desktopImage_${index}`, item?.desktopImage);
+  const mobileImage = await resolveUploadSlot(formData, `mobileImage_${index}`, item?.mobileImage);
+
+  const s1Source = hasOwn(item, "smallBanner1") ? item.smallBanner1 || {} : existingSlide?.smallBanner1 || {};
+  const s2Source = hasOwn(item, "smallBanner2") ? item.smallBanner2 || {} : existingSlide?.smallBanner2 || {};
+
+  const smallBanner1 = {
+    desktopImage: await resolveUploadSlot(formData, `small1DesktopImage_${index}`, s1Source.desktopImage),
+    mobileImage: await resolveUploadSlot(formData, `small1MobileImage_${index}`, s1Source.mobileImage),
+    url: String(s1Source.url || "").trim(),
+  };
+
+  const smallBanner2 = {
+    desktopImage: await resolveUploadSlot(formData, `small2DesktopImage_${index}`, s2Source.desktopImage),
+    mobileImage: await resolveUploadSlot(formData, `small2MobileImage_${index}`, s2Source.mobileImage),
+    url: String(s2Source.url || "").trim(),
+  };
+
+  const rawAlign = hasOwn(item, "overlayAlign") ? item.overlayAlign : existingSlide?.overlayAlign;
+  const overlayAlign = ALLOWED_ALIGNMENTS.has(rawAlign) ? rawAlign : "bottom-left";
+
+  const textColor = String(
+    hasOwn(item, "textColor") ? item.textColor : existingSlide?.textColor || "#ffffff"
+  ).trim() || "#ffffff";
+
+  const showGradientOverlay = hasOwn(item, "showGradientOverlay")
+    ? item.showGradientOverlay !== false
+    : existingSlide?.showGradientOverlay !== false;
+
+  return withBannerId(item, {
+    mode,
+    desktopImage,
+    mobileImage,
+    url: String(item?.url || "").trim(),
+    heading: String(hasOwn(item, "heading") ? item.heading : existingSlide?.heading || "").trim(),
+    description: String(hasOwn(item, "description") ? item.description : existingSlide?.description || "").trim(),
+    buttonText: String(hasOwn(item, "buttonText") ? item.buttonText : existingSlide?.buttonText || "").trim(),
+    buttonUrl: String(hasOwn(item, "buttonUrl") ? item.buttonUrl : existingSlide?.buttonUrl || "").trim(),
+    overlayAlign,
+    textColor,
+    showGradientOverlay,
+    smallBanner1,
+    smallBanner2,
+    state: item?.state || "all",
+    isActive: item?.isActive !== false,
+    startDate: parseScheduleDate(item?.startDate),
+    endDate: parseScheduleDate(item?.endDate),
+    order: typeof item?.order === "number" ? item.order : index,
+  });
 }
 
 /**
@@ -67,7 +148,7 @@ export async function GET(req) {
             if (b.isActive === false) return false;
             if (b.startDate && new Date(b.startDate) > now) return false;
             if (b.endDate && new Date(b.endDate) < now) return false;
-            return true;
+            return isSlideRenderable(b);
           });
         }
       }
@@ -114,60 +195,20 @@ export async function POST(req) {
 
     let pageId;
     let status = "active";
-    let banners = [];
+    let formData = null;
+    let rawItems = [];
 
     if (contentType.includes("multipart/form-data")) {
-      const formData = await req.formData();
+      formData = await req.formData();
       pageId = formData.get("pageId");
       status = formData.get("status") || "active";
-
       const metaRaw = formData.get("bannersMeta");
-      const meta = metaRaw ? JSON.parse(String(metaRaw)) : [];
-
-      for (let i = 0; i < meta.length; i++) {
-        const item = meta[i] || {};
-        let desktopImage = item.desktopImage || "";
-        let mobileImage = item.mobileImage || "";
-
-        const deskFile = formData.get(`desktopImage_${i}`);
-        const mobFile = formData.get(`mobileImage_${i}`);
-
-        if (deskFile && typeof deskFile === "object" && deskFile.size > 0) {
-          desktopImage = await saveCategoryTopBannerImage(deskFile);
-        }
-        if (mobFile && typeof mobFile === "object" && mobFile.size > 0) {
-          mobileImage = await saveCategoryTopBannerImage(mobFile);
-        }
-
-        banners.push(
-          withBannerId(item, {
-            desktopImage,
-            mobileImage,
-            url: item.url || "",
-            state: item.state || "all",
-            isActive: item.isActive !== false,
-            startDate: parseScheduleDate(item.startDate),
-            endDate: parseScheduleDate(item.endDate),
-            order: typeof item.order === "number" ? item.order : i,
-          })
-        );
-      }
+      rawItems = metaRaw ? JSON.parse(String(metaRaw)) : [];
     } else {
       const body = await req.json();
       pageId = body.pageId;
       status = body.status || "active";
-      banners = (body.banners || []).map((b, i) =>
-        withBannerId(b, {
-          desktopImage: b.desktopImage || "",
-          mobileImage: b.mobileImage || "",
-          url: b.url || "",
-          state: b.state || "all",
-          isActive: b.isActive !== false,
-          startDate: parseScheduleDate(b.startDate),
-          endDate: parseScheduleDate(b.endDate),
-          order: typeof b.order === "number" ? b.order : i,
-        })
-      );
+      rawItems = Array.isArray(body.banners) ? body.banners : [];
     }
 
     if (!pageId) {
@@ -183,6 +224,20 @@ export async function POST(req) {
         { success: false, message: "Page not found" },
         { status: 404 }
       );
+    }
+
+    const existingDoc = await HomeTopBanner.findOne({ pageId: page._id }).lean();
+    const existingById = new Map(
+      (existingDoc?.banners || [])
+        .filter((b) => b?._id)
+        .map((b) => [String(b._id), b])
+    );
+
+    const banners = [];
+    for (let i = 0; i < rawItems.length; i++) {
+      const item = rawItems[i] || {};
+      const existingSlide = item._id ? existingById.get(String(item._id)) : null;
+      banners.push(await normalizeSlidePayload(item, i, formData, existingSlide));
     }
 
     const payload = {

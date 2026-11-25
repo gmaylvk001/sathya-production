@@ -10,7 +10,6 @@ import {
   getComponentMeta,
   getInstanceLabels,
 } from "@/lib/categoryPageComponents/registry";
-import TopBannerConfigForm from "../category-pages/TopBannerConfigForm";
 import ImageCarouselConfigForm from "../category-pages/ImageCarouselConfigForm";
 import ProductCarouselConfigForm from "../category-pages/ProductCarouselConfigForm";
 import BannerSideProductsConfigForm from "../category-pages/BannerSideProductsConfigForm";
@@ -27,7 +26,7 @@ import SuperCategoriesConfigForm from "../category-pages/SuperCategoriesConfigFo
 import WhyBuyReasonsConfigForm from "../category-pages/WhyBuyReasonsConfigForm";
 import TrendingVideosConfigForm from "./TrendingVideosConfigForm";
 import DealOfTheDayConfigForm from "./DealOfTheDayConfigForm";
-import HeroGridConfigForm from "./HeroGridConfigForm";
+import HomeTopBannerConfigForm from "./HomeTopBannerConfigForm";
 
 export default function HomePageBuilder() {
   const router = useRouter();
@@ -57,12 +56,17 @@ export default function HomePageBuilder() {
     load();
   }, [load]);
 
-  const isHeroGridType = (type) =>
-    type === COMPONENT_TYPES.HERO_GRID_BIG_LEFT ||
-    type === COMPONENT_TYPES.HERO_GRID_BIG_RIGHT;
-
-  const isTopBannerFamily = (type) =>
-    type === COMPONENT_TYPES.TOP_BANNER || isHeroGridType(type);
+  const refreshPage = useCallback(async () => {
+    try {
+      const res = await fetch("/api/home-pages");
+      const data = await res.json();
+      if (data.success && data.page) {
+        setPage(data.page);
+      }
+    } catch {
+      // Keep current state on background refresh failure
+    }
+  }, []);
 
   const id = page?._id;
   const available = getAvailableComponents("home").filter((c) => !c.hideInSidebar);
@@ -75,12 +79,6 @@ export default function HomePageBuilder() {
   const topBannerInstance = components.find(
     (c) => c.type === COMPONENT_TYPES.TOP_BANNER
   );
-  const heroBigLeftInstances = [...components]
-    .filter((c) => c.type === COMPONENT_TYPES.HERO_GRID_BIG_LEFT)
-    .sort((a, b) => a.order - b.order);
-  const heroBigRightInstances = [...components]
-    .filter((c) => c.type === COMPONENT_TYPES.HERO_GRID_BIG_RIGHT)
-    .sort((a, b) => a.order - b.order);
   const trendingVideosInstance = components.find(
     (c) => c.type === COMPONENT_TYPES.TRENDING_VIDEOS
   );
@@ -89,6 +87,19 @@ export default function HomePageBuilder() {
     setMessage("");
     setConfigType(type);
     setConfigInstanceId(null);
+  };
+
+  const ensureTopBannerInstance = async () => {
+    if (!id || topBannerInstance) return page;
+    const res = await fetch(`/api/home-pages/${id}/components`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: COMPONENT_TYPES.TOP_BANNER }),
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message);
+    setPage(data.page);
+    return data.page;
   };
 
   const addNewInstance = async (type) => {
@@ -114,9 +125,17 @@ export default function HomePageBuilder() {
   };
 
   const openEditInstance = (c) => {
+    setMessage("");
+    if (
+      c.type === COMPONENT_TYPES.HERO_GRID_BIG_LEFT ||
+      c.type === COMPONENT_TYPES.HERO_GRID_BIG_RIGHT
+    ) {
+      setConfigType(COMPONENT_TYPES.TOP_BANNER);
+      setConfigInstanceId(null);
+      return;
+    }
     setConfigType(c.type);
     setConfigInstanceId(c.instanceId);
-    setMessage("");
   };
 
   const deleteInstance = async (component) => {
@@ -148,7 +167,7 @@ export default function HomePageBuilder() {
       setPage(data.page);
       if (configInstanceId === component.instanceId) {
         setConfigInstanceId(null);
-        setConfigType(isHeroGridType(component.type) ? COMPONENT_TYPES.TOP_BANNER : null);
+        setConfigType(null);
       }
       setMessage(`${label} deleted.`);
     } catch (e) {
@@ -261,183 +280,14 @@ export default function HomePageBuilder() {
       onSaved: () => { setMessage(`${label} set saved.`); setConfigInstanceId(null); load(); },
     });
 
-    const renderHeroGridSection = ({ type, title, subtitle, variant, instances }) => {
-      const isBigRight = variant === "big-right";
-      return (
-        <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div
-                aria-hidden="true"
-                className={`shrink-0 grid h-10 w-16 grid-rows-2 gap-0.5 rounded-md border border-gray-200 bg-white p-1 ${
-                  isBigRight ? "grid-cols-[1fr_1.9fr]" : "grid-cols-[1.9fr_1fr]"
-                }`}
-              >
-                <div
-                  className={`rounded-[2px] bg-[#ED1C24]/85 row-span-2 ${
-                    isBigRight ? "col-start-2 row-start-1" : "col-start-1 row-start-1"
-                  }`}
-                />
-                <div
-                  className={`rounded-[2px] bg-gray-300 ${
-                    isBigRight ? "col-start-1 row-start-1" : "col-start-2 row-start-1"
-                  }`}
-                />
-                <div
-                  className={`rounded-[2px] bg-gray-300 ${
-                    isBigRight ? "col-start-1 row-start-2" : "col-start-2 row-start-2"
-                  }`}
-                />
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm font-semibold text-gray-900">{title}</div>
-                <div className="text-xs text-gray-500 mt-0.5">{subtitle}</div>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => addNewInstance(type)}
-              className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[#ED1C24] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#C4161D]"
-            >
-              <Icon icon="mdi:plus" /> Add New
-            </button>
-          </div>
-
-          {instances.length > 0 ? (
-            <ul className="space-y-2">
-              {instances.map((inst) => (
-                <li
-                  key={inst.instanceId}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3.5 py-2.5"
-                >
-                  <div className="min-w-0 flex items-center gap-2.5">
-                    <span className="text-sm font-medium text-gray-800 truncate">
-                      {instanceLabels[inst.instanceId] || title}
-                    </span>
-                    <span
-                      className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded ${
-                        inst.isActive !== false
-                          ? "bg-green-100 text-green-700"
-                          : "bg-red-100 text-red-600"
-                      }`}
-                    >
-                      {inst.isActive !== false ? "ON" : "OFF"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => openEditInstance(inst)}
-                      className="text-sm font-semibold text-[#ED1C24] hover:underline"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteInstance(inst)}
-                      disabled={deletingInstanceId === inst.instanceId}
-                      className="text-sm font-semibold text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {deletingInstanceId === inst.instanceId ? "Deleting..." : "Delete"}
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-xs text-gray-400">
-              No {title} set configured yet. Click Add New to upload 3 banners.
-            </p>
-          )}
-        </div>
-      );
-    };
-
-    if (isTopBannerFamily(configType) && !configInstanceId) {
-      return (
-        <div>
-          <div className="flex items-start justify-between gap-4 mb-5">
-            <div>
-              <h2 className="text-lg font-semibold">Top Banner</h2>
-              <p className="text-sm text-gray-500 mt-1">
-                Select the existing banner to edit it, or Add New.
-              </p>
-            </div>
-            {!topBannerInstance && (
-              <button
-                type="button"
-                onClick={() => addNewInstance(COMPONENT_TYPES.TOP_BANNER)}
-                className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-[#ED1C24] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#C4161D]"
-              >
-                <Icon icon="mdi:plus" /> Add New
-              </button>
-            )}
-          </div>
-          {topBannerInstance ? (
-            <div className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3">
-              <div>
-                <div className="text-sm font-medium">Top Banner</div>
-                <div className="text-xs text-gray-500 mt-0.5">
-                  One banner carousel is configured for this page.
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setConfigInstanceId(topBannerInstance.instanceId)}
-                  className="text-sm font-semibold text-[#ED1C24] hover:underline"
-                >
-                  Edit
-                </button>
-                <button
-                  type="button"
-                  onClick={() => deleteInstance(topBannerInstance)}
-                  disabled={deletingInstanceId === topBannerInstance.instanceId}
-                  className="text-sm font-semibold text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {deletingInstanceId === topBannerInstance.instanceId ? "Deleting..." : "Delete"}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 px-5 py-10 text-center">
-              <Icon icon="mdi:image-area" className="mx-auto mb-2 text-3xl text-gray-400" />
-              <p className="text-sm text-gray-600">No Top Banner has been added.</p>
-              <p className="mt-1 text-xs text-gray-400">Click Add New when you are ready to create it.</p>
-            </div>
-          )}
-
-          <div className="mt-5 space-y-4">
-            {renderHeroGridSection({
-              type: COMPONENT_TYPES.HERO_GRID_BIG_LEFT,
-              title: "Hero Grid - Big Left",
-              subtitle: "1 Large Banner Left (66%) + 2 Small Banners stacked Right (34%).",
-              variant: "big-left",
-              instances: heroBigLeftInstances,
-            })}
-            {renderHeroGridSection({
-              type: COMPONENT_TYPES.HERO_GRID_BIG_RIGHT,
-              title: "Hero Grid - Big Right",
-              subtitle: "2 Small Banners stacked Left (34%) + 1 Large Banner Right (66%).",
-              variant: "big-right",
-              instances: heroBigRightInstances,
-            })}
-          </div>
-        </div>
-      );
-    }
-
     if (configType === COMPONENT_TYPES.TOP_BANNER) {
       return (
-        <TopBannerConfigForm
-          key={configInstanceId}
-          categoryId={page._id}
-          pageType="home"
-          categoryName="Home Page"
-          apiBase="/api/home-topbanner"
-          ownerIdKey="pageId"
-          onCancel={() => setConfigInstanceId(null)}
-          onSaved={() => { setMessage("Top Banner carousel saved."); setConfigInstanceId(null); load(); }}
+        <HomeTopBannerConfigForm
+          key={page._id}
+          pageId={page._id}
+          hasComponentInstance={Boolean(topBannerInstance)}
+          onEnsureComponent={ensureTopBannerInstance}
+          onChanged={refreshPage}
         />
       );
     }
@@ -511,22 +361,6 @@ export default function HomePageBuilder() {
         />
       );
     }
-
-    const heroGridExtra = (variant, label) => {
-      const returnToTopBanner = (msg) => {
-        if (msg) setMessage(msg);
-        setConfigInstanceId(null);
-        setConfigType(COMPONENT_TYPES.TOP_BANNER);
-        load();
-      };
-      return {
-        variant,
-        backLabel: "Back to Top Banner",
-        onBackToList: () => returnToTopBanner(),
-        onSaved: () => returnToTopBanner(`${label} saved.`),
-        onDeleteSet: () => returnToTopBanner(`${label} deleted.`),
-      };
-    };
 
     const formMap = {
       [COMPONENT_TYPES.IMAGE_CAROUSEL]: {
@@ -638,16 +472,6 @@ export default function HomePageBuilder() {
         label: "Deal of the Day",
         extra: { apiBase: "/api/home-deal-of-the-day" },
       },
-      [COMPONENT_TYPES.HERO_GRID_BIG_LEFT]: {
-        Form: HeroGridConfigForm,
-        label: "Hero Grid - Big Left",
-        extra: heroGridExtra("big-left", "Hero Grid - Big Left"),
-      },
-      [COMPONENT_TYPES.HERO_GRID_BIG_RIGHT]: {
-        Form: HeroGridConfigForm,
-        label: "Hero Grid - Big Right",
-        extra: heroGridExtra("big-right", "Hero Grid - Big Right"),
-      },
     };
 
     const entry = formMap[configType];
@@ -710,10 +534,7 @@ export default function HomePageBuilder() {
               {available.map((comp) => {
                 const count = countByType[comp.type] || 0;
                 const added = count > 0;
-                const isSelected =
-                  comp.type === COMPONENT_TYPES.TOP_BANNER
-                    ? isTopBannerFamily(configType)
-                    : configType === comp.type;
+                const isSelected = configType === comp.type;
                 return (
                   <button
                     key={comp.type}

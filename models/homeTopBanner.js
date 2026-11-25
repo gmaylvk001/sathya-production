@@ -1,10 +1,43 @@
 import mongoose from "mongoose";
 
-const BannerItemSchema = new mongoose.Schema(
+const HeroSlotSchema = new mongoose.Schema(
   {
     desktopImage: { type: String, default: "" },
     mobileImage: { type: String, default: "" },
     url: { type: String, default: "" },
+  },
+  { _id: false }
+);
+
+const BannerItemSchema = new mongoose.Schema(
+  {
+    mode: {
+      type: String,
+      enum: ["single", "big-left", "big-right"],
+      default: "single",
+    },
+    desktopImage: { type: String, default: "" },
+    mobileImage: { type: String, default: "" },
+    url: { type: String, default: "" },
+    heading: { type: String, default: "" },
+    description: { type: String, default: "" },
+    buttonText: { type: String, default: "" },
+    buttonUrl: { type: String, default: "" },
+    overlayAlign: {
+      type: String,
+      enum: ["bottom-left", "center-left", "bottom-center"],
+      default: "bottom-left",
+    },
+    textColor: { type: String, default: "#ffffff" },
+    showGradientOverlay: { type: Boolean, default: true },
+    smallBanner1: {
+      type: HeroSlotSchema,
+      default: () => ({ desktopImage: "", mobileImage: "", url: "" }),
+    },
+    smallBanner2: {
+      type: HeroSlotSchema,
+      default: () => ({ desktopImage: "", mobileImage: "", url: "" }),
+    },
     state: {
       type: String,
       enum: ["tamilnadu", "andhra", "kerala", "karnataka", "telangana", "all"],

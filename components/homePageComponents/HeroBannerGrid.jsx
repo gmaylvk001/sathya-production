@@ -97,9 +97,9 @@ function getAlignmentClasses(align) {
 
 /**
  * Storefront: 3-banner Hero Grid matching existing Top Banner container space.
- * Supports `variant: "big-left" | "big-right"`.
+ * Supports `variant: "big-left" | "big-right"` and `embedded` carousel mode.
  */
-export default function HeroBannerGrid({ config }) {
+export default function HeroBannerGrid({ config, embedded = false }) {
   const variant = config?.variant === "big-right" ? "big-right" : "big-left";
   const large = config?.largeBanner || {};
   const small1 = config?.smallBanner1 || {};
@@ -141,10 +141,18 @@ export default function HeroBannerGrid({ config }) {
     ? "order-3 lg:order-none lg:col-start-1 lg:row-start-2"
     : "order-3 lg:order-none lg:col-start-2 lg:row-start-2";
 
+  const containerClass = embedded
+    ? "w-full h-full bg-white px-2 sm:px-3 md:px-4"
+    : "w-full bg-white mb-6 px-2 sm:px-3 md:px-4";
+
+  const gridHeightClass = embedded
+    ? "lg:h-full"
+    : "lg:h-[370px] xl:h-[410px] 2xl:h-[420px]";
+
   return (
-    <section className="w-full bg-white mb-6 px-2 sm:px-3 md:px-4">
+    <div className={containerClass}>
       <div
-        className={`grid grid-cols-1 sm:grid-cols-2 ${gridTemplateClass} lg:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-3 lg:gap-4 w-full lg:h-[370px] xl:h-[410px] 2xl:h-[420px]`}
+        className={`grid grid-cols-1 sm:grid-cols-2 ${gridTemplateClass} lg:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-3 lg:gap-4 w-full ${gridHeightClass}`}
       >
         {/* Large Hero Banner Slot */}
         <div
@@ -224,6 +232,6 @@ export default function HeroBannerGrid({ config }) {
           positionClass={small2PosClass}
         />
       </div>
-    </section>
+    </div>
   );
 }
