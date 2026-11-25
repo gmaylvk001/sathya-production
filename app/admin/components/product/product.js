@@ -78,6 +78,7 @@ export default function CategoryComponent() {
   const [totalProducts, setTotalProducts] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Unilet products state
   const [uniletProductsList, setUniletProductsList] = useState([]);
@@ -858,6 +859,10 @@ export default function CategoryComponent() {
 
   //NEW EXPORT EXCEL WITH CHILD CATEGORY
   const exportToExcel = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+
+    try {
     const XLSX = await import("xlsx");
 
     /* ---------- CATEGORY MAP ---------- */
@@ -884,15 +889,28 @@ export default function CategoryComponent() {
       }
     });
 
+    // Fetch ALL matching products (not just the current page of 25)
+    const exportParams = new URLSearchParams({
+      export: "1",
+      limit: "20000",
+      page: "1",
+    });
+    if (debouncedSearchQuery?.trim()) exportParams.append("search", debouncedSearchQuery.trim());
+    if (statusFilter) exportParams.append("status", statusFilter);
+    if (categoryFilter) exportParams.append("category", categoryFilter);
+    if (subCategoryFilter) exportParams.append("sub_category", subCategoryFilter);
+    if (brandFilter) exportParams.append("brand", brandFilter);
+    if (stockFilter) exportParams.append("stock", stockFilter);
 
-    // ✅ GET ALL IDS
-    /* const allIds = filteredProducts.flatMap(product => [
-      ...(product.featured_products || []),
-      ...(product.related_products || []),
-      ...(product.add_ons || [])
-    ]); */
+    toast.info("Preparing Excel export…");
+    const exportRes = await fetch(`/api/admin/product?${exportParams.toString()}`);
+    const exportData = await exportRes.json();
+    if (!exportData?.success || !Array.isArray(exportData.products)) {
+      throw new Error(exportData?.error || "Failed to load products for export");
+    }
+    const productsToExport = exportData.products;
 
-    const allIds = filteredProducts.flatMap(product => [
+    const allIds = productsToExport.flatMap(product => [
       ...(Array.isArray(product.featured_products)
         ? product.featured_products
         : []),
@@ -909,10 +927,10 @@ export default function CategoryComponent() {
     // ✅ UNIQUE IDS
     const uniqueIds = [...new Set(allIds.map(id => id.toString()))];
 
-    // ✅ CREATE MAP FROM PRODUCTS STATE
+    // Map product _id → item_code from the full export set
     const productMap = {};
 
-    products.forEach(p => {
+    productsToExport.forEach(p => {
       if (p._id && p.item_code) {
         productMap[p._id.toString()] = p.item_code;
       }
@@ -920,7 +938,7 @@ export default function CategoryComponent() {
 
 
     /* ---------- MAIN EXPORT ---------- */
-    const dataForExport = filteredProducts.map(product => {
+    const dataForExport = productsToExport.map(product => {
       /* let mainCategory = 'No Category';
       let subCategory = 'No Subcategory';
       let childCategory = 'No Childcategory';
@@ -1120,6 +1138,9 @@ export default function CategoryComponent() {
         'image1': product.images?.[0] || '',
         'image2': product.images?.[1] || '',
         'image3': product.images?.[2] || '',
+        'image4': product.images?.[3] || '',
+        'image5': product.images?.[4] || '',
+        'image6': product.images?.[5] || '',
 
         // 🔥 FIX HERE (important)
         'overview images': product.overview_images?.join(", ") || '',
@@ -1176,6 +1197,9 @@ export default function CategoryComponent() {
         'image1',
         'image2',
         'image3',
+        'image4',
+        'image5',
+        'image6',
         'overview images',
         'overview_description',
         'variants',
@@ -1191,6 +1215,13 @@ export default function CategoryComponent() {
       workbook,
       `products_export_${new Date().toISOString().slice(0, 10)}.xlsx`
     );
+    toast.success(`Exported ${dataForExport.length} product(s)`);
+    } catch (error) {
+      console.error("Product Excel export failed:", error);
+      toast.error(error.message || "Failed to export products");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
 
@@ -1949,10 +1980,11 @@ export default function CategoryComponent() {
 
           <button
             onClick={exportToExcel}
-            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center gap-2"
+            disabled={isExporting}
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md flex items-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <Icon icon="mdi:microsoft-excel" className="text-lg" />
-            Export to Excel
+            {isExporting ? "Exporting..." : "Export to Excel"}
           </button>
 
                     <Link href="/admin/product/create" className="bg-red-500 text-white px-4 py-2 rounded-md">

@@ -11,8 +11,16 @@ export async function GET(req) {
     await dbConnect();
     const { searchParams } = new URL(req.url);
 
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
-    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "25", 10)));
+    const isExport =
+      searchParams.get("export") === "1" ||
+      searchParams.get("export") === "true";
+    // Normal list stays capped at 100; Excel export can pull the full filtered set.
+    const page = isExport
+      ? 1
+      : Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const limit = isExport
+      ? Math.max(1, Math.min(20000, parseInt(searchParams.get("limit") || "20000", 10)))
+      : Math.max(1, Math.min(100, parseInt(searchParams.get("limit") || "25", 10)));
     const search = (searchParams.get("search") || "").trim();
     const status = (searchParams.get("status") || "").trim();
     const category = (searchParams.get("category") || "").trim();
@@ -114,20 +122,28 @@ export async function GET(req) {
       Product.countDocuments(filterQuery)
     ]);
 
-    // Fetch Extended Warranties ONLY for these 25 products
-    const itemCodes = products.map((p) => p.item_code).filter(Boolean);
-    const warranties = itemCodes.length > 0
-      ? await ExtendedWarranty.find({ item_code: { $in: itemCodes } }).lean()
-      : [];
+    // Skip warranty enrichment on full export (not used in the sheet, and slow for thousands of rows)
+    let productsWithWarranty = products.map((prod) => ({
+      ...prod,
+      extend_warranty: prod.extend_warranty || [],
+      variants: Array.isArray(prod.variants) ? prod.variants : [],
+    }));
 
-    const productsWithWarranty = products.map((prod) => {
-      const w = warranties.find((item) => item.item_code === prod.item_code);
-      return {
-        ...prod,
-        extend_warranty: w ? w.extend_warranty : (prod.extend_warranty || []),
-        variants: Array.isArray(prod.variants) ? prod.variants : []
-      };
-    });
+    if (!isExport) {
+      const itemCodes = products.map((p) => p.item_code).filter(Boolean);
+      const warranties = itemCodes.length > 0
+        ? await ExtendedWarranty.find({ item_code: { $in: itemCodes } }).lean()
+        : [];
+
+      productsWithWarranty = products.map((prod) => {
+        const w = warranties.find((item) => item.item_code === prod.item_code);
+        return {
+          ...prod,
+          extend_warranty: w ? w.extend_warranty : (prod.extend_warranty || []),
+          variants: Array.isArray(prod.variants) ? prod.variants : [],
+        };
+      });
+    }
 
     return NextResponse.json({
       success: true,
