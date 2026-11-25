@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Icon } from '@iconify/react';
 import { getDiscountInfo } from "@/lib/discountHelper";
+import PriceBlock from "@/components/product/PriceBlock";
 import { useRegion } from "@/context/RegionContext";
 import { useFilteredStores } from "@/hooks/useFilteredStores";
 
@@ -14,7 +15,7 @@ export default function OfferClient({ offer, products }) {
   const { district: userDistrict, city: userCity } = useRegion();
   const activeDistrict = userDistrict || userCity || '';
   const { filteredStores, isFallback, fallbackMessage } = useFilteredStores(stores, activeDistrict);
-  
+
   // Form State
   const [formData, setFormData] = useState({
     lead_type: 'Enquiry',
@@ -27,7 +28,7 @@ export default function OfferClient({ offer, products }) {
     message: '',
     timings: '10 - 12AM'
   });
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [toastMessage, setToastMessage] = useState(null);
 
@@ -64,13 +65,13 @@ export default function OfferClient({ offer, products }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     // Client Validation
     if (!formData.name.trim() || !formData.email.trim() || !formData.mobile.trim() || !formData.store) {
       alert("Please fill in all required fields (Name, Email, Mobile, Store)");
       return;
     }
-    
+
     if (!/^[6-9]\d{9}$/.test(formData.mobile)) {
       alert("Please enter a valid 10-digit mobile number");
       return;
@@ -138,7 +139,7 @@ export default function OfferClient({ offer, products }) {
         <div className="flex justify-between items-center mb-6 border-b pb-4">
           <h1 className="text-2xl font-bold text-red-600 uppercase">{offer.offerName}</h1>
           <div className="flex gap-2">
-            <button 
+            <button
               onClick={() => handleOpenModal("")}
               className="bg-red-600 text-white font-bold px-4 py-2 text-sm hover:bg-red-700 transition"
             >
@@ -167,20 +168,8 @@ export default function OfferClient({ offer, products }) {
                 </div>
                 <div className="p-4 text-center border-t border-gray-50">
                   <h3 className="text-sm font-medium text-gray-800 line-clamp-2 min-h-[40px] mb-2">{product.productName}</h3>
-                  {(() => {
-                    const { showDiscount } = getDiscountInfo(product.price, product.specialPrice);
-                    return (
-                      <div className="flex justify-center items-baseline gap-2 mb-4">
-                        {showDiscount && (
-                          <span className="text-gray-400 text-sm line-through">₹{parseFloat(product.price).toLocaleString()}</span>
-                        )}
-                        <span className="text-gray-900 font-bold text-lg">
-                          ₹{parseFloat(showDiscount ? product.specialPrice : (product.specialPrice || product.price)).toLocaleString()}
-                        </span>
-                      </div>
-                    );
-                  })()}
-                  <button 
+                  <PriceBlock price={product.specialPrice || product.price} mrp={product.price} className="justify-center" />
+                  <button
                     onClick={() => handleOpenModal(product.productName)}
                     className="bg-red-600 hover:bg-red-700 text-white font-bold w-full py-2 text-sm transition-colors"
                   >
@@ -202,7 +191,7 @@ export default function OfferClient({ offer, products }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
           <div className="bg-white shadow-xl w-full max-w-md relative flex flex-col max-h-[90vh]">
             {/* Close Button */}
-            <button 
+            <button
               onClick={() => !isSubmitting && setIsModalOpen(false)}
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 text-2xl leading-none"
             >
@@ -221,7 +210,7 @@ export default function OfferClient({ offer, products }) {
             <div className="px-5 py-4 overflow-y-auto">
               <h3 className="font-semibold text-gray-800 text-[13px] mb-3">Leave Your Details For Us To Call You Back</h3>
               <form onSubmit={handleSubmit} className="space-y-3">
-                
+
                 <div>
                   <select
                     value={formData.lead_type}
@@ -267,7 +256,7 @@ export default function OfferClient({ offer, products }) {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <input
                     type="email"
@@ -278,7 +267,7 @@ export default function OfferClient({ offer, products }) {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <input
                     type="tel"
@@ -290,7 +279,7 @@ export default function OfferClient({ offer, products }) {
                     required
                   />
                 </div>
-                
+
                 <div>
                   <select
                     value={formData.store}
@@ -302,15 +291,15 @@ export default function OfferClient({ offer, products }) {
                       {isFallback && fallbackMessage
                         ? `${fallbackMessage} - Showing all stores`
                         : activeDistrict
-                        ? `Select store near you (${activeDistrict.charAt(0).toUpperCase() + activeDistrict.slice(1)}) *`
-                        : "Select store near you *"}
+                          ? `Select store near you (${activeDistrict.charAt(0).toUpperCase() + activeDistrict.slice(1)}) *`
+                          : "Select store near you *"}
                     </option>
                     {filteredStores.map(s => (
                       <option key={s._id} value={s._id}>{s.title || s.name}</option>
                     ))}
                   </select>
                 </div>
-                
+
                 <div>
                   <textarea
                     placeholder="Remark"
@@ -320,7 +309,7 @@ export default function OfferClient({ offer, products }) {
                     className="w-full border border-gray-300 rounded py-2 px-2 text-[13px] text-gray-700 focus:outline-none focus:border-gray-400 resize-none"
                   ></textarea>
                 </div>
-                
+
                 <div className="pt-1">
                   <h3 className="font-semibold text-gray-800 text-[13px] mb-2">Preferred time to call back?</h3>
                   <select

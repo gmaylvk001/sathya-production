@@ -17,12 +17,12 @@ export default function CategoryPage() {
     filter: []
   });
 
-  
+
   const [expandedCategories, setExpandedCategories] = useState([]);
   const [priceRange, setPriceRange] = useState([0, 100000]);
   const [filterGroups, setFilterGroups] = useState([]);
   const toggleCategory = (categoryId) => {
-    setExpandedCategories(prev => 
+    setExpandedCategories(prev =>
       prev.includes(categoryId)
         ? prev.filter(id => id !== categoryId)
         : [...prev, categoryId]
@@ -118,7 +118,7 @@ export default function CategoryPage() {
   const handleFilterChange = (type, value) => {
     setSelectedFilters(prev => {
       const newFilters = { ...prev };
-      
+
       if (type === 'category' || type === 'brand') {
         newFilters[type] = prev[type].includes(value)
           ? prev[type].filter(item => item !== value)
@@ -135,7 +135,7 @@ export default function CategoryPage() {
       return newFilters;
     });
   };
-  
+
   // Add this useEffect hook
   useEffect(() => {
     fetchProducts();
@@ -156,10 +156,9 @@ export default function CategoryPage() {
                   <div className="flex items-center justify-between gap-2">
                     <button
                       onClick={() => handleFilterChange('category', category._id)}
-                      className={`flex-1 text-left p-2 rounded ${
-                        selectedFilters.category.includes(category._id) 
-                          ? 'bg-red-100' : 'hover:bg-gray-100'
-                      }`}
+                      className={`flex-1 text-left p-2 rounded ${selectedFilters.category.includes(category._id)
+                        ? 'bg-red-100' : 'hover:bg-gray-100'
+                        }`}
                     >
                       {category.category_name}
                     </button>
@@ -182,10 +181,9 @@ export default function CategoryPage() {
                         <li key={subCat._id}>
                           <button
                             onClick={() => handleFilterChange('category', subCat._id)}
-                            className={`block w-full text-left p-2 rounded ${
-                              selectedFilters.category.includes(subCat._id) 
-                                ? 'bg-red-100' : 'hover:bg-gray-100'
-                            }`}
+                            className={`block w-full text-left p-2 rounded ${selectedFilters.category.includes(subCat._id)
+                              ? 'bg-red-100' : 'hover:bg-gray-100'
+                              }`}
                           >
                             {subCat.category_name}
                           </button>
@@ -230,11 +228,10 @@ export default function CategoryPage() {
                     <li key={filter._id}>
                       <button
                         onClick={() => handleFilterChange(group.filtergroup_slug, filter._id)}
-                        className={`block w-full text-left p-2 rounded ${
-                          selectedFilters.filters?.[group.filtergroup_slug]?.includes(filter._id)
-                            ? 'bg-red-100'
-                            : 'hover:bg-gray-100'
-                        }`}
+                        className={`block w-full text-left p-2 rounded ${selectedFilters.filters?.[group.filtergroup_slug]?.includes(filter._id)
+                          ? 'bg-red-100'
+                          : 'hover:bg-gray-100'
+                          }`}
                       >
                         {filter.filter_name}
                       </button>
@@ -254,10 +251,9 @@ export default function CategoryPage() {
                 <li key={brand._id}>
                   <button
                     onClick={() => handleFilterChange('brand', brand._id)}
-                    className={`block w-full text-left p-2 rounded ${
-                      selectedFilters.brand.includes(brand._id) 
-                        ? 'bg-red-100' : 'hover:bg-gray-100'
-                    }`}
+                    className={`block w-full text-left p-2 rounded ${selectedFilters.brand.includes(brand._id)
+                      ? 'bg-red-100' : 'hover:bg-gray-100'
+                      }`}
                   >
                     {brand.brand_name}
                   </button>
@@ -273,7 +269,7 @@ export default function CategoryPage() {
             {products.map(product => (
               <div key={product._id} className="bg-white p-4 rounded-lg shadow">
                 <div className="relative h-48 mb-4">
-                
+
                   <Image
                     src={
                       (product.images?.[0] || "").startsWith("http")
@@ -292,17 +288,24 @@ export default function CategoryPage() {
                   </Link>
                 </h3>
                 {(() => {
-                  const { showDiscount } = getDiscountInfo(product.price, product.special_price);
+                  const { discountPercent, showDiscount } = getDiscountInfo(product.price, product.special_price);
+                  const displayPrice = showDiscount ? product.special_price : (product.special_price || product.price);
+                  const savings = showDiscount && product.price > displayPrice ? product.price - displayPrice : 0;
                   return (
-                    <div className="flex items-center gap-2 mb-4">
-                      {showDiscount && (
-                        <span className="text-gray-500 line-through">
-                          ₹{product.price}
+                    <div className="flex items-baseline gap-2 mb-4 flex-wrap">
+                      <span className="text-xl font-bold text-gray-900">
+                        ₹{Number(displayPrice).toLocaleString("en-IN")}
+                      </span>
+                      {showDiscount && savings > 0 && (
+                        <span className="text-sm text-gray-400 line-through font-normal">
+                          ₹{Number(product.price).toLocaleString("en-IN")}
                         </span>
                       )}
-                      <span className="text-xl font-bold text-[#d72828]">
-                        ₹{showDiscount ? product.special_price : (product.special_price || product.price)}
-                      </span>
+                      {showDiscount && savings > 0 && (
+                        <span className="text-sm font-semibold text-[#d72828]">
+                          Save ₹{Number(savings).toLocaleString("en-IN")}
+                        </span>
+                      )}
                     </div>
                   );
                 })()}

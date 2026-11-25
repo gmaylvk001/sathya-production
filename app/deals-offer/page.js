@@ -12,6 +12,7 @@ import DealsOfferModal from "@/components/deals-offer/DealsOfferModal";
 import CategoryProductSlider from "@/components/deals-offer/CategoryProductSlider";
 import { getCardOfferCategoryHref, isExternalUrl } from "@/lib/cardOffers/cardOfferNavigationHelper";
 import { getDiscountInfo } from "@/lib/discountHelper";
+import PriceBlock from "@/components/product/PriceBlock";
 
 // Helper to determine destination URL for any card offer
 export function getCardOfferHref(card) {
@@ -236,16 +237,7 @@ function DealProductCard({ product, brandMap }) {
       </Link>
 
       {/* Pricing */}
-      <div className="flex items-baseline gap-2 mb-2">
-        <span className="text-base sm:text-lg font-extrabold text-gray-900">
-          ₹{Math.round(displayPrice).toLocaleString("en-IN")}
-        </span>
-        {showDiscount && (
-          <span className="text-xs text-gray-400 line-through">
-            ₹{Math.round(price).toLocaleString("en-IN")}
-          </span>
-        )}
-      </div>
+      <PriceBlock price={displayPrice} mrp={price} priceClass="text-base sm:text-lg" />
 
       {/* Stock Status */}
       <div className="text-[11px] font-medium mb-3">

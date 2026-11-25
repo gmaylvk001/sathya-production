@@ -19,6 +19,7 @@ import {
   VISIBLE_FILTER_GROUP_LIMIT,
 } from "@/lib/filterGroupDefaults";
 import { getDiscountInfo } from "@/lib/discountHelper";
+import PriceBlock from "@/components/product/PriceBlock";
 
 const OPEN_BOX_FEATURES = [
   {
@@ -206,9 +207,8 @@ const CategoryTreeFilter = ({
       {categories.map((category) => (
         <div key={category._id}>
           <div
-            className={`flex items-center gap-2 ${
-              level > 0 ? `ml-${Math.min(level * 4, 8)}` : ""
-            }`}
+            className={`flex items-center gap-2 ${level > 0 ? `ml-${Math.min(level * 4, 8)}` : ""
+              }`}
           >
             <label className="flex items-center gap-2 flex-1 cursor-pointer hover:bg-gray-50 p-1 rounded">
               <input
@@ -219,11 +219,10 @@ const CategoryTreeFilter = ({
                 className="h-4 w-4 text-[#d72828] border-gray-300 rounded focus:ring-red-500"
               />
               <span
-                className={`text-sm ${
-                  selectedCategory === category.category_name
+                className={`text-sm ${selectedCategory === category.category_name
                     ? "text-[#d72828] font-medium"
                     : "text-gray-700"
-                }`}
+                  }`}
               >
                 {category.category_name}
                 {category.hasProducts && (
@@ -297,16 +296,16 @@ export default function OpenBoxPage() {
   const [showcaseCategoryTree, setShowcaseCategoryTree] = useState([]);
   const [megaDealProducts, setMegaDealProducts] = useState([]);
 
-const [filterDefs, setFilterDefs] = useState([]);
-const [filterSummaryRaw, setFilterSummaryRaw] = useState([]);
-const [filterGroups, setFilterGroups] = useState({});
-const [filterDefMap, setFilterDefMap] = useState({});
-const [expandedGroups, setExpandedGroups] = useState({});
-const [showAllFilterGroups, setShowAllFilterGroups] = useState(false);
-const [selectedProductFilters, setSelectedProductFilters] = useState([]);
-const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+  const [filterDefs, setFilterDefs] = useState([]);
+  const [filterSummaryRaw, setFilterSummaryRaw] = useState([]);
+  const [filterGroups, setFilterGroups] = useState({});
+  const [filterDefMap, setFilterDefMap] = useState({});
+  const [expandedGroups, setExpandedGroups] = useState({});
+  const [showAllFilterGroups, setShowAllFilterGroups] = useState(false);
+  const [selectedProductFilters, setSelectedProductFilters] = useState([]);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
 
-const FILTER_LIST_MAX_HEIGHT = "max-h-[7.75rem]";
+  const FILTER_LIST_MAX_HEIGHT = "max-h-[7.75rem]";
 
   const STEP = 100;
   const MIN = priceRange[0];
@@ -327,49 +326,49 @@ const FILTER_LIST_MAX_HEIGHT = "max-h-[7.75rem]";
 
 
   useEffect(() => {
-  if (filterDefs.length === 0) {
-    setFilterGroups({});
-    setFilterDefMap({});
-    return;
-  }
-  const groups = {};
-  const map = {};
-  filterDefs.forEach((f) => {
-    const group = f.filter_group_name || "Other";
-    if (!groups[group]) groups[group] = { _id: group, name: group, filters: [] };
-    groups[group].filters.push(f);
-    map[String(f._id)] = { name: f.filter_name, group };
-  });
-  setFilterGroups(groups);
-  setFilterDefMap(map);
-  setShowAllFilterGroups(false);
-}, [filterDefs]);
-
-const toggleProductFilter = (id) => {
-  const next = selectedProductFilters.includes(id)
-    ? selectedProductFilters.filter((f) => f !== id)
-    : [...selectedProductFilters, id];
-  setSelectedProductFilters(next);
-};
-
-const handleShare = async (product) => {
-  const productUrl = `${window.location.origin}/product/${product.slug}`;
-  try {
-    if (navigator.share) {
-      await navigator.share({
-        title: product.name,
-        url: productUrl,
-      });
-    } else {
-      await navigator.clipboard.writeText(productUrl);
-      toast.success("Link copied to clipboard!");
+    if (filterDefs.length === 0) {
+      setFilterGroups({});
+      setFilterDefMap({});
+      return;
     }
-  } catch (err) {
-    if (err?.name !== "AbortError") {
-      console.error("Share failed:", err);
+    const groups = {};
+    const map = {};
+    filterDefs.forEach((f) => {
+      const group = f.filter_group_name || "Other";
+      if (!groups[group]) groups[group] = { _id: group, name: group, filters: [] };
+      groups[group].filters.push(f);
+      map[String(f._id)] = { name: f.filter_name, group };
+    });
+    setFilterGroups(groups);
+    setFilterDefMap(map);
+    setShowAllFilterGroups(false);
+  }, [filterDefs]);
+
+  const toggleProductFilter = (id) => {
+    const next = selectedProductFilters.includes(id)
+      ? selectedProductFilters.filter((f) => f !== id)
+      : [...selectedProductFilters, id];
+    setSelectedProductFilters(next);
+  };
+
+  const handleShare = async (product) => {
+    const productUrl = `${window.location.origin}/product/${product.slug}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: product.name,
+          url: productUrl,
+        });
+      } else {
+        await navigator.clipboard.writeText(productUrl);
+        toast.success("Link copied to clipboard!");
+      }
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        console.error("Share failed:", err);
+      }
     }
-  }
-};
+  };
 
   useEffect(() => {
     if (isInitialLoad.current) {
@@ -377,7 +376,7 @@ const handleShare = async (product) => {
       return;
     }
     fetchProducts(1);
-  },[selectedFilters, selectedProductFilters]);
+  }, [selectedFilters, selectedProductFilters]);
   // Sync slider values
   useEffect(() => {
     setValues([selectedFilters.price.min, selectedFilters.price.max]);
@@ -408,7 +407,7 @@ const handleShare = async (product) => {
         query.set("sortBy", sortOption);
       }
       if (selectedProductFilters.length > 0) {
-     query.set("filters", selectedProductFilters.join(","));
+        query.set("filters", selectedProductFilters.join(","));
       }
 
       const res = await fetch(`/api/open-box?${query}`);
@@ -501,27 +500,27 @@ const handleShare = async (product) => {
     }
   }, [sortOption]);
 
- const handleFilterChange = (type, value) => {
-  setSelectedFilters((prev) => {
-    const newFilters = { ...prev };
-    if (type === "brands") {
-      newFilters.brands = prev.brands.includes(value)
-        ? prev.brands.filter((id) => id !== value)
-        : [...prev.brands, value];
-    } else if (type === "price") {
-      newFilters.price = value;
-    } else if (type === "category") {
-      newFilters.category = prev.category === value ? "" : value;
-      newFilters.selectedParent = prev.category === value ? "" : value;
-      newFilters.subCategory = "";
-      setSelectedProductFilters([]); // ✅ புதியது
-    } else if (type === "subCategory") {
-      newFilters.subCategory = prev.subCategory === value ? "" : value;
-      setSelectedProductFilters([]); // ✅ புதியது
-    }
-    return newFilters;
-  });
-};
+  const handleFilterChange = (type, value) => {
+    setSelectedFilters((prev) => {
+      const newFilters = { ...prev };
+      if (type === "brands") {
+        newFilters.brands = prev.brands.includes(value)
+          ? prev.brands.filter((id) => id !== value)
+          : [...prev.brands, value];
+      } else if (type === "price") {
+        newFilters.price = value;
+      } else if (type === "category") {
+        newFilters.category = prev.category === value ? "" : value;
+        newFilters.selectedParent = prev.category === value ? "" : value;
+        newFilters.subCategory = "";
+        setSelectedProductFilters([]); // ✅ புதியது
+      } else if (type === "subCategory") {
+        newFilters.subCategory = prev.subCategory === value ? "" : value;
+        setSelectedProductFilters([]); // ✅ புதியது
+      }
+      return newFilters;
+    });
+  };
 
   const handlePriceChange = (vals) => {
     let min = Math.max(1, vals[0]);
@@ -546,7 +545,7 @@ const handleShare = async (product) => {
     (selectedFilters.category ? 1 : 0) +
     (selectedFilters.subCategory ? 1 : 0) +
     (selectedFilters.price.min !== priceRange[0] ||
-    selectedFilters.price.max !== priceRange[1]
+      selectedFilters.price.max !== priceRange[1]
       ? 1
       : 0);
 
@@ -592,11 +591,10 @@ const handleShare = async (product) => {
         <button
           key={i}
           onClick={() => handlePageChange(i)}
-          className={`px-3 py-1 rounded-md ${
-            pagination.currentPage === i
+          className={`px-3 py-1 rounded-md ${pagination.currentPage === i
               ? "bg-[#d72828] text-white"
               : "bg-white text-gray-700 hover:bg-gray-100"
-          }`}
+            }`}
         >
           {i}
         </button>,
@@ -607,11 +605,10 @@ const handleShare = async (product) => {
         <button
           onClick={() => handlePageChange(pagination.currentPage - 1)}
           disabled={!hasPrev}
-          className={`p-2 rounded-md ${
-            !hasPrev
+          className={`p-2 rounded-md ${!hasPrev
               ? "bg-gray-200 text-gray-400 cursor-not-allowed"
               : "bg-white text-gray-700 hover:bg-gray-100"
-          }`}
+            }`}
         >
           <ChevronLeft size={16} />
         </button>
@@ -643,11 +640,10 @@ const handleShare = async (product) => {
         <button
           onClick={() => handlePageChange(pagination.currentPage + 1)}
           disabled={!hasNext}
-          className={`p-2 rounded-md ${
-            !hasNext
+          className={`p-2 rounded-md ${!hasNext
               ? "bg-gray-200 text-gray-400 cursor-not-allowed"
               : "bg-white text-gray-700 hover:bg-gray-100"
-          }`}
+            }`}
         >
           <ChevronRight size={16} />
         </button>
@@ -731,25 +727,7 @@ const handleShare = async (product) => {
                 </Link>
 
                 {/* Price */}
-                {(() => {
-                  const { showDiscount: hasDisc } = getDiscountInfo(product.price, product.special_price);
-                  return (
-                    <div className="flex items-center gap-2 mb-3">
-                      <span className="text-base font-semibold text-red-600">
-                        ₹
-                        {(hasDisc
-                          ? Math.round(product.special_price)
-                          : Math.round(product.price)
-                        ).toLocaleString('en-IN')}
-                      </span>
-                      {hasDisc && (
-                        <span className="text-xs text-gray-500 line-through">
-                          ₹{Math.round(product.price).toLocaleString('en-IN')}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })()}
+                <PriceBlock price={product.special_price || product.price} mrp={product.price} />
 
                 {/* Stock */}
                 <div className="mb-2">
@@ -771,9 +749,9 @@ const handleShare = async (product) => {
                     stockQuantity={product.quantity}
                     special_price={product.special_price}
                     className="w-full text-xs sm:text-sm py-1.5"
-                      movement={product.movement}
-                   productName={product.name}
-                   productSlug={product.slug}
+                    movement={product.movement}
+                    productName={product.name}
+                    productSlug={product.slug}
                   />
                   {/* <button
                     type="button"
@@ -1097,11 +1075,10 @@ const handleShare = async (product) => {
                     className="cursor-pointer"
                   >
                     <span
-                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                        index === currentBannerIndex
+                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${index === currentBannerIndex
                           ? "bg-white border-white"
                           : "bg-transparent border-white/70"
-                      }`}
+                        }`}
                     >
                       {index === currentBannerIndex && (
                         <span className="w-1.5 h-1.5 rounded-full bg-[#d72828]"></span>
@@ -1115,9 +1092,8 @@ const handleShare = async (product) => {
         )}
 
         <div
-          className={`bg-white rounded-2xl border border-gray-100 shadow-[0_8px_30px_rgba(30,95,168,0.12)] px-3 py-4 sm:px-5 sm:py-5 ${
-            banners.length > 0 ? "mt-4" : "mt-0"
-          }`}
+          className={`bg-white rounded-2xl border border-gray-100 shadow-[0_8px_30px_rgba(30,95,168,0.12)] px-3 py-4 sm:px-5 sm:py-5 ${banners.length > 0 ? "mt-4" : "mt-0"
+            }`}
         >
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             {OPEN_BOX_FEATURES.map(({ title, desc, Icon }) => (
@@ -1179,11 +1155,10 @@ const handleShare = async (product) => {
 
         {/* Sidebar — desktop always visible; mobile slides from left */}
         <div
-          className={`${
-            isFilterPanelOpen
+          className={`${isFilterPanelOpen
               ? "fixed left-0 top-0 w-4/5 h-full bg-white shadow-lg z-50 flex flex-col md:static md:z-auto md:w-[250px] md:h-auto md:shadow-none md:block"
               : "hidden md:block md:w-[250px] shrink-0"
-          }`}
+            }`}
         >
           {/* Mobile panel header */}
           <div className="flex justify-between items-center p-4 border-b flex-shrink-0 bg-white md:hidden">
@@ -1198,193 +1173,191 @@ const handleShare = async (product) => {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3 md:p-0 md:overflow-visible md:space-y-0">
-          {/* Active Filters */}
-          {(selectedFilters.brands.length > 0 ||
-            selectedFilters.price.min !== priceRange[0] ||
-            selectedFilters.price.max !== priceRange[1] ||
-            selectedFilters.category !== "" ||
-            selectedFilters.subCategory !== "") && (
-            <div className="bg-white p-4 rounded shadow mb-3">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="font-semibold">Active Filters</h3>
-                <button
-                  onClick={clearAllFilters}
-                  className="text-[#d72828] text-sm hover:underline"
-                >
-                  Clear all
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {selectedFilters.brands.map((brandId) => {
-                  const brand = brands.find((b) => b._id === brandId);
-                  return brand ? (
-                    <span
-                      key={brandId}
-                      className="bg-gray-100 px-2 py-1 rounded text-sm flex items-center"
-                    >
-                      {brand.brand_name}
-                      <button
-                        onClick={() => handleFilterChange("brands", brandId)}
-                        className="ml-1 text-gray-500 hover:text-gray-700"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ) : null;
-                })}
-                {(selectedFilters.price.min !== priceRange[0] ||
-                  selectedFilters.price.max !== priceRange[1]) && (
-                  <span className="bg-gray-100 px-2 py-1 rounded text-sm flex items-center">
-                    ₹{selectedFilters.price.min} - ₹{selectedFilters.price.max}
+            {/* Active Filters */}
+            {(selectedFilters.brands.length > 0 ||
+              selectedFilters.price.min !== priceRange[0] ||
+              selectedFilters.price.max !== priceRange[1] ||
+              selectedFilters.category !== "" ||
+              selectedFilters.subCategory !== "") && (
+                <div className="bg-white p-4 rounded shadow mb-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <h3 className="font-semibold">Active Filters</h3>
                     <button
-                      onClick={() =>
-                        setSelectedFilters((prev) => ({
-                          ...prev,
-                          price: { min: priceRange[0], max: priceRange[1] },
-                        }))
-                      }
-                      className="ml-1 text-gray-500 hover:text-gray-700"
+                      onClick={clearAllFilters}
+                      className="text-[#d72828] text-sm hover:underline"
                     >
-                      ×
+                      Clear all
                     </button>
-                  </span>
-                )}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedFilters.brands.map((brandId) => {
+                      const brand = brands.find((b) => b._id === brandId);
+                      return brand ? (
+                        <span
+                          key={brandId}
+                          className="bg-gray-100 px-2 py-1 rounded text-sm flex items-center"
+                        >
+                          {brand.brand_name}
+                          <button
+                            onClick={() => handleFilterChange("brands", brandId)}
+                            className="ml-1 text-gray-500 hover:text-gray-700"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ) : null;
+                    })}
+                    {(selectedFilters.price.min !== priceRange[0] ||
+                      selectedFilters.price.max !== priceRange[1]) && (
+                        <span className="bg-gray-100 px-2 py-1 rounded text-sm flex items-center">
+                          ₹{selectedFilters.price.min} - ₹{selectedFilters.price.max}
+                          <button
+                            onClick={() =>
+                              setSelectedFilters((prev) => ({
+                                ...prev,
+                                price: { min: priceRange[0], max: priceRange[1] },
+                              }))
+                            }
+                            className="ml-1 text-gray-500 hover:text-gray-700"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      )}
 
-                {/* Category tag */}
-                {selectedFilters.category && (
-                  <span className="bg-red-50 border border-red-200 px-2 py-1 rounded text-sm flex items-center text-[#d72828]">
-                    {selectedFilters.category}
-                    <button
-                      onClick={() =>
-                        setSelectedFilters((prev) => ({
-                          ...prev,
-                          category: "",
-                          subCategory: "",
-                        }))
-                      }
-                      className="ml-1 text-[#d72828] hover:text-[#d72828]"
-                    >
-                      ×
-                    </button>
-                  </span>
-                )}
+                    {/* Category tag */}
+                    {selectedFilters.category && (
+                      <span className="bg-red-50 border border-red-200 px-2 py-1 rounded text-sm flex items-center text-[#d72828]">
+                        {selectedFilters.category}
+                        <button
+                          onClick={() =>
+                            setSelectedFilters((prev) => ({
+                              ...prev,
+                              category: "",
+                              subCategory: "",
+                            }))
+                          }
+                          className="ml-1 text-[#d72828] hover:text-[#d72828]"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    )}
 
-                {/* SubCategory tag */}
-                {selectedFilters.subCategory && (
-                  <span className="bg-green-50 border border-green-200 px-2 py-1 rounded text-sm flex items-center text-green-700">
-                    {selectedFilters.subCategory}
-                    <button
-                      onClick={() =>
-                        setSelectedFilters((prev) => ({
-                          ...prev,
-                          subCategory: "",
-                        }))
-                      }
-                      className="ml-1 text-green-400 hover:text-green-600"
-                    >
-                      ×
-                    </button>
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Price Range */}
-          <div className="bg-white p-4 rounded-lg shadow-sm border mb-3">
-            <h3 className="text-base font-semibold mb-4 text-gray-700">
-              Price Range
-            </h3>
-            <ReactRange
-              values={values}
-              step={STEP}
-              min={MIN}
-              max={MAX}
-              onChange={(newValues) => setValues(newValues)}
-              onFinalChange={(newValues) => handlePriceChange(newValues)}
-              renderTrack={({ props, children }) => (
-                <div
-                  {...props}
-                  className="w-full h-2 rounded-lg bg-gray-200 relative"
-                >
-                  <div
-                    className="absolute h-2 bg-gray-500 rounded-lg"
-                    style={{
-                      left: `${((values[0] - MIN) / (MAX - MIN)) * 100}%`,
-                      width: `${
-                        ((values[1] - values[0]) / (MAX - MIN)) * 100
-                      }%`,
-                    }}
-                  />
-                  {children}
+                    {/* SubCategory tag */}
+                    {selectedFilters.subCategory && (
+                      <span className="bg-green-50 border border-green-200 px-2 py-1 rounded text-sm flex items-center text-green-700">
+                        {selectedFilters.subCategory}
+                        <button
+                          onClick={() =>
+                            setSelectedFilters((prev) => ({
+                              ...prev,
+                              subCategory: "",
+                            }))
+                          }
+                          className="ml-1 text-green-400 hover:text-green-600"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
-              renderThumb={({ props, index }) => {
-                const { key, ...rest } = props;
-                return (
-                  <div
-                    key={key}
-                    {...rest}
-                    className={`w-4 h-4 rounded-full border-2 border-black shadow cursor-pointer relative ${
-                      index === 0 ? "bg-[#d72828] z-10" : "bg-green-500 z-20"
-                    }`}
-                  />
-                );
-              }}
-            />
-            <div className="flex justify-between text-sm text-gray-600 mt-6">
-              <span>₹{values[0].toLocaleString('en-IN')}</span>
-              <span>₹{values[1].toLocaleString('en-IN')}</span>
-            </div>
-          </div>
 
-          {/* Categories — subcategories */}
-          <div className="bg-white p-4 rounded-lg shadow-sm border mb-3">
-            <div className="flex items-center justify-between pb-2 bg-gray-300 p-2">
-              <h3 className="text-base font-semibold text-gray-700">
-                Categories
+            {/* Price Range */}
+            <div className="bg-white p-4 rounded-lg shadow-sm border mb-3">
+              <h3 className="text-base font-semibold mb-4 text-gray-700">
+                Price Range
               </h3>
-              <button
-                onClick={() => setIsCategoriesExpanded(!isCategoriesExpanded)}
-              >
-                {isCategoriesExpanded ? (
-                  <ChevronUp size={18} />
-                ) : (
-                  <ChevronDown size={18} />
+              <ReactRange
+                values={values}
+                step={STEP}
+                min={MIN}
+                max={MAX}
+                onChange={(newValues) => setValues(newValues)}
+                onFinalChange={(newValues) => handlePriceChange(newValues)}
+                renderTrack={({ props, children }) => (
+                  <div
+                    {...props}
+                    className="w-full h-2 rounded-lg bg-gray-200 relative"
+                  >
+                    <div
+                      className="absolute h-2 bg-gray-500 rounded-lg"
+                      style={{
+                        left: `${((values[0] - MIN) / (MAX - MIN)) * 100}%`,
+                        width: `${((values[1] - values[0]) / (MAX - MIN)) * 100
+                          }%`,
+                      }}
+                    />
+                    {children}
+                  </div>
                 )}
-              </button>
+                renderThumb={({ props, index }) => {
+                  const { key, ...rest } = props;
+                  return (
+                    <div
+                      key={key}
+                      {...rest}
+                      className={`w-4 h-4 rounded-full border-2 border-black shadow cursor-pointer relative ${index === 0 ? "bg-[#d72828] z-10" : "bg-green-500 z-20"
+                        }`}
+                    />
+                  );
+                }}
+              />
+              <div className="flex justify-between text-sm text-gray-600 mt-6">
+                <span>₹{values[0].toLocaleString('en-IN')}</span>
+                <span>₹{values[1].toLocaleString('en-IN')}</span>
+              </div>
             </div>
 
-            {isCategoriesExpanded && (
-              <ul className={`mt-2 ${FILTER_LIST_MAX_HEIGHT} overflow-y-auto pr-2`}>
-                <li>
-                  <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                    <input
-                      type="radio"
-                      name="category"
-                      checked={
-                        selectedFilters.subCategory === "" &&
-                        selectedFilters.category === ""
-                      }
-                    onChange={() => {
-                      setSelectedFilters((prev) => ({
-                      ...prev,
-                       category: "",
-                       subCategory: "",
-                        }));
-                      setSelectedProductFilters([]);
-                         }}
-                      className="h-4 w-4 text-[#d72828]"
-                    />
-                    <span className="text-sm font-medium text-gray-700">
-                      All Categories
-                    </span>
-                  </label>
-                </li>
+            {/* Categories — subcategories */}
+            <div className="bg-white p-4 rounded-lg shadow-sm border mb-3">
+              <div className="flex items-center justify-between pb-2 bg-gray-300 p-2">
+                <h3 className="text-base font-semibold text-gray-700">
+                  Categories
+                </h3>
+                <button
+                  onClick={() => setIsCategoriesExpanded(!isCategoriesExpanded)}
+                >
+                  {isCategoriesExpanded ? (
+                    <ChevronUp size={18} />
+                  ) : (
+                    <ChevronDown size={18} />
+                  )}
+                </button>
+              </div>
 
-                {categoryTree.flatMap((topCat) =>
-                  topCat.subCategories?.length > 0
-                    ? topCat.subCategories.map((sub) => (
+              {isCategoriesExpanded && (
+                <ul className={`mt-2 ${FILTER_LIST_MAX_HEIGHT} overflow-y-auto pr-2`}>
+                  <li>
+                    <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                      <input
+                        type="radio"
+                        name="category"
+                        checked={
+                          selectedFilters.subCategory === "" &&
+                          selectedFilters.category === ""
+                        }
+                        onChange={() => {
+                          setSelectedFilters((prev) => ({
+                            ...prev,
+                            category: "",
+                            subCategory: "",
+                          }));
+                          setSelectedProductFilters([]);
+                        }}
+                        className="h-4 w-4 text-[#d72828]"
+                      />
+                      <span className="text-sm font-medium text-gray-700">
+                        All Categories
+                      </span>
+                    </label>
+                  </li>
+
+                  {categoryTree.flatMap((topCat) =>
+                    topCat.subCategories?.length > 0
+                      ? topCat.subCategories.map((sub) => (
                         <li key={sub._id}>
                           <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
                             <input
@@ -1403,189 +1376,187 @@ const handleShare = async (product) => {
                               className="h-4 w-4 text-[#d72828]"
                             />
                             <span
-                              className={`text-sm ${
-                                selectedFilters.category === sub.category_name
+                              className={`text-sm ${selectedFilters.category === sub.category_name
                                   ? "text-[#d72828] font-medium"
                                   : "text-gray-600"
-                              }`}
+                                }`}
                             >
                               {sub.category_name}
                             </span>
                           </label>
                         </li>
                       ))
-                    : [],
-                )}
-              </ul>
-            )}
-          </div>
+                      : [],
+                  )}
+                </ul>
+              )}
+            </div>
 
-          {/* Children — category select */}
-          {selectedFilters.category &&
-            (() => {
-              let children = [];
-              for (const topCat of categoryTree) {
-                const found = topCat.subCategories?.find(
-                  (s) => s.category_name === selectedFilters.category,
-                );
-                if (found) {
-                  children = found.subCategories || [];
-                  break;
+            {/* Children — category select */}
+            {selectedFilters.category &&
+              (() => {
+                let children = [];
+                for (const topCat of categoryTree) {
+                  const found = topCat.subCategories?.find(
+                    (s) => s.category_name === selectedFilters.category,
+                  );
+                  if (found) {
+                    children = found.subCategories || [];
+                    break;
+                  }
                 }
-              }
 
-              if (children.length === 0) return null;
+                if (children.length === 0) return null;
 
-              return (
-                <div className="bg-white p-4 rounded-lg shadow-sm border mb-3">
-                  <div className="bg-gray-300 p-2 mb-2">
-                    <h3 className="text-base font-semibold text-gray-700">
-                      {selectedFilters.category}
-                    </h3>
-                  </div>
-                  <ul className={`mt-2 ${FILTER_LIST_MAX_HEIGHT} overflow-y-auto pr-2`}>
-                    <li>
-                      <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                        <input
-                          type="radio"
-                          name="subcategory"
-                          checked={selectedFilters.subCategory === ""}
-                          onChange={() =>
-                            setSelectedFilters((prev) => ({
-                              ...prev,
-                              subCategory: "",
-                            }))
-                          }
-                          className="h-4 w-4 text-[#d72828]"
-                        />
-                        <span className="text-sm font-medium text-gray-700">
-                          All {selectedFilters.category}
-                        </span>
-                      </label>
-                    </li>
-                    {children.map((child) => (
-                      <li key={child._id}>
+                return (
+                  <div className="bg-white p-4 rounded-lg shadow-sm border mb-3">
+                    <div className="bg-gray-300 p-2 mb-2">
+                      <h3 className="text-base font-semibold text-gray-700">
+                        {selectedFilters.category}
+                      </h3>
+                    </div>
+                    <ul className={`mt-2 ${FILTER_LIST_MAX_HEIGHT} overflow-y-auto pr-2`}>
+                      <li>
                         <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
                           <input
                             type="radio"
                             name="subcategory"
-                            checked={
-                              selectedFilters.subCategory ===
-                              child.category_name
-                            }
+                            checked={selectedFilters.subCategory === ""}
                             onChange={() =>
                               setSelectedFilters((prev) => ({
                                 ...prev,
-                                subCategory: child.category_name,
+                                subCategory: "",
                               }))
                             }
                             className="h-4 w-4 text-[#d72828]"
                           />
-                          <span
-                            className={`text-sm ${
-                              selectedFilters.subCategory ===
-                              child.category_name
-                                ? "text-[#d72828] font-medium"
-                                : "text-gray-600"
-                            }`}
-                          >
-                            {child.category_name}
+                          <span className="text-sm font-medium text-gray-700">
+                            All {selectedFilters.category}
                           </span>
                         </label>
                       </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            })()}
-
-          {/* Brands */}
-          <div className="bg-white p-4 rounded-lg shadow-sm border mb-3">
-            <div className="flex items-center justify-between pb-2 bg-gray-300 p-2">
-              <h3 className="text-base font-semibold text-gray-700">Brands</h3>
-              <button
-                onClick={() => setIsBrandsExpanded(!isBrandsExpanded)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                {isBrandsExpanded ? (
-                  <ChevronUp size={18} />
-                ) : (
-                  <ChevronDown size={18} />
-                )}
-              </button>
-            </div>
-            {isBrandsExpanded && (
-              <ul className={`mt-2 ${FILTER_LIST_MAX_HEIGHT} overflow-y-auto pr-2`}>
-                {brands.map((brand) => (
-                  <li key={brand._id} className="flex items-center">
-                    <label className="flex items-center space-x-2 w-full cursor-pointer hover:bg-gray-50 rounded p-2 transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={selectedFilters.brands.includes(brand._id)}
-                        onChange={() => handleFilterChange("brands", brand._id)}
-                        className="mr-2 h-4 w-4 text-[#d72828] border-gray-300 rounded"
-                      />
-                      <span className="text-sm text-gray-600">
-                        {brand.brand_name} ({brand.count})
-                      </span>
-                    </label>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-               {Object.keys(filterGroups).length > 0 && (
-        <div className="bg-white p-4 rounded-lg shadow-sm border mb-3">
-          <h3 className="text-base font-semibold text-gray-700 mb-2">Product Filters</h3>
-          <div className="space-y-4">
-          {visibleFilterGroups.map((g) => (
-         <div key={g._id} className="border-b last:border-0 pb-2">
-        <button
-          onClick={() =>
-          setExpandedGroups((prev) => ({ ...prev, [g._id]: !prev[g._id] }))
-          }
-          className="flex justify-between w-full items-center text-sm font-medium text-gray-700"
-          >
-          <span>{g.name}</span>
-            <ChevronDown
-              className={expandedGroups[g._id] ? "transform rotate-180" : ""}
-            />
-          </button>
-
-          {expandedGroups[g._id] && (
-            <ul className={`mt-2 ${FILTER_LIST_MAX_HEIGHT} overflow-y-auto pr-2`}>
-              {g.filters.map((f) => {
-                return (
-                  <li key={f._id} className="py-1">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedProductFilters.includes(String(f._id))}
-                        onChange={() => toggleProductFilter(String(f._id))}
-                      />
-                      <span className="text-sm text-gray-700">
-                        {f.filter_name}
-                      </span>
-                    </label>
-                  </li>
+                      {children.map((child) => (
+                        <li key={child._id}>
+                          <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                            <input
+                              type="radio"
+                              name="subcategory"
+                              checked={
+                                selectedFilters.subCategory ===
+                                child.category_name
+                              }
+                              onChange={() =>
+                                setSelectedFilters((prev) => ({
+                                  ...prev,
+                                  subCategory: child.category_name,
+                                }))
+                              }
+                              className="h-4 w-4 text-[#d72828]"
+                            />
+                            <span
+                              className={`text-sm ${selectedFilters.subCategory ===
+                                  child.category_name
+                                  ? "text-[#d72828] font-medium"
+                                  : "text-gray-600"
+                                }`}
+                            >
+                              {child.category_name}
+                            </span>
+                          </label>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 );
-              })}
-            </ul>
-          )}
-        </div>
-      ))}
-      {shouldShowMoreFilters && (
-        <button
-          type="button"
-          className="mt-2 text-[#d72828] text-sm hover:underline"
-          onClick={() => setShowAllFilterGroups((v) => !v)}
-        >
-          {showAllFilterGroups ? "Show less" : "More filters"}
-        </button>
-      )}
-    </div>
-  </div>
-)}
+              })()}
+
+            {/* Brands */}
+            <div className="bg-white p-4 rounded-lg shadow-sm border mb-3">
+              <div className="flex items-center justify-between pb-2 bg-gray-300 p-2">
+                <h3 className="text-base font-semibold text-gray-700">Brands</h3>
+                <button
+                  onClick={() => setIsBrandsExpanded(!isBrandsExpanded)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  {isBrandsExpanded ? (
+                    <ChevronUp size={18} />
+                  ) : (
+                    <ChevronDown size={18} />
+                  )}
+                </button>
+              </div>
+              {isBrandsExpanded && (
+                <ul className={`mt-2 ${FILTER_LIST_MAX_HEIGHT} overflow-y-auto pr-2`}>
+                  {brands.map((brand) => (
+                    <li key={brand._id} className="flex items-center">
+                      <label className="flex items-center space-x-2 w-full cursor-pointer hover:bg-gray-50 rounded p-2 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={selectedFilters.brands.includes(brand._id)}
+                          onChange={() => handleFilterChange("brands", brand._id)}
+                          className="mr-2 h-4 w-4 text-[#d72828] border-gray-300 rounded"
+                        />
+                        <span className="text-sm text-gray-600">
+                          {brand.brand_name} ({brand.count})
+                        </span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            {Object.keys(filterGroups).length > 0 && (
+              <div className="bg-white p-4 rounded-lg shadow-sm border mb-3">
+                <h3 className="text-base font-semibold text-gray-700 mb-2">Product Filters</h3>
+                <div className="space-y-4">
+                  {visibleFilterGroups.map((g) => (
+                    <div key={g._id} className="border-b last:border-0 pb-2">
+                      <button
+                        onClick={() =>
+                          setExpandedGroups((prev) => ({ ...prev, [g._id]: !prev[g._id] }))
+                        }
+                        className="flex justify-between w-full items-center text-sm font-medium text-gray-700"
+                      >
+                        <span>{g.name}</span>
+                        <ChevronDown
+                          className={expandedGroups[g._id] ? "transform rotate-180" : ""}
+                        />
+                      </button>
+
+                      {expandedGroups[g._id] && (
+                        <ul className={`mt-2 ${FILTER_LIST_MAX_HEIGHT} overflow-y-auto pr-2`}>
+                          {g.filters.map((f) => {
+                            return (
+                              <li key={f._id} className="py-1">
+                                <label className="flex items-center gap-2">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedProductFilters.includes(String(f._id))}
+                                    onChange={() => toggleProductFilter(String(f._id))}
+                                  />
+                                  <span className="text-sm text-gray-700">
+                                    {f.filter_name}
+                                  </span>
+                                </label>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  ))}
+                  {shouldShowMoreFilters && (
+                    <button
+                      type="button"
+                      className="mt-2 text-[#d72828] text-sm hover:underline"
+                      onClick={() => setShowAllFilterGroups((v) => !v)}
+                    >
+                      {showAllFilterGroups ? "Show less" : "More filters"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Mobile panel footer */}
@@ -1655,11 +1626,11 @@ const handleShare = async (product) => {
                       )}
                       {/* Discount Badge */}
 
-                    {(product.movement === "EOL" || product.movement === "FOCUS") && (
-                         <span className="absolute bottom-2 left-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10 animate-pulse tracking-wide uppercase">
-                       🏷️ Clearance Sale
-                         </span>
-                            )}
+                      {(product.movement === "EOL" || product.movement === "FOCUS") && (
+                        <span className="absolute bottom-2 left-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full z-10 animate-pulse tracking-wide uppercase">
+                          🏷️ Clearance Sale
+                        </span>
+                      )}
 
                       {(() => {
                         const { discountPercent: discPct, showDiscount: hasDisc } = getDiscountInfo(product.price, product.special_price);
@@ -1689,25 +1660,7 @@ const handleShare = async (product) => {
                       </Link>
 
                       {/* Price */}
-                      {(() => {
-                        const { showDiscount: hasDisc } = getDiscountInfo(product.price, product.special_price);
-                        return (
-                          <div className="flex items-center gap-2 mb-3">
-                            <span className="text-base font-semibold text-red-600">
-                              ₹
-                              {(hasDisc
-                                ? Math.round(product.special_price)
-                                : Math.round(product.price)
-                              ).toLocaleString('en-IN')}
-                            </span>
-                            {hasDisc && (
-                              <span className="text-xs text-gray-500 line-through">
-                                ₹{Math.round(product.price).toLocaleString('en-IN')}
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })()}
+                      <PriceBlock price={product.special_price || product.price} mrp={product.price} />
                       <div className="mb-2">
                         {product.quantity > 0 ? (
                           <span className="text-xs text-green-600 font-medium">
@@ -1726,9 +1679,9 @@ const handleShare = async (product) => {
                           stockQuantity={product.quantity}
                           special_price={product.special_price}
                           className="w-full text-xs sm:text-sm py-1.5"
-                           movement={product.movement}
-                        productName={product.name}
-                         productSlug={product.slug}
+                          movement={product.movement}
+                          productName={product.name}
+                          productSlug={product.slug}
                         />
                         {/* <button
                           type="button"

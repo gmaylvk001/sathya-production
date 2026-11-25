@@ -14,6 +14,7 @@ import {
 import CardOfferCategorySection from "@/components/cardOffers/CardOfferCategorySection";
 import SuperOfferContactSection from "@/components/superOffers/SuperOfferContactSection";
 import { getDiscountInfo } from "@/lib/discountHelper";
+import PriceBlock from "@/components/product/PriceBlock";
 
 const STATE_ALIASES = {
   kerala: ["kerala", "kl"],
@@ -213,20 +214,11 @@ function SuperOfferProductCard({ product, brandMap }) {
         </h3>
       </Link>
 
-      <div className="flex items-baseline gap-2 mb-2">
-        <span className="text-base sm:text-lg font-extrabold text-gray-900">
-          ₹{Math.round(displayPrice).toLocaleString("en-IN")}
-        </span>
-        {showDiscount && (
-          <span className="text-xs text-gray-400 line-through">
-            ₹{Math.round(price).toLocaleString("en-IN")}
-          </span>
-        )}
-      </div>
+      <PriceBlock price={displayPrice} mrp={price} priceClass="text-base sm:text-lg" />
 
       <div className="text-[11px] font-medium mb-3">
         {product.stock_status === "In Stock" ||
-        (product.quantity && product.quantity > 0) ? (
+          (product.quantity && product.quantity > 0) ? (
           <span className="text-green-600 font-semibold">In Stock</span>
         ) : (
           <span className="text-red-500 font-semibold">Out of Stock</span>
@@ -486,9 +478,9 @@ function SuperOffersContent() {
     const setOfferStatus = (next) => {
       setOfferStatusState((prev) =>
         prev.status === next.status &&
-        prev.hours === next.hours &&
-        prev.minutes === next.minutes &&
-        prev.seconds === next.seconds
+          prev.hours === next.hours &&
+          prev.minutes === next.minutes &&
+          prev.seconds === next.seconds
           ? prev
           : next
       );

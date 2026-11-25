@@ -1394,16 +1394,21 @@ export default function AllProductsClient() {
 
                       {/* Right: Pricing, Stock, Compare, and Buy Now CTA (Image 2 design) */}
                       <div className="flex flex-col items-center justify-center w-full md:w-auto md:min-w-[190px] md:border-l md:border-gray-100 md:pl-6 pt-3 md:pt-0 border-t md:border-t-0 border-gray-100 text-center">
-                        {/* Price Line: Red Strikethrough MRP followed by Black Bold Selling Price */}
-                        <div className="flex items-center justify-center gap-2 mb-2">
-                          {hasDiscount && origPrice > 0 && (
-                            <span className="text-[#d72828] line-through font-semibold text-base sm:text-lg">
-                              ₹{origPrice.toLocaleString("en-IN")}
-                            </span>
-                          )}
+                        {/* Price Line: Black Bold Selling Price, Gray Strikethrough MRP, Red Save */}
+                        <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
                           <span className="text-black font-extrabold text-xl sm:text-2xl">
                             ₹{specPrice.toLocaleString("en-IN")}
                           </span>
+                          {hasDiscount && origPrice > 0 && (
+                            <span className="text-gray-400 line-through font-normal text-sm sm:text-base">
+                              ₹{origPrice.toLocaleString("en-IN")}
+                            </span>
+                          )}
+                          {hasDiscount && origPrice > specPrice && (
+                            <span className="text-[#d72828] font-semibold text-sm sm:text-base">
+                              Save ₹{(origPrice - specPrice).toLocaleString("en-IN")}
+                            </span>
+                          )}
                         </div>
 
                         {/* In Stock Badge: Green pill with quantity */}
