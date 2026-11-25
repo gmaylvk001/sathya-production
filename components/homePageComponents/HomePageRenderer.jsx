@@ -20,6 +20,7 @@ import CategorySuperCategories from "@/components/categoryPageComponents/Categor
 import CategoryWhyBuyReasons from "@/components/categoryPageComponents/CategoryWhyBuyReasons";
 import TrendingVideoSection from "@/components/TrendingVideoSection";
 import DealOfTheDaySection from "@/components/homePageComponents/DealOfTheDaySection";
+import HeroBannerGrid from "@/components/homePageComponents/HeroBannerGrid";
 
 // In-memory cache to prevent layout shift and avoid re-fetching on client navigation
 const homeRenderCache = new Map();
@@ -238,6 +239,17 @@ export default function HomePageRenderer({ onHasDesign }) {
         if (item.type === COMPONENT_TYPES.TRENDING_VIDEOS) {
           return (
             <TrendingVideoSection
+              key={item.instanceId || idx}
+              config={item.config}
+            />
+          );
+        }
+        if (
+          item.type === COMPONENT_TYPES.HERO_GRID_BIG_LEFT ||
+          item.type === COMPONENT_TYPES.HERO_GRID_BIG_RIGHT
+        ) {
+          return (
+            <HeroBannerGrid
               key={item.instanceId || idx}
               config={item.config}
             />

@@ -27,6 +27,7 @@ import SuperCategoriesConfigForm from "../category-pages/SuperCategoriesConfigFo
 import WhyBuyReasonsConfigForm from "../category-pages/WhyBuyReasonsConfigForm";
 import TrendingVideosConfigForm from "./TrendingVideosConfigForm";
 import DealOfTheDayConfigForm from "./DealOfTheDayConfigForm";
+import HeroGridConfigForm from "./HeroGridConfigForm";
 
 export default function HomePageBuilder() {
   const router = useRouter();
@@ -56,8 +57,15 @@ export default function HomePageBuilder() {
     load();
   }, [load]);
 
+  const isHeroGridType = (type) =>
+    type === COMPONENT_TYPES.HERO_GRID_BIG_LEFT ||
+    type === COMPONENT_TYPES.HERO_GRID_BIG_RIGHT;
+
+  const isTopBannerFamily = (type) =>
+    type === COMPONENT_TYPES.TOP_BANNER || isHeroGridType(type);
+
   const id = page?._id;
-  const available = getAvailableComponents("home");
+  const available = getAvailableComponents("home").filter((c) => !c.hideInSidebar);
   const components = page?.components || [];
   const instanceLabels = getInstanceLabels(components);
   const countByType = components.reduce((acc, c) => {
@@ -67,6 +75,12 @@ export default function HomePageBuilder() {
   const topBannerInstance = components.find(
     (c) => c.type === COMPONENT_TYPES.TOP_BANNER
   );
+  const heroBigLeftInstances = [...components]
+    .filter((c) => c.type === COMPONENT_TYPES.HERO_GRID_BIG_LEFT)
+    .sort((a, b) => a.order - b.order);
+  const heroBigRightInstances = [...components]
+    .filter((c) => c.type === COMPONENT_TYPES.HERO_GRID_BIG_RIGHT)
+    .sort((a, b) => a.order - b.order);
   const trendingVideosInstance = components.find(
     (c) => c.type === COMPONENT_TYPES.TRENDING_VIDEOS
   );
@@ -134,7 +148,7 @@ export default function HomePageBuilder() {
       setPage(data.page);
       if (configInstanceId === component.instanceId) {
         setConfigInstanceId(null);
-        setConfigType(null);
+        setConfigType(isHeroGridType(component.type) ? COMPONENT_TYPES.TOP_BANNER : null);
       }
       setMessage(`${label} deleted.`);
     } catch (e) {
@@ -247,7 +261,99 @@ export default function HomePageBuilder() {
       onSaved: () => { setMessage(`${label} set saved.`); setConfigInstanceId(null); load(); },
     });
 
-    if (configType === COMPONENT_TYPES.TOP_BANNER && !configInstanceId) {
+    const renderHeroGridSection = ({ type, title, subtitle, variant, instances }) => {
+      const isBigRight = variant === "big-right";
+      return (
+        <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                aria-hidden="true"
+                className={`shrink-0 grid h-10 w-16 grid-rows-2 gap-0.5 rounded-md border border-gray-200 bg-white p-1 ${
+                  isBigRight ? "grid-cols-[1fr_1.9fr]" : "grid-cols-[1.9fr_1fr]"
+                }`}
+              >
+                <div
+                  className={`rounded-[2px] bg-[#ED1C24]/85 row-span-2 ${
+                    isBigRight ? "col-start-2 row-start-1" : "col-start-1 row-start-1"
+                  }`}
+                />
+                <div
+                  className={`rounded-[2px] bg-gray-300 ${
+                    isBigRight ? "col-start-1 row-start-1" : "col-start-2 row-start-1"
+                  }`}
+                />
+                <div
+                  className={`rounded-[2px] bg-gray-300 ${
+                    isBigRight ? "col-start-1 row-start-2" : "col-start-2 row-start-2"
+                  }`}
+                />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-gray-900">{title}</div>
+                <div className="text-xs text-gray-500 mt-0.5">{subtitle}</div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => addNewInstance(type)}
+              className="shrink-0 inline-flex items-center gap-1 rounded-lg bg-[#ED1C24] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#C4161D]"
+            >
+              <Icon icon="mdi:plus" /> Add New
+            </button>
+          </div>
+
+          {instances.length > 0 ? (
+            <ul className="space-y-2">
+              {instances.map((inst) => (
+                <li
+                  key={inst.instanceId}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3.5 py-2.5"
+                >
+                  <div className="min-w-0 flex items-center gap-2.5">
+                    <span className="text-sm font-medium text-gray-800 truncate">
+                      {instanceLabels[inst.instanceId] || title}
+                    </span>
+                    <span
+                      className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded ${
+                        inst.isActive !== false
+                          ? "bg-green-100 text-green-700"
+                          : "bg-red-100 text-red-600"
+                      }`}
+                    >
+                      {inst.isActive !== false ? "ON" : "OFF"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => openEditInstance(inst)}
+                      className="text-sm font-semibold text-[#ED1C24] hover:underline"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteInstance(inst)}
+                      disabled={deletingInstanceId === inst.instanceId}
+                      className="text-sm font-semibold text-red-600 hover:underline disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {deletingInstanceId === inst.instanceId ? "Deleting..." : "Delete"}
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-xs text-gray-400">
+              No {title} set configured yet. Click Add New to upload 3 banners.
+            </p>
+          )}
+        </div>
+      );
+    };
+
+    if (isTopBannerFamily(configType) && !configInstanceId) {
       return (
         <div>
           <div className="flex items-start justify-between gap-4 mb-5">
@@ -300,6 +406,23 @@ export default function HomePageBuilder() {
               <p className="mt-1 text-xs text-gray-400">Click Add New when you are ready to create it.</p>
             </div>
           )}
+
+          <div className="mt-5 space-y-4">
+            {renderHeroGridSection({
+              type: COMPONENT_TYPES.HERO_GRID_BIG_LEFT,
+              title: "Hero Grid - Big Left",
+              subtitle: "1 Large Banner Left (66%) + 2 Small Banners stacked Right (34%).",
+              variant: "big-left",
+              instances: heroBigLeftInstances,
+            })}
+            {renderHeroGridSection({
+              type: COMPONENT_TYPES.HERO_GRID_BIG_RIGHT,
+              title: "Hero Grid - Big Right",
+              subtitle: "2 Small Banners stacked Left (34%) + 1 Large Banner Right (66%).",
+              variant: "big-right",
+              instances: heroBigRightInstances,
+            })}
+          </div>
         </div>
       );
     }
@@ -388,6 +511,22 @@ export default function HomePageBuilder() {
         />
       );
     }
+
+    const heroGridExtra = (variant, label) => {
+      const returnToTopBanner = (msg) => {
+        if (msg) setMessage(msg);
+        setConfigInstanceId(null);
+        setConfigType(COMPONENT_TYPES.TOP_BANNER);
+        load();
+      };
+      return {
+        variant,
+        backLabel: "Back to Top Banner",
+        onBackToList: () => returnToTopBanner(),
+        onSaved: () => returnToTopBanner(`${label} saved.`),
+        onDeleteSet: () => returnToTopBanner(`${label} deleted.`),
+      };
+    };
 
     const formMap = {
       [COMPONENT_TYPES.IMAGE_CAROUSEL]: {
@@ -499,6 +638,16 @@ export default function HomePageBuilder() {
         label: "Deal of the Day",
         extra: { apiBase: "/api/home-deal-of-the-day" },
       },
+      [COMPONENT_TYPES.HERO_GRID_BIG_LEFT]: {
+        Form: HeroGridConfigForm,
+        label: "Hero Grid - Big Left",
+        extra: heroGridExtra("big-left", "Hero Grid - Big Left"),
+      },
+      [COMPONENT_TYPES.HERO_GRID_BIG_RIGHT]: {
+        Form: HeroGridConfigForm,
+        label: "Hero Grid - Big Right",
+        extra: heroGridExtra("big-right", "Hero Grid - Big Right"),
+      },
     };
 
     const entry = formMap[configType];
@@ -561,12 +710,17 @@ export default function HomePageBuilder() {
               {available.map((comp) => {
                 const count = countByType[comp.type] || 0;
                 const added = count > 0;
+                const isSelected =
+                  comp.type === COMPONENT_TYPES.TOP_BANNER
+                    ? isTopBannerFamily(configType)
+                    : configType === comp.type;
                 return (
                   <button
                     key={comp.type}
                     type="button"
                     onClick={() => selectComponent(comp.type)}
-                    className={`w-full text-left rounded-xl border overflow-hidden transition hover:border-[#ED1C24] ${configType === comp.type
+                    className={`w-full text-left rounded-xl border overflow-hidden transition hover:border-[#ED1C24] ${
+                      isSelected
                         ? "border-[#ED1C24] ring-1 ring-[#ED1C24]"
                         : "border-gray-200"
                       }`}

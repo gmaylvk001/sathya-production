@@ -9,6 +9,39 @@ import {
   isValidComponentType,
 } from "@/lib/categoryPageComponents/registry";
 import { getHomeConfigModel } from "@/lib/homePageComponents/configModels";
+import { saveCategoryTopBannerImage } from "@/lib/categoryTopbannerUpload";
+
+const HERO_STATES = new Set([
+  "all",
+  "tamilnadu",
+  "andhra",
+  "kerala",
+  "karnataka",
+  "telangana",
+]);
+const HERO_ALIGNMENTS = new Set(["bottom-left", "center-left", "bottom-center"]);
+
+function isHeroGridType(type) {
+  return (
+    type === COMPONENT_TYPES.HERO_GRID_BIG_LEFT ||
+    type === COMPONENT_TYPES.HERO_GRID_BIG_RIGHT
+  );
+}
+
+function parseScheduleDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  if (typeof val !== "string") return null;
+  const trimmed = val.trim();
+  if (!trimmed || trimmed === "null" || trimmed === "undefined") return null;
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/.test(trimmed)) {
+    const isoString = (trimmed.length === 16 ? trimmed + ":00" : trimmed) + "+05:30";
+    const d = new Date(isoString);
+    if (!isNaN(d.getTime())) return d;
+  }
+  const d = new Date(trimmed);
+  return isNaN(d.getTime()) ? null : d;
+}
 
 export async function POST(req, { params }) {
   try {
@@ -305,6 +338,18 @@ export async function POST(req, { params }) {
       order: maxOrder + 1,
       isActive: true,
     };
+    if (isHeroGridType(type)) {
+      instance.heroGrid = {
+        variant: type === COMPONENT_TYPES.HERO_GRID_BIG_RIGHT ? "big-right" : "big-left",
+        largeBanner: {},
+        smallBanner1: {},
+        smallBanner2: {},
+        state: "all",
+        isActive: true,
+        startDate: null,
+        endDate: null,
+      };
+    }
     page.components.push(instance);
     await page.save();
 
@@ -314,25 +359,174 @@ export async function POST(req, { params }) {
   }
 }
 
-export async function GET(_req, { params }) {
+export async function GET(req, { params }) {
   try {
     await dbConnect();
     const { id } = await params;
+    const instanceId = req?.url ? new URL(req.url).searchParams.get("instanceId") : null;
     const page = await HomePage.findById(id).lean();
     if (!page) {
       return NextResponse.json({ success: false, message: "Page not found" }, { status: 404 });
     }
     const components = [...(page.components || [])].sort((a, b) => a.order - b.order);
+    if (instanceId) {
+      const component = components.find((c) => c.instanceId === instanceId) || null;
+      return NextResponse.json({ success: true, component, components });
+    }
     return NextResponse.json({ success: true, components });
   } catch (err) {
     return NextResponse.json({ success: false, message: err.message }, { status: 500 });
   }
 }
 
+async function resolveHeroSlotImage(formData, fileKey, fallbackPath) {
+  const file = formData.get(fileKey);
+  if (file && typeof file === "object" && file.size > 0) {
+    return await saveCategoryTopBannerImage(file);
+  }
+  return String(fallbackPath || "").trim();
+}
+
 export async function PUT(req, { params }) {
   try {
     await dbConnect();
     const { id } = await params;
+    const contentType = req.headers.get("content-type") || "";
+
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await req.formData();
+      const instanceId = String(formData.get("instanceId") || "").trim();
+      if (!instanceId) {
+        return NextResponse.json({ success: false, message: "instanceId required" }, { status: 400 });
+      }
+
+      const page = await HomePage.findById(id);
+      if (!page) {
+        return NextResponse.json({ success: false, message: "Page not found" }, { status: 404 });
+      }
+
+      const instance = page.components.find((c) => c.instanceId === instanceId);
+      if (!instance) {
+        return NextResponse.json({ success: false, message: "Component not found" }, { status: 404 });
+      }
+      if (!isHeroGridType(instance.type)) {
+        return NextResponse.json(
+          { success: false, message: "Invalid component type for Hero Grid update" },
+          { status: 400 }
+        );
+      }
+
+      const metaRaw = formData.get("heroGridMeta");
+      const meta = metaRaw ? JSON.parse(String(metaRaw)) : {};
+
+      const largeDesktop = await resolveHeroSlotImage(
+        formData,
+        "largeDesktopFile",
+        meta?.largeBanner?.desktopImage
+      );
+      const largeMobile = await resolveHeroSlotImage(
+        formData,
+        "largeMobileFile",
+        meta?.largeBanner?.mobileImage
+      );
+      const small1Desktop = await resolveHeroSlotImage(
+        formData,
+        "small1DesktopFile",
+        meta?.smallBanner1?.desktopImage
+      );
+      const small1Mobile = await resolveHeroSlotImage(
+        formData,
+        "small1MobileFile",
+        meta?.smallBanner1?.mobileImage
+      );
+      const small2Desktop = await resolveHeroSlotImage(
+        formData,
+        "small2DesktopFile",
+        meta?.smallBanner2?.desktopImage
+      );
+      const small2Mobile = await resolveHeroSlotImage(
+        formData,
+        "small2MobileFile",
+        meta?.smallBanner2?.mobileImage
+      );
+
+      if (!largeDesktop || !small1Desktop || !small2Desktop) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Desktop image is required for Large Banner, Small Banner 1, and Small Banner 2.",
+          },
+          { status: 400 }
+        );
+      }
+
+      const variant =
+        instance.type === COMPONENT_TYPES.HERO_GRID_BIG_RIGHT || meta.variant === "big-right"
+          ? "big-right"
+          : "big-left";
+      const stateRaw = String(meta.state || "all").toLowerCase();
+      const state = HERO_STATES.has(stateRaw) ? stateRaw : "all";
+      const alignRaw = String(meta?.largeBanner?.overlayAlign || "bottom-left");
+      const overlayAlign = HERO_ALIGNMENTS.has(alignRaw) ? alignRaw : "bottom-left";
+      const isActive = meta.isActive !== false;
+      const startDate = parseScheduleDate(meta.startDate);
+      const endDate = parseScheduleDate(meta.endDate);
+
+      if (startDate && endDate && endDate < startDate) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Hide After (End Date & Time) cannot be earlier than Show From (Start Date & Time).",
+          },
+          { status: 400 }
+        );
+      }
+
+      const heading = String(meta?.largeBanner?.heading || "").trim();
+      const titleInput = formData.get("title");
+      const nextTitle =
+        typeof titleInput === "string"
+          ? titleInput.trim()
+          : typeof meta.title === "string"
+            ? meta.title.trim()
+            : heading;
+
+      instance.heroGrid = {
+        variant,
+        largeBanner: {
+          desktopImage: largeDesktop,
+          mobileImage: largeMobile,
+          url: String(meta?.largeBanner?.url || "").trim(),
+          heading,
+          description: String(meta?.largeBanner?.description || "").trim(),
+          buttonText: String(meta?.largeBanner?.buttonText || "").trim(),
+          buttonUrl: String(meta?.largeBanner?.buttonUrl || "").trim(),
+          overlayAlign,
+          textColor: String(meta?.largeBanner?.textColor || "#ffffff").trim() || "#ffffff",
+          showGradientOverlay: meta?.largeBanner?.showGradientOverlay !== false,
+        },
+        smallBanner1: {
+          desktopImage: small1Desktop,
+          mobileImage: small1Mobile,
+          url: String(meta?.smallBanner1?.url || "").trim(),
+        },
+        smallBanner2: {
+          desktopImage: small2Desktop,
+          mobileImage: small2Mobile,
+          url: String(meta?.smallBanner2?.url || "").trim(),
+        },
+        state,
+        isActive,
+        startDate,
+        endDate,
+      };
+      instance.isActive = isActive;
+      instance.title = nextTitle || "";
+
+      await page.save();
+      return NextResponse.json({ success: true, page: page.toObject(), instance });
+    }
+
     const body = await req.json();
     const { instanceId, title, isActive } = body;
 
