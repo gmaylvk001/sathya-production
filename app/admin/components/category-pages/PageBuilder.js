@@ -26,6 +26,8 @@ import ImageHotspotBannerConfigForm from "./ImageHotspotBannerConfigForm";
 import CategoryContentConfigForm from "./CategoryContentConfigForm";
 import SplitBannerConfigForm from "./SplitBannerConfigForm";
 import CircleImageCarouselConfigForm from "./CircleImageCarouselConfigForm";
+import SuperCategoriesConfigForm from "./SuperCategoriesConfigForm";
+import WhyBuyReasonsConfigForm from "./WhyBuyReasonsConfigForm";
 
 /**
  * Page Builder:
@@ -326,6 +328,42 @@ export default function PageBuilder({
       if (!data.success) throw new Error(data.message);
       setPage(data.page);
       setConfigType(COMPONENT_TYPES.CIRCLE_IMAGE_CAROUSEL);
+      setConfigInstanceId(data.instance?.instanceId || null);
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  const addNewSuperCategoriesSet = async () => {
+    setMessage("");
+    try {
+      const res = await fetch(`/api/category-pages/${id}/components`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: COMPONENT_TYPES.SUPER_CATEGORIES }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+      setPage(data.page);
+      setConfigType(COMPONENT_TYPES.SUPER_CATEGORIES);
+      setConfigInstanceId(data.instance?.instanceId || null);
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
+  const addNewWhyBuyReasonsSet = async () => {
+    setMessage("");
+    try {
+      const res = await fetch(`/api/category-pages/${id}/components`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: COMPONENT_TYPES.WHY_BUY_REASONS }),
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.message);
+      setPage(data.page);
+      setConfigType(COMPONENT_TYPES.WHY_BUY_REASONS);
       setConfigInstanceId(data.instance?.instanceId || null);
     } catch (e) {
       alert(e.message);
@@ -1140,6 +1178,84 @@ export default function PageBuilder({
                 }}
                 onSaved={() => {
                   setMessage("Category Cards Carousel set saved.");
+                  load();
+                }}
+              />
+            ) : configType === COMPONENT_TYPES.SUPER_CATEGORIES ? (
+              <SuperCategoriesConfigForm
+                key={configInstanceId || "sc-list"}
+                pageId={page._id}
+                instanceId={configInstanceId}
+                setLabel={
+                  configInstanceId
+                    ? instanceLabels[configInstanceId]
+                    : null
+                }
+                existingSets={[...components]
+                  .filter((c) => c.type === COMPONENT_TYPES.SUPER_CATEGORIES)
+                  .sort((a, b) => a.order - b.order)
+                  .map((c) => ({
+                    instanceId: c.instanceId,
+                    title: c.title || "",
+                    label:
+                      instanceLabels[c.instanceId] ||
+                      c.title ||
+                      "Super Categories Matrix",
+                  }))}
+                onAddNew={addNewSuperCategoriesSet}
+                onEditSet={(instanceId) => {
+                  setConfigInstanceId(instanceId);
+                  setMessage("");
+                }}
+                onDeleteSet={() => {
+                  setMessage("Super Categories set deleted.");
+                  load();
+                }}
+                onBackToList={() => {
+                  setConfigInstanceId(null);
+                  load();
+                }}
+                onSaved={() => {
+                  setMessage("Super Categories set saved.");
+                  load();
+                }}
+              />
+            ) : configType === COMPONENT_TYPES.WHY_BUY_REASONS ? (
+              <WhyBuyReasonsConfigForm
+                key={configInstanceId || "wbr-list"}
+                pageId={page._id}
+                instanceId={configInstanceId}
+                setLabel={
+                  configInstanceId
+                    ? instanceLabels[configInstanceId]
+                    : null
+                }
+                existingSets={[...components]
+                  .filter((c) => c.type === COMPONENT_TYPES.WHY_BUY_REASONS)
+                  .sort((a, b) => a.order - b.order)
+                  .map((c) => ({
+                    instanceId: c.instanceId,
+                    title: c.title || "",
+                    label:
+                      instanceLabels[c.instanceId] ||
+                      c.title ||
+                      "Why Buy From Sathya",
+                  }))}
+                onAddNew={addNewWhyBuyReasonsSet}
+                onEditSet={(instanceId) => {
+                  setConfigInstanceId(instanceId);
+                  setMessage("");
+                }}
+                onDeleteSet={() => {
+                  setMessage("Why Buy From Sathya set deleted.");
+                  load();
+                }}
+                onBackToList={() => {
+                  setConfigInstanceId(null);
+                  load();
+                }}
+                onSaved={() => {
+                  setMessage("Why Buy From Sathya set saved.");
                   load();
                 }}
               />

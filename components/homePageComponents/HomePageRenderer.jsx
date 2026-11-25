@@ -16,6 +16,8 @@ import CategoryImageHotspotBanner from "@/components/categoryPageComponents/cate
 import CategoryContentBlock from "@/components/categoryPageComponents/categoryContent";
 import CategorySplitBanner from "@/components/categoryPageComponents/categorySplitBanner";
 import CategoryCircleImageCarousel from "@/components/categoryPageComponents/categoryCircleImageCarousel";
+import CategorySuperCategories from "@/components/categoryPageComponents/CategorySuperCategories";
+import CategoryWhyBuyReasons from "@/components/categoryPageComponents/CategoryWhyBuyReasons";
 import TrendingVideoSection from "@/components/TrendingVideoSection";
 
 // In-memory cache to prevent layout shift and avoid re-fetching on client navigation
@@ -203,6 +205,22 @@ export default function HomePageRenderer({ onHasDesign }) {
         if (item.type === COMPONENT_TYPES.CIRCLE_IMAGE_CAROUSEL) {
           return (
             <CategoryCircleImageCarousel
+              key={item.instanceId || idx}
+              config={item.config}
+            />
+          );
+        }
+        if (item.type === COMPONENT_TYPES.SUPER_CATEGORIES) {
+          return (
+            <CategorySuperCategories
+              key={item.instanceId || idx}
+              config={item.config}
+            />
+          );
+        }
+        if (item.type === COMPONENT_TYPES.WHY_BUY_REASONS) {
+          return (
+            <CategoryWhyBuyReasons
               key={item.instanceId || idx}
               config={item.config}
             />

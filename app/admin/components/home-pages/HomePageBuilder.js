@@ -23,6 +23,8 @@ import ImageHotspotBannerConfigForm from "../category-pages/ImageHotspotBannerCo
 import CategoryContentConfigForm from "../category-pages/CategoryContentConfigForm";
 import SplitBannerConfigForm from "../category-pages/SplitBannerConfigForm";
 import CircleImageCarouselConfigForm from "../category-pages/CircleImageCarouselConfigForm";
+import SuperCategoriesConfigForm from "../category-pages/SuperCategoriesConfigForm";
+import WhyBuyReasonsConfigForm from "../category-pages/WhyBuyReasonsConfigForm";
 import TrendingVideosConfigForm from "./TrendingVideosConfigForm";
 
 export default function HomePageBuilder() {
@@ -480,6 +482,16 @@ export default function HomePageBuilder() {
         Form: CircleImageCarouselConfigForm,
         label: "Category Cards Carousel",
         extra: { apiBase: "/api/home-circle-image-carousel" },
+      },
+      [COMPONENT_TYPES.SUPER_CATEGORIES]: {
+        Form: SuperCategoriesConfigForm,
+        label: "Super Categories Matrix",
+        extra: { apiBase: "/api/home-super-categories" },
+      },
+      [COMPONENT_TYPES.WHY_BUY_REASONS]: {
+        Form: WhyBuyReasonsConfigForm,
+        label: "Why Buy From Sathya",
+        extra: { apiBase: "/api/home-why-buy-reasons" },
       },
     };
 

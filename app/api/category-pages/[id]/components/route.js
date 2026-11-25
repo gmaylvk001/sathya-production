@@ -14,6 +14,8 @@ import CategoryImageHotspotBanner from "@/models/categoryImageHotspotBanner";
 import CategoryContent from "@/models/categoryContent";
 import CategorySplitBanner from "@/models/categorySplitBanner";
 import CategoryCircleImageCarousel from "@/models/categoryCircleImageCarousel";
+import CategorySuperCategories from "@/models/categorySuperCategories";
+import CategoryWhyBuyReasons from "@/models/categoryWhyBuyReasons";
 import CategoryTopBanner from "@/models/categoryTopbanner";
 import {
   allowsMultipleInstances,
@@ -193,6 +195,32 @@ export async function POST(req, { params }) {
         status: "active",
       });
       configId = config._id;
+    } else if (type === COMPONENT_TYPES.SUPER_CATEGORIES) {
+      const config = await CategorySuperCategories.create({
+        instanceId,
+        pageId: page._id,
+        categoryId: page.categoryId,
+        name: title || "Explore Super-Categories",
+        kicker: "DEPARTMENT MATRIX",
+        viewAllText: "View All 84 Sub-Categories",
+        viewAllUrl: "/categories",
+        items: [],
+        status: "active",
+      });
+      configId = config._id;
+    } else if (type === COMPONENT_TYPES.WHY_BUY_REASONS) {
+      const config = await CategoryWhyBuyReasons.create({
+        instanceId,
+        pageId: page._id,
+        categoryId: page.categoryId,
+        name: title || "Why Buy From Sathya?",
+        kicker: "THE OMNICHANNEL ADVANTAGE",
+        subtitle:
+          "Combining the vast choice of e-commerce with the speed and trust of 140+ physical superstores.",
+        items: [],
+        status: "active",
+      });
+      configId = config._id;
     }
 
     const instance = {
@@ -289,6 +317,8 @@ export async function DELETE(req, { params }) {
       [COMPONENT_TYPES.CATEGORY_CONTENT]: CategoryContent,
       [COMPONENT_TYPES.SPLIT_BANNER]: CategorySplitBanner,
       [COMPONENT_TYPES.CIRCLE_IMAGE_CAROUSEL]: CategoryCircleImageCarousel,
+      [COMPONENT_TYPES.SUPER_CATEGORIES]: CategorySuperCategories,
+      [COMPONENT_TYPES.WHY_BUY_REASONS]: CategoryWhyBuyReasons,
     };
 
     if (instance.type === COMPONENT_TYPES.TOP_BANNER) {
