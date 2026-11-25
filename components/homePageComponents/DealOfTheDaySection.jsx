@@ -63,8 +63,7 @@ function useCountdown(endAt, serverNow) {
 }
 
 /**
- * Compact Deal of the Day — PDP Buy Now / Add to Bag / EMI / working PIN check.
- * 360° removed (no real viewer in the app).
+ * Deal of the Day — homepage-scale layout + PDP Buy Now / Add to Bag / EMI / PIN.
  */
 export default function DealOfTheDaySection({ config }) {
   const product = config?.product || null;
@@ -380,9 +379,6 @@ export default function DealOfTheDaySection({ config }) {
   const specs = (config.highlightSpecs || []).filter((s) => s.label || s.value);
   const startingEmi =
     emiMeta.startingEmi || (dealPrice ? Math.ceil(dealPrice / 12) : 0);
-  const emiLine =
-    config.emiHint ||
-    (startingEmi ? `From ${formatMoney(startingEmi)}/mo · 12 months` : "");
   const tagline =
     config.tagline ||
     [product.brand, product.model_number].filter(Boolean).join(" | ");
@@ -390,68 +386,73 @@ export default function DealOfTheDaySection({ config }) {
   const rating = Number(product.star) || 0;
   const bankLabel =
     emiMeta.bankCount > 0
-      ? `View ${emiMeta.bankCount} banks >`
-      : "View banks >";
+      ? `View ${emiMeta.bankCount} Banking Partners >`
+      : "View Banking Partners >";
   const buyNowLabel = isCusOrder
     ? "Order Now"
-    : config.primaryCtaLabel || "Buy Now";
+    : config.primaryCtaLabel || "Buy Now with Express Delivery";
+  const emiDetailLine =
+    config.emiHint ||
+    (startingEmi
+      ? `Starting at ${formatMoney(startingEmi)}/mo for 12 months with 0% interest`
+      : "");
 
   return (
-    <section className="w-full my-4 md:my-5 px-3 sm:px-4">
-      <div className="mx-auto max-w-[1100px] overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        {/* Compact header */}
-        <div className="flex flex-col gap-2.5 bg-[#1A1A1A] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-4">
-          <div className="flex min-w-0 items-center gap-2">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#ED1C24]">
-              <Icon icon="mdi:timer-outline" className="text-sm text-white" />
+    <section className="w-full mb-8 md:mb-10 px-4 sm:px-6">
+      <div className="mx-auto max-w-7xl overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-[0_6px_24px_rgba(0,0,0,0.05)]">
+        {/* Header — matches mock + home section scale */}
+        <div className="flex flex-col gap-3 bg-[#1A1A1A] px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#ED1C24]">
+              <Icon icon="mdi:timer-outline" className="text-lg text-white" />
             </span>
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[12px] font-bold uppercase tracking-wide text-white">
-                  {config.eyebrow || "Deal of the Day"}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm sm:text-base font-bold uppercase tracking-[0.06em] text-white">
+                  {config.eyebrow || "DEAL OF THE DAY"}
                 </span>
                 {config.badgeLabel ? (
-                  <span className="rounded-full bg-[#F5C518] px-2 py-0.5 text-[10px] font-bold text-black">
+                  <span className="rounded-full bg-[#F5C518] px-2.5 py-0.5 text-[11px] font-bold text-black">
                     {config.badgeLabel}
                   </span>
                 ) : null}
               </div>
               {config.bannerSubtitle ? (
-                <p className="truncate text-[11px] text-white/65">
+                <p className="mt-1 text-xs sm:text-[13px] leading-snug text-white/70 line-clamp-2 max-w-2xl">
                   {config.bannerSubtitle}
                 </p>
               ) : null}
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/80">
-              Ends in
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.12em] text-white/85">
+              Ends in:
             </span>
-            <div className="flex items-center gap-1 font-mono text-sm font-bold tabular-nums text-white">
-              <span className="rounded bg-black px-1.5 py-0.5">
+            <div className="flex items-center gap-1 sm:gap-1.5 font-mono text-base sm:text-xl font-bold tabular-nums text-white">
+              <span className="min-w-[2rem] rounded-md bg-black px-2 py-1 text-center">
                 {countdown.hours}
               </span>
-              <span>:</span>
-              <span className="rounded bg-black px-1.5 py-0.5">
+              <span className="text-white/70">:</span>
+              <span className="min-w-[2rem] rounded-md bg-black px-2 py-1 text-center">
                 {countdown.minutes}
               </span>
-              <span>:</span>
-              <span className="rounded bg-[#ED1C24] px-1.5 py-0.5">
+              <span className="text-white/70">:</span>
+              <span className="min-w-[2rem] rounded-md bg-[#ED1C24] px-2 py-1 text-center">
                 {countdown.seconds}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Compact body */}
-        <div className="grid grid-cols-1 gap-4 p-3 sm:p-4 lg:grid-cols-[0.9fr_1.1fr] lg:gap-5">
+        {/* Body */}
+        <div className="grid grid-cols-1 gap-5 p-4 sm:p-5 md:p-6 lg:grid-cols-2 lg:gap-8">
           {/* Image */}
           <div className="min-w-0">
-            <div className="relative overflow-hidden rounded-lg bg-gray-100 aspect-[5/4] max-h-[280px] mx-auto lg:max-h-none">
+            <div className="relative overflow-hidden rounded-xl bg-gray-100 aspect-[4/3] sm:aspect-square lg:aspect-[5/4]">
               {product.saveAmount > 0 ? (
-                <div className="absolute left-2 top-2 z-10 rounded-full bg-[#ED1C24] px-2 py-1 text-[10px] font-bold uppercase text-white">
-                  Save {formatMoney(product.saveAmount)}
+                <div className="absolute left-3 top-3 z-10 rounded-full bg-[#ED1C24] px-3 py-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-wide text-white shadow-sm">
+                  Save {formatMoney(product.saveAmount)} Today
                 </div>
               ) : null}
               {img ? (
@@ -459,26 +460,26 @@ export default function DealOfTheDaySection({ config }) {
                 <img
                   src={img}
                   alt={product.name}
-                  className="h-full w-full object-contain p-4"
+                  className="h-full w-full object-contain p-5 sm:p-8"
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-gray-400">
-                  <Icon icon="mdi:image-off" className="text-3xl" />
+                  <Icon icon="mdi:image-off" className="text-4xl" />
                 </div>
               )}
             </div>
 
             {specs.length > 0 ? (
-              <div className="mt-2 grid grid-cols-3 gap-1.5">
+              <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">
                 {specs.slice(0, 3).map((spec, i) => (
                   <div
                     key={i}
-                    className="rounded-md bg-gray-100 px-1.5 py-2 text-center"
+                    className="rounded-xl bg-gray-100 px-2 py-2.5 sm:px-3 sm:py-3 text-center"
                   >
-                    <div className="text-[9px] font-medium uppercase tracking-wide text-gray-500">
+                    <div className="text-[10px] sm:text-[11px] font-medium uppercase tracking-wide text-gray-500">
                       {spec.label}
                     </div>
-                    <div className="mt-0.5 text-[11px] font-semibold text-gray-900 leading-snug line-clamp-2">
+                    <div className="mt-1 text-xs sm:text-sm font-bold text-gray-900 leading-snug line-clamp-2">
                       {spec.value || "—"}
                     </div>
                   </div>
@@ -489,70 +490,84 @@ export default function DealOfTheDaySection({ config }) {
 
           {/* Details */}
           <div className="flex min-w-0 flex-col">
-            <div className="flex flex-wrap items-center justify-between gap-1.5">
+            <div className="flex flex-wrap items-start justify-between gap-2">
               {tagline ? (
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">
                   {tagline}
                 </p>
               ) : (
                 <span />
               )}
               {config.showScarcity ? (
-                <span className="inline-flex items-center gap-0.5 rounded-full bg-[#ED1C24] px-2 py-0.5 text-[10px] font-bold text-white">
-                  <Icon icon="mdi:fire" className="text-xs" />
+                <span className="inline-flex items-center gap-1 rounded-full bg-[#ED1C24] px-2.5 py-1 text-[11px] font-bold text-white">
+                  <Icon icon="mdi:fire" className="text-sm" />
                   {config.scarcityLabel || "High Demand"}: {scarcityQty} Left
                 </span>
               ) : null}
             </div>
 
-            <h3 className="mt-1 text-[16px] sm:text-[18px] font-bold leading-snug text-gray-900 line-clamp-2">
+            <h3 className="mt-2 text-[18px] sm:text-[22px] md:text-[26px] font-extrabold leading-snug text-gray-900">
               {product.name}
             </h3>
 
             {rating > 0 ? (
-              <div className="mt-1.5 flex items-center gap-1 text-[12px] text-gray-600">
-                <Icon icon="mdi:star" className="text-[#F5B800] text-sm" />
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] sm:text-[13px] text-gray-600">
+                <div className="flex items-center gap-0.5 text-[#F5B800]">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Icon
+                      key={i}
+                      icon={
+                        i <= Math.round(rating) ? "mdi:star" : "mdi:star-outline"
+                      }
+                      className="text-[14px]"
+                    />
+                  ))}
+                </div>
                 <span className="font-semibold text-gray-900">
-                  {rating.toFixed(1)}
+                  {rating.toFixed(1)} / 5
                 </span>
               </div>
             ) : null}
 
-            <div className="mt-2 flex flex-wrap items-end gap-2">
-              <span className="text-[22px] sm:text-[26px] font-extrabold leading-none text-[#ED1C24]">
+            <div className="mt-3 flex flex-wrap items-end gap-2 sm:gap-3">
+              <span className="text-[26px] sm:text-[32px] md:text-[36px] font-extrabold leading-none text-[#ED1C24]">
                 {formatMoney(dealPrice)}
               </span>
               {product.mrp > dealPrice ? (
-                <span className="pb-0.5 text-sm text-gray-400 line-through">
+                <span className="pb-1 text-base sm:text-lg text-gray-400 line-through">
                   {formatMoney(product.mrp)}
                 </span>
               ) : null}
               {product.saveAmount > 0 ? (
-                <span className="rounded bg-[#F5C518] px-1.5 py-0.5 text-[11px] font-bold text-black">
-                  {product.savePercent}% Off
+                <span className="mb-0.5 inline-flex rounded-md bg-[#F5C518] px-2.5 py-1 text-[12px] sm:text-[13px] font-bold text-black">
+                  Save {formatMoney(product.saveAmount)} ({product.savePercent}% Off)
                 </span>
               ) : null}
             </div>
+            <p className="mt-1.5 text-[12px] text-gray-500">
+              Inclusive of all GST &amp; import levies
+            </p>
 
             {/* PIN check */}
-            <div className="mt-3 rounded-lg bg-gray-100 p-2.5">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-start gap-2">
+            <div className="mt-4 rounded-xl bg-gray-100 p-3 sm:p-3.5">
+              <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-2.5">
                   <Icon
                     icon="mdi:truck-fast"
-                    className="mt-0.5 shrink-0 text-base text-[#ED1C24]"
+                    className="mt-0.5 shrink-0 text-xl text-[#ED1C24]"
                   />
                   <div className="min-w-0">
-                    <div className="text-[12px] font-semibold text-gray-900">
-                      Check delivery
+                    <div className="text-[13px] font-bold text-gray-900">
+                      Check Instant Postal Delivery
                     </div>
-                    <div className="text-[11px] text-gray-500 leading-snug">
-                      Enter PIN for delivery estimate
+                    <div className="text-[12px] text-gray-500 leading-snug">
+                      {config.deliveryHint ||
+                        "Enter PIN code for delivery by 9 PM Today"}
                     </div>
                   </div>
                 </div>
                 <form
-                  className="flex items-center gap-1.5 shrink-0"
+                  className="flex items-center gap-2 shrink-0"
                   onSubmit={(e) => {
                     e.preventDefault();
                     checkDelivery();
@@ -569,12 +584,12 @@ export default function DealOfTheDaySection({ config }) {
                       setPinMsg("");
                     }}
                     placeholder="600002"
-                    className="w-[88px] rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm font-semibold text-gray-900 outline-none focus:border-gray-500"
+                    className="w-[100px] rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-900 outline-none focus:border-gray-500"
                   />
                   <button
                     type="submit"
                     disabled={pinLoading}
-                    className="rounded-md bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-black disabled:opacity-60"
+                    className="rounded-lg bg-gray-900 px-3.5 py-2 text-sm font-semibold text-white hover:bg-black disabled:opacity-60"
                   >
                     {pinLoading ? "…" : "Check"}
                   </button>
@@ -582,7 +597,7 @@ export default function DealOfTheDaySection({ config }) {
               </div>
               {pinMsg ? (
                 <p
-                  className={`mt-1.5 pl-6 text-[11px] font-medium ${
+                  className={`mt-2 pl-8 text-[12px] font-medium ${
                     pinOk === true
                       ? "text-emerald-600"
                       : pinOk === false
@@ -596,28 +611,34 @@ export default function DealOfTheDaySection({ config }) {
             </div>
 
             {/* EMI */}
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-gray-100 px-2.5 py-2">
-              <div className="flex min-w-0 items-center gap-2">
-                <Icon
-                  icon="mdi:credit-card"
-                  className="shrink-0 text-base text-[#F5C518]"
-                />
-                <div className="min-w-0 text-[11px] text-gray-600">
-                  <span className="font-semibold text-gray-900">EMI </span>
-                  {emiLine}
+            <div className="mt-3 rounded-xl bg-gray-100 p-3 sm:p-3.5">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-start gap-2.5">
+                  <Icon
+                    icon="mdi:credit-card"
+                    className="mt-0.5 shrink-0 text-xl text-[#F5C518]"
+                  />
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-bold text-gray-900">
+                      No Cost EMI Available
+                    </div>
+                    <div className="text-[12px] text-gray-500 leading-snug">
+                      {emiDetailLine}
+                    </div>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEmiModalOpen(true)}
+                  className="shrink-0 text-left text-[12px] sm:text-[13px] font-semibold text-[#ED1C24] hover:underline whitespace-nowrap"
+                >
+                  {bankLabel}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsEmiModalOpen(true)}
-                className="shrink-0 text-[11px] font-semibold text-[#ED1C24] hover:underline"
-              >
-                {bankLabel}
-              </button>
             </div>
 
             {/* CTAs */}
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-stretch">
+            <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:items-stretch">
               <button
                 type="button"
                 onClick={handleBuyNow}
@@ -625,13 +646,13 @@ export default function DealOfTheDaySection({ config }) {
                   buyNowLoading ||
                   (!canBuyOnline && !isCusOrder && !isDisplayStockEnquiry)
                 }
-                className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#ED1C24] px-4 py-2.5 text-[13px] font-bold text-white hover:bg-[#d01920] disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex flex-[1.4] items-center justify-center gap-2 rounded-xl bg-[#ED1C24] px-5 py-3 text-[14px] sm:text-[15px] font-bold text-white shadow-[0_6px_16px_rgba(237,28,36,0.25)] hover:bg-[#d01920] disabled:cursor-not-allowed disabled:opacity-60"
               >
-                <Icon icon="mdi:flash" className="text-base" />
+                <Icon icon="mdi:flash" className="text-lg" />
                 {buyNowLoading ? "Processing…" : buyNowLabel}
               </button>
 
-              <div className="sm:w-[160px] shrink-0 [&_button]:!h-[40px] [&_button]:!rounded-lg [&_button]:!text-[13px]">
+              <div className="flex-1 sm:max-w-[200px] [&_button]:!h-[48px] [&_button]:!rounded-xl [&_button]:!text-[14px]">
                 <ProductAddtoCart
                   productId={product._id}
                   quantity={1}
@@ -642,13 +663,13 @@ export default function DealOfTheDaySection({ config }) {
                   productName={product.name}
                   productSlug={product.slug}
                   buttonLabel={config.secondaryCtaLabel || "Add to Bag"}
-                  buttonClassName="w-full !rounded-lg !border !border-gray-300 !bg-white !text-gray-900 !font-bold hover:!bg-gray-50 hover:!text-gray-900"
+                  buttonClassName="w-full !rounded-xl !border !border-gray-300 !bg-white !text-gray-900 !font-bold hover:!bg-gray-50 hover:!text-gray-900"
                 />
               </div>
             </div>
 
             {!canBuyOnline && !isCusOrder && !isDisplayStockEnquiry ? (
-              <p className="mt-1.5 text-[11px] text-amber-700">
+              <p className="mt-2 text-[12px] text-amber-700">
                 Sold out online — available in store.
               </p>
             ) : null}
