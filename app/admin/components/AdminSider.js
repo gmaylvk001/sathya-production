@@ -139,7 +139,7 @@ const menuItems = [
       { icon: 'mdi:image-area', label: 'Top Banner', link: 'design/top-banner', permission: 'design/top-banner', dotColor: 'bg-indigo-500' },
       { icon: 'mdi:sparkles', label: 'Festival Effects', link: 'festival-effects', permission: 'festival-effects', dotColor: 'bg-pink-500' },
       { icon: 'mdi:rocket-launch-outline', label: 'New Product Launch', link: 'design/new-product-launch', permission: 'design/new-product-launch', dotColor: 'bg-blue-500' },
-      { icon: 'mdi:page-layout-header', label: 'Navbar Settings', link: 'design/navbar', permission: 'design/navbar', dotColor: 'bg-teal-500' },
+      { icon: 'mdi:page-layout-header', label: 'Header & Navbar Design', link: 'design/navbar', permission: 'design/navbar', dotColor: 'bg-teal-500' },
     ],
   },
 ];
@@ -369,8 +369,8 @@ function SidebarItem({ icon, label, link, activeMenu, setActiveMenu, collapsed, 
   };
 
   return (
-    <li 
-      className="relative" 
+    <li
+      className="relative"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -379,17 +379,16 @@ function SidebarItem({ icon, label, link, activeMenu, setActiveMenu, collapsed, 
           setActiveMenu(label);
           router.push(`/admin/${link}`);
         }}
-        className={`w-full flex items-center px-1 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
-          active 
-            ? 'bg-brandRed text-white' 
+        className={`w-full flex items-center px-1 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${active
+            ? 'bg-brandRed text-white'
             : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-        } ${collapsed ? 'justify-center' : 'space-x-3'}`}
+          } ${collapsed ? 'justify-center' : 'space-x-3'}`}
         aria-label={label}
       >
         <Icon icon={icon} className="text-xl" />
         {!collapsed && <span>{label}</span>}
       </button>
-      
+
       {collapsed && isHovered && mounted && createPortal(
         <span
           role="tooltip"
@@ -428,22 +427,22 @@ function SidebarItemWithDropdown({
   const handleLiMouseEnter = (event) => {
     if (timerRef.current) clearTimeout(timerRef.current);
     if (!collapsed) return;
-    
+
     const rect = event.currentTarget.getBoundingClientRect();
-    
+
     // Estimate the height of the flyout menu (header + items)
     const estimatedHeight = 45 + (item.submenu.length * 44);
-    
+
     let topPosition = rect.top;
-    
+
     // If the flyout would extend below the viewport, shift it up
     if (topPosition + estimatedHeight > window.innerHeight - 16) {
       topPosition = Math.max(16, window.innerHeight - estimatedHeight - 16);
     }
-    
+
     setFlyoutTop(topPosition);
     setFlyoutMaxHeight(window.innerHeight - 32); // Max height to fit within window
-    
+
     setIsHovered(true);
   };
 
@@ -471,8 +470,8 @@ function SidebarItemWithDropdown({
   const isActive = item.submenu.some((sub) => (sub.id || sub.label) === activeMenu);
 
   return (
-    <li 
-      className="relative" 
+    <li
+      className="relative"
       onMouseEnter={handleLiMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
@@ -481,11 +480,10 @@ function SidebarItemWithDropdown({
           if (collapsed) return;
           toggleMenu();
         }}
-        className={`w-full flex items-center px-3 py-3 rounded-lg text-sm font-medium transition-colors duration-200 ${
-          isActive
+        className={`w-full flex items-center px-3 py-3 rounded-lg text-sm font-medium transition-colors duration-200 ${isActive
             ? 'bg-red-100 text-brandRed'
             : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-        } ${collapsed ? 'justify-center' : 'space-x-3'}`}
+          } ${collapsed ? 'justify-center' : 'space-x-3'}`}
         aria-label={item.label}
         aria-haspopup="true"
       >
@@ -510,7 +508,7 @@ function SidebarItemWithDropdown({
           onMouseLeave={handleMouseLeave}
         >
           <div className="pl-2">
-            <div 
+            <div
               className="min-w-[210px] rounded-lg border border-gray-200 bg-white shadow-[0_4px_20px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden"
               style={{ maxHeight: `${flyoutMaxHeight}px` }}
             >
@@ -526,11 +524,10 @@ function SidebarItemWithDropdown({
                         setIsHovered(false);
                         if (sub.link) router.push(sub.link.startsWith('/') ? sub.link : `/admin/${sub.link}`);
                       }}
-                      className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${
-                        activeMenu === (sub.id || sub.label)
+                      className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${activeMenu === (sub.id || sub.label)
                           ? 'bg-brandRed text-white'
                           : 'text-gray-700 hover:bg-red-50 hover:text-brandRed'
-                      }`}
+                        }`}
                     >
                       <Icon icon={sub.icon} className="h-4 w-4 shrink-0 text-[16px]" />
                       <span className="truncate">{sub.label}</span>
@@ -553,11 +550,10 @@ function SidebarItemWithDropdown({
                   setActiveMenu(sub.id || sub.label);
                   if (sub.link) router.push(sub.link.startsWith('/') ? sub.link : `/admin/${sub.link}`);
                 }}
-                className={`w-full flex items-center px-3 py-2 rounded text-sm space-x-3 ${
-                  activeMenu === (sub.id || sub.label)
+                className={`w-full flex items-center px-3 py-2 rounded text-sm space-x-3 ${activeMenu === (sub.id || sub.label)
                     ? 'bg-brandRed text-white'
                     : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-                }`}
+                  }`}
               >
                 <Icon icon={sub.icon} className="text-lg" />
                 <span>{sub.label}</span>

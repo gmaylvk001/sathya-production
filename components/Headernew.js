@@ -1,7 +1,7 @@
 // 'use client';
 import Link from "next/link";
 import Image from 'next/image';
-import { FiSearch, FiUser, FiMenu, FiX, FiChevronRight, FiMapPin } from "react-icons/fi";
+import { FiSearch, FiUser, FiMenu, FiX, FiChevronRight, FiMapPin, FiChevronDown, FiMic } from "react-icons/fi";
 import { FaBars, FaShoppingBag, FaUserShield, FaSearch } from "react-icons/fa";
 import {
   HiOutlineHeart,
@@ -11,6 +11,7 @@ import {
   HiOutlineBars3,
   HiOutlineGift,
   HiOutlineTag,
+  HiOutlineShieldCheck,
 } from "react-icons/hi2";
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
@@ -131,16 +132,17 @@ const HEADER_ACTION_BADGE_SM_CLASS =
 
 
 
-const Header = () => {
+const Header = ({ headerStyle: propHeaderStyle } = {}) => {
   const router = useRouter();
   const [category, setCategory] = useState('All Category');
   const [activeSubCategory, setActiveSubCategory] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { wishlistCount } = useWishlist();
   const { cartCount, updateCartCount } = useCart();
-  const { region, selectedRegion, openRegionModal, pincode, city } = useRegion();
+  const { region, selectedRegion, openRegionModal, pincode, city, district } = useRegion();
   const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [overviewAvailability, setOverviewAvailability] = useState({});
+  const [isListening, setIsListening] = useState(false);
 
   // ADD: Cross-tab cart sync helpers
   const CART_COUNT_KEY = 'cartCount';
@@ -925,6 +927,12 @@ const Header = () => {
 
   // Dynamic Navbar & Header Top Bar Styling
   const [navbarSettings, setNavbarSettings] = useState({
+    headerStyle: propHeaderStyle || "classic",
+    flashSaleBadge: "FLASH SALE",
+    flashSaleText: "Smart TVs & Inverter ACs up to 55% Off + Extra Instant Bank Cashback",
+    storeCountText: "180+ Stores in South India",
+    helplineText: "+91 88805 98985",
+    zeroDownpaymentText: "ZERO DOWNPAYMENT AVAILABLE",
     bgType: "solid",
     bgColor: "#ED1C24",
     gradientStart: "#ED1C24",
@@ -998,17 +1006,23 @@ const Header = () => {
     };
   }, []);
 
-  const navbarBackgroundStyle =
-    navbarSettings.bgType === "gradient"
+  const isModern = (propHeaderStyle || navbarSettings?.headerStyle) === "modern";
+
+  const navbarBackgroundStyle = isModern
+    ? "#161616"
+    : (navbarSettings.bgType === "gradient"
       ? `linear-gradient(${navbarSettings.gradientDirection || "to right"}, ${navbarSettings.gradientStart || "#ED1C24"}, ${navbarSettings.gradientEnd || "#990000"})`
-      : (navbarSettings.bgColor || "#ED1C24");
+      : (navbarSettings.bgColor || "#ED1C24"));
 
-  const navbarBorderTopStyle =
-    navbarSettings.showTopBorder !== false
+  const navbarBorderTopStyle = isModern
+    ? "none"
+    : (navbarSettings.showTopBorder !== false
       ? `4px solid ${navbarSettings.topBorderColor || "#FFF200"}`
-      : "none";
+      : "none");
 
-  const navbarTextColorStyle = navbarSettings.textColor || "#FFFFFF";
+  const navbarTextColorStyle = isModern
+    ? "#FFFFFF"
+    : (navbarSettings.textColor || "#FFFFFF");
 
   const searchBtnBackgroundStyle =
     navbarSettings.searchBtnBgType === "gradient"
@@ -1373,6 +1387,53 @@ const Header = () => {
       params.set("category", cat);
     }
     router.push(`/search?${params.toString()}`);
+  };
+
+  const handleVoiceSearch = () => {
+    if (typeof window === "undefined") return;
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      toast.info("Voice search is not supported in this browser. Please try Chrome or Edge.");
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-IN";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setSearchQuery(transcript);
+        setIsListening(false);
+        const params = new URLSearchParams();
+        params.set("query", transcript);
+        if (selectedCategory && selectedCategory !== "All Category" && selectedCategory !== "All Categories") {
+          params.set("category", selectedCategory);
+        }
+        router.push(`/search?${params.toString()}`);
+      };
+
+      recognition.onerror = () => {
+        setIsListening(false);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognition.start();
+    } catch (err) {
+      console.warn("Speech recognition error:", err);
+      setIsListening(false);
+    }
   };
   useEffect(() => {
     let mounted = true;
@@ -2293,7 +2354,52 @@ const Header = () => {
 
   return (
     <>
-      <header className="sticky top-0 z-50 w-full bg-white shadow-xs">
+      <header className="sticky top-0 z-50 w-full bg-white shadow-xs select-none">
+        {/* Modern Header Row 1: Top Announcement Bar (Dark Charcoal #121212) */}
+        {isModern && (
+          <div className="w-full bg-[#121212] text-white py-1.5 px-4 sm:px-6 lg:px-8 text-xs border-b border-white/10">
+            <div className="w-full max-w-7xl mx-auto flex items-center justify-between gap-4">
+              {/* Left: Flash Sale Announcement */}
+              <div className="flex items-center gap-2 overflow-hidden">
+                <span className="text-amber-400 text-sm font-bold animate-pulse shrink-0">
+                  ⚡
+                </span>
+                <span className="bg-[#d72828] text-white text-[10px] sm:text-[11px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider shrink-0 shadow-xs">
+                  {navbarSettings?.flashSaleBadge || "FLASH SALE"}
+                </span>
+                <span className="text-gray-200 text-[11px] sm:text-xs truncate font-medium">
+                  {navbarSettings?.flashSaleText || "Smart TVs & Inverter ACs up to 55% Off + Extra Instant Bank Cashback"}
+                </span>
+              </div>
+
+              {/* Right: Stores & 24/7 Helpline */}
+              <div className="hidden md:flex items-center gap-5 shrink-0 text-gray-300 text-[11px] sm:text-xs font-medium">
+                <a
+                  href="https://sathya.adtarbo.com/stores"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 hover:text-white transition-colors"
+                >
+                  <HiOutlineBuildingStorefront className="w-4 h-4 text-gray-400" />
+                  <span>{navbarSettings?.storeCountText || "180+ Stores in South India"}</span>
+                </a>
+
+                <span className="h-3 w-px bg-white/20" />
+
+                <a
+                  href={`tel:${(navbarSettings?.helplineText || "+91 88805 98985").replace(/[^0-9+]/g, "")}`}
+                  className="flex items-center gap-1.5 hover:text-white transition-colors"
+                >
+                  <HiOutlinePhone className="w-3.5 h-3.5 text-gray-400" />
+                  <span>24/7 Helpline:</span>
+                  <span className="text-amber-300 font-bold tracking-tight">
+                    {navbarSettings?.helplineText || "+91 88805 98985"}
+                  </span>
+                </a>
+              </div>
+            </div>
+          </div>
+        )}
         <style jsx global>{`
               :root{
                 --search-h:42px;
@@ -2690,11 +2796,46 @@ const Header = () => {
           )}
           {/* DESKTOP ROW (unchanged original content) */}
           <div className="hidden sm:flex justify-between items-center gap-3">
-            {/* Logo (Hidden on mobile) */}
-            <div className={`hidden sm:block py-2 rounded-lg ${currentBannerUrl ? "bg-transparent" : "bg-white"}`}>
-              <Link href="/" aria-label="SATHYA Store Homepage" className="mx-auto">
-                <img src="/uploads/sathya-header-logo.webp" alt="SATHYA Store Logo" className="h-auto w-auto" width={100} height={57} />
+            {/* Logo */}
+            <div className={`hidden sm:flex items-center gap-3 py-1.5 rounded-lg shrink-0 ${currentBannerUrl ? "bg-transparent" : "bg-white"}`}>
+              <Link href="/" aria-label="SATHYA Store Homepage" className="flex items-center gap-2 shrink-0 group">
+                <img src="/uploads/sathya-header-logo.webp" alt="SATHYA Store Logo" className="h-9 w-auto object-contain" width={100} height={57} />
+                {isModern && (
+                  <div className="flex flex-col leading-tight">
+                    <span className="text-xl sm:text-2xl font-black text-[#d72828] tracking-tight group-hover:opacity-95 transition-opacity">
+                      SATHYA
+                    </span>
+                    <span className="text-[8.5px] sm:text-[9.5px] font-extrabold text-gray-800 tracking-wider uppercase -mt-1">
+                      ELECTRONICS &amp; RETAIL
+                    </span>
+                  </div>
+                )}
               </Link>
+
+              {/* Deliver To Selector Pill (Modern Header) */}
+              {isModern && (
+                <button
+                  type="button"
+                  onClick={openRegionModal}
+                  aria-label={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'}`}
+                  className="hidden md:flex items-center gap-2 bg-[#f8f9fa] hover:bg-gray-100 border border-gray-200/90 hover:border-red-300 rounded-xl px-3 py-1.5 transition-all text-left shadow-2xs group shrink-0 ml-1"
+                  title={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'} (${selectedRegion?.name || 'Tamil Nadu'}). Click to change.`}
+                  suppressHydrationWarning
+                >
+                  <div className="w-7 h-7 rounded-lg bg-red-50 text-[#d72828] flex items-center justify-center shrink-0">
+                    <FiMapPin className="w-4 h-4 text-[#d72828]" />
+                  </div>
+                  <div className="flex flex-col leading-none pr-1">
+                    <span className="text-[10px] text-gray-500 font-medium">Deliver to</span>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <span className="text-xs font-bold text-gray-900 truncate max-w-[120px] lg:max-w-[140px]" suppressHydrationWarning>
+                        {pincode ? `${pincode} ` : ""}{district || city || "Chennai"}
+                      </span>
+                      <FiChevronDown className="w-3 h-3 text-gray-400 group-hover:text-gray-700 transition-colors shrink-0" />
+                    </div>
+                  </div>
+                </button>
+              )}
             </div>
 
             {/* Search Bar */}
@@ -2713,7 +2854,7 @@ const Header = () => {
                   aria-label="Search category"
                   title={selectedCategory}
                 >
-                  <option value="All Category">All Category</option>
+                  <option value="All Category">{isModern ? "All Departments" : "All Category"}</option>
                   {categories.map((cat) => (
                     <option key={String(cat._id)} value={cat.category_name}>
                       {cat.category_name}
@@ -2747,8 +2888,12 @@ const Header = () => {
                 />
                 {searchQuery.trim() === "" && (
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none z-10">
-                    <span className="text-gray-400 text-sm">Search for</span>
-                    <span className="text-gray-900 text-sm font-medium">"{typedPreview}"</span>
+                    <span className="text-gray-400 text-sm">
+                      {isModern ? "Search QLED TVs, 5G Mobiles, Double Door Fridges..." : "Search for"}
+                    </span>
+                    {!isModern && (
+                      <span className="text-gray-900 text-sm font-medium">"{typedPreview}"</span>
+                    )}
                   </div>
                 )}
                 {searchQuery.trim() !== "" && (
@@ -2762,6 +2907,18 @@ const Header = () => {
                   </button>
                 )}
               </div>
+              {/* Voice search button (Modern) */}
+              {isModern && (
+                <button
+                  type="button"
+                  onClick={handleVoiceSearch}
+                  title="Voice Search"
+                  className={`px-2 text-gray-500 hover:text-[#d72828] transition-colors focus:outline-none ${isListening ? "text-[#d72828] animate-pulse" : ""
+                    }`}
+                >
+                  <FiMic size={16} />
+                </button>
+              )}
               <button
                 type="button"
                 className="header-search-btn"
@@ -2798,48 +2955,54 @@ const Header = () => {
                 </Link>
               )}
 
-              {/* State / Region Selector Button */}
-              <button
-                type="button"
-                onClick={openRegionModal}
-                aria-label={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'}`}
-                className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[50px] md:min-w-[54px] cursor-pointer`}
-                title={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'} (${selectedRegion?.name || 'Tamil Nadu'}). Click to change.`}
-                suppressHydrationWarning
-              >
-                <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
-                  <FiMapPin size={18} strokeWidth={1.75} />
-                </div>
-                <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS} max-w-[62px] truncate`} suppressHydrationWarning>
-                  {pincode ? pincode : (selectedRegion?.code || 'Region')} ▾
-                </span>
-              </button>
+              {/* State / Region Selector Button (Classic only) */}
+              {!isModern && (
+                <button
+                  type="button"
+                  onClick={openRegionModal}
+                  aria-label={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'}`}
+                  className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[50px] md:min-w-[54px] cursor-pointer`}
+                  title={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'} (${selectedRegion?.name || 'Tamil Nadu'}). Click to change.`}
+                  suppressHydrationWarning
+                >
+                  <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
+                    <FiMapPin size={18} strokeWidth={1.75} />
+                  </div>
+                  <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS} max-w-[62px] truncate`} suppressHydrationWarning>
+                    {pincode ? pincode : (selectedRegion?.code || 'Region')} ▾
+                  </span>
+                </button>
+              )}
 
-              {/* Contact Button (Placed next to Pincode as requested) */}
-              <Link
-                href="/contact"
-                aria-label="Contact Us"
-                className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[48px] md:min-w-[52px]`}
-                title="Contact Us"
-              >
-                <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
-                  <HiOutlinePhone size={18} strokeWidth={1.75} />
-                </div>
-                <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Contact</span>
-              </Link>
+              {/* Contact Button (Classic only) */}
+              {!isModern && (
+                <Link
+                  href="/contact"
+                  aria-label="Contact Us"
+                  className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[48px] md:min-w-[52px]`}
+                  title="Contact Us"
+                >
+                  <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
+                    <HiOutlinePhone size={18} strokeWidth={1.75} />
+                  </div>
+                  <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Contact</span>
+                </Link>
+              )}
 
-              <a
-                href="https://sathya.adtarbo.com/stores"
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label="Store Locations"
-                className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[52px]`}
-              >
-                <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
-                  <HiOutlineBuildingStorefront size={18} strokeWidth={1.75} />
-                </div>
-                <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Store</span>
-              </a>
+              {!isModern && (
+                <a
+                  href="https://sathya.adtarbo.com/stores"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Store Locations"
+                  className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[52px]`}
+                >
+                  <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
+                    <HiOutlineBuildingStorefront size={18} strokeWidth={1.75} />
+                  </div>
+                  <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Store</span>
+                </a>
+              )}
 
               <Link href="/wishlist" aria-label={`Wishlist (${wishlistCount || 0} items)`} className={`${HEADER_ACTION_LINK_CLASS} flex min-w-[52px] relative`}>
                 <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
@@ -2866,32 +3029,64 @@ const Header = () => {
                 <DealsPdfButton />
               )}
 
-              {/* User Account / Login Dropdown (Replaces hamburger icon button) */}
+              {/* User Account / Login Dropdown */}
               <div
                 className="relative hidden sm:block"
                 ref={accountMenuRef}
                 onMouseEnter={handleMenuMouseEnter}
                 onMouseLeave={handleMenuMouseLeave}
               >
-                <button
-                  type="button"
-                  onClick={() => setIsAccountMenuOpen((prev) => !prev)}
-                  className={`${HEADER_ACTION_LINK_CLASS} min-w-[48px] md:min-w-[52px] focus:outline-none cursor-pointer`}
-                  aria-label={isAuthenticated ? "Account Menu" : "Login"}
-                  aria-expanded={isAccountMenuOpen}
-                  aria-haspopup="true"
-                  title={isAuthenticated ? (userData?.name || userData?.mobile || "Account") : "Login / Sign In"}
-                >
-                  <div
-                    className={`${HEADER_ACTION_ICON_WRAP_CLASS} ${isAccountMenuOpen ? "!border-[#ED1C24] !bg-[#FFF200] !text-[#C4161D] shadow-[0_4px_10px_rgba(215,40,40,0.18)]" : ""
-                      }`}
+                {isModern ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isAuthenticated) {
+                        setIsAccountMenuOpen((prev) => !prev);
+                      } else {
+                        setShowAuthModal(true);
+                      }
+                    }}
+                    className="flex items-center gap-2 group text-left focus:outline-none cursor-pointer"
+                    aria-label={isAuthenticated ? "Account Menu" : "Login"}
+                    aria-expanded={isAccountMenuOpen}
+                    aria-haspopup="true"
+                    title={isAuthenticated ? (userData?.name || userData?.mobile || "Account") : "Login / Sign In"}
                   >
-                    <FiUser size={18} strokeWidth={1.75} />
-                  </div>
-                  <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS} max-w-[62px] truncate`} suppressHydrationWarning>
-                    {isAuthenticated ? userDisplayName : 'Login'}
-                  </span>
-                </button>
+                    <div className="w-9 h-9 rounded-full bg-[#d72828] text-white flex items-center justify-center shadow-xs font-bold text-sm shrink-0 group-hover:opacity-90 transition-opacity">
+                      {isAuthenticated && userDisplayName ? (
+                        userDisplayName.charAt(0).toUpperCase()
+                      ) : (
+                        <FiUser className="w-4 h-4 text-white" />
+                      )}
+                    </div>
+                    <div className="hidden lg:flex flex-col leading-none">
+                      <span className="text-[10px] text-gray-500 font-medium">Welcome</span>
+                      <span className="text-xs font-bold text-gray-900 group-hover:text-[#d72828] transition-colors truncate max-w-[100px] mt-0.5" suppressHydrationWarning>
+                        {isAuthenticated ? userDisplayName : "Sign In"}
+                      </span>
+                    </div>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsAccountMenuOpen((prev) => !prev)}
+                    className={`${HEADER_ACTION_LINK_CLASS} min-w-[48px] md:min-w-[52px] focus:outline-none cursor-pointer`}
+                    aria-label={isAuthenticated ? "Account Menu" : "Login"}
+                    aria-expanded={isAccountMenuOpen}
+                    aria-haspopup="true"
+                    title={isAuthenticated ? (userData?.name || userData?.mobile || "Account") : "Login / Sign In"}
+                  >
+                    <div
+                      className={`${HEADER_ACTION_ICON_WRAP_CLASS} ${isAccountMenuOpen ? "!border-[#ED1C24] !bg-[#FFF200] !text-[#C4161D] shadow-[0_4px_10px_rgba(215,40,40,0.18)]" : ""
+                        }`}
+                    >
+                      <FiUser size={18} strokeWidth={1.75} />
+                    </div>
+                    <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS} max-w-[62px] truncate`} suppressHydrationWarning>
+                      {isAuthenticated ? userDisplayName : 'Login'}
+                    </span>
+                  </button>
+                )}
 
                 {isAccountMenuOpen && (
                   <div
@@ -3522,20 +3717,19 @@ const Header = () => {
             </div>
           )}
         </div>
-        {/* Category listing bar — red bar with yellow line on top (Sathya brand) */}
+        {/* Category listing bar — red bar with yellow line on top (Sathya brand) OR dark modern bar */}
         <div
-          className="hidden sm:flex relative w-full min-h-[56px] items-center justify-center px-6 shadow transition-all duration-200"
+          className={`hidden sm:flex relative w-full ${isModern ? "min-h-[50px] justify-between" : "min-h-[56px] justify-center"} items-center px-6 shadow transition-all duration-200`}
           style={{
-            background: navbarBackgroundStyle,
-            borderTop: navbarBorderTopStyle,
+            background: isModern ? "#161616" : navbarBackgroundStyle,
+            borderTop: isModern ? "none" : navbarBorderTopStyle,
           }}
         >
           {/* Menu (when enabled) and the categories form one centred group. Both ends of the
               group carry the same 8px inset, so the bar stays balanced with Menu on or off. */}
           {menuButtonEnabled && (
             <div
-              // -ml-4 pl-4 adds no width: it only moves the dropdown's left edge so its rows line up with the icon.
-              className="relative flex-shrink-0 self-stretch -ml-4 pl-4"
+              className={`relative flex-shrink-0 self-stretch ${isModern ? "" : "-ml-4 pl-4"}`}
               data-sathya-menu-toggle
               onMouseEnter={() => {
                 if (menuHoverLeaveTimer.current) {
@@ -3557,8 +3751,12 @@ const Header = () => {
             >
               <button
                 type="button"
-                className="h-full self-stretch pl-2 pr-6 flex items-center gap-2.5 font-bold text-base bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent"
-                style={{ color: navbarTextColorStyle }}
+                className={
+                  isModern
+                    ? "h-full px-5 py-3 flex items-center gap-2.5 font-bold text-xs sm:text-sm bg-[#ED1C24] hover:bg-[#C4161D] text-white transition-colors cursor-pointer shadow-xs"
+                    : "h-full self-stretch pl-2 pr-6 flex items-center gap-2.5 font-bold text-base bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent"
+                }
+                style={!isModern ? { color: navbarTextColorStyle } : undefined}
                 aria-label="Open menu"
                 aria-expanded={showMenu}
                 onClick={() => {
@@ -3570,7 +3768,8 @@ const Header = () => {
                 }}
               >
                 <FiMenu size={18} strokeWidth={2.5} />
-                <span>Menu</span>
+                <span>{isModern ? "All Categories" : "Menu"}</span>
+                {isModern && <FiChevronDown size={14} className="opacity-80" />}
               </button>
               <HeaderMenuSidebar
                 open={showMenu}
@@ -3581,13 +3780,13 @@ const Header = () => {
               />
             </div>
           )}
-          <div className="relative min-w-0">
+          <div className="relative min-w-0 flex-1 px-2">
             <div className="relative">
-              <div className="flex justify-center overflow-x-auto scrollbar-hide">
+              <div className={`flex ${isModern ? "justify-start" : "justify-center"} overflow-x-auto scrollbar-hide`}>
                 <Swiper
                   modules={[Navigation]}
                   navigation={{ prevEl: ".custom-swiper-prev", nextEl: ".custom-swiper-next" }}
-                  spaceBetween={20}
+                  spaceBetween={isModern ? 16 : 20}
                   slidesPerView="auto"
                   watchOverflow={true}
                   observer={true}
@@ -3608,7 +3807,7 @@ const Header = () => {
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{ color: navbarTextColorStyle }}
-                              className="inline-block origin-center text-base font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap"
+                              className="inline-block origin-center text-sm font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap"
                             >
                               {entry.label}
                             </a>
@@ -3616,7 +3815,7 @@ const Header = () => {
                             <Link
                               href={entry.href}
                               style={{ color: navbarTextColorStyle }}
-                              className="inline-block origin-center text-base font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap"
+                              className="inline-block origin-center text-sm font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap"
                             >
                               {entry.label}
                             </Link>
@@ -3647,7 +3846,7 @@ const Header = () => {
                               );
                             }}
                             style={{ color: navbarTextColorStyle }}
-                            className={`inline-block origin-center text-base font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap ${isHovered ? "!scale-105" : ""}`}
+                            className={`inline-block origin-center text-sm font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap ${isHovered ? "!scale-105 text-amber-300" : ""}`}
                           >
                             {entry.label}
                           </Link>
@@ -3660,6 +3859,15 @@ const Header = () => {
               </div>
             </div>
           </div>
+          {/* Right: Zero Downpayment Highlight Offer (Modern mode) */}
+          {isModern && (
+            <div className="hidden xl:flex items-center gap-2 pr-2 text-xs font-bold text-amber-400 shrink-0 ml-auto pl-4">
+              <HiOutlineShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="tracking-wider uppercase text-[11px] font-extrabold whitespace-nowrap">
+                {navbarSettings?.zeroDownpaymentText || "ZERO DOWNPAYMENT AVAILABLE"}
+              </span>
+            </div>
+          )}
         </div>
 
         {hoveredCategory && hoveredCategory.subcategories?.length > 0 && (() => {

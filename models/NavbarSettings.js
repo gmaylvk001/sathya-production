@@ -100,6 +100,32 @@ const NavbarSettingsSchema = new mongoose.Schema(
       type: String,
       default: "#FFF200",
     },
+    // Header Style Selection ("classic" = Original Red Sathya Header, "modern" = Dark & White Modern Retail Header)
+    headerStyle: {
+      type: String,
+      enum: ["classic", "modern"],
+      default: "classic",
+    },
+    flashSaleBadge: {
+      type: String,
+      default: "FLASH SALE",
+    },
+    flashSaleText: {
+      type: String,
+      default: "Smart TVs & Inverter ACs up to 55% Off + Extra Instant Bank Cashback",
+    },
+    storeCountText: {
+      type: String,
+      default: "180+ Stores in South India",
+    },
+    helplineText: {
+      type: String,
+      default: "+91 88805 98985",
+    },
+    zeroDownpaymentText: {
+      type: String,
+      default: "ZERO DOWNPAYMENT AVAILABLE",
+    },
     isActive: {
       type: Boolean,
       default: true,
@@ -111,6 +137,9 @@ const NavbarSettingsSchema = new mongoose.Schema(
   }
 );
 
-export default mongoose.models.NavbarSettings ||
-  mongoose.model("NavbarSettings", NavbarSettingsSchema);
+if (mongoose.models && mongoose.models.NavbarSettings) {
+  delete mongoose.models.NavbarSettings;
+}
+
+export default mongoose.model("NavbarSettings", NavbarSettingsSchema);
 

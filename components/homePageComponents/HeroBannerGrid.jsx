@@ -143,7 +143,7 @@ export default function HeroBannerGrid({ config, embedded = false }) {
 
   const containerClass = embedded
     ? "w-full h-full bg-white px-2 sm:px-3 md:px-4"
-    : "w-full bg-white mb-6 px-2 sm:px-3 md:px-4";
+    : "w-full bg-white mb-6 px-2 sm:px-3 md:px-4 pt-2.5 sm:pt-3.5 md:pt-4";
 
   const gridHeightClass = embedded
     ? "lg:h-full"

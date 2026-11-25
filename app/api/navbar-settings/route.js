@@ -31,6 +31,13 @@ const DEFAULT_SETTINGS = {
   // Badges
   badgeBgColor: "#ED1C24",
   badgeTextColor: "#FFF200",
+  // Header Style Selection
+  headerStyle: "classic",
+  flashSaleBadge: "FLASH SALE",
+  flashSaleText: "Smart TVs & Inverter ACs up to 55% Off + Extra Instant Bank Cashback",
+  storeCountText: "180+ Stores in South India",
+  helplineText: "+91 88805 98985",
+  zeroDownpaymentText: "ZERO DOWNPAYMENT AVAILABLE",
   isActive: true,
 };
 
@@ -44,7 +51,7 @@ export async function GET() {
     return NextResponse.json(
       {
         success: true,
-        data: settings || DEFAULT_SETTINGS,
+        data: settings ? { ...DEFAULT_SETTINGS, ...settings } : DEFAULT_SETTINGS,
       },
       {
         status: 200,
@@ -100,6 +107,13 @@ export async function POST(req) {
       // Badges
       badgeBgColor: body.badgeBgColor || "#ED1C24",
       badgeTextColor: body.badgeTextColor || "#FFF200",
+      // Header Style & Texts
+      headerStyle: body.headerStyle === "modern" ? "modern" : "classic",
+      flashSaleBadge: body.flashSaleBadge || "FLASH SALE",
+      flashSaleText: body.flashSaleText || "Smart TVs & Inverter ACs up to 55% Off + Extra Instant Bank Cashback",
+      storeCountText: body.storeCountText || "180+ Stores in South India",
+      helplineText: body.helplineText || "+91 88805 98985",
+      zeroDownpaymentText: body.zeroDownpaymentText || "ZERO DOWNPAYMENT AVAILABLE",
       isActive: true,
     };
 
