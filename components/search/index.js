@@ -247,6 +247,8 @@ export default function SearchPage() {
   };
 
   const lastFetchedFiltersKeyRef = useRef("");
+  const prevSearchQueryRef = useRef(searchQuery);
+  const ignoreUrlPriceRef = useRef(false);
 
   const fetchResults = useCallback(
     async (pageNum = 1, bootstrap = false, filtersOverride = null) => {
@@ -397,11 +399,12 @@ export default function SearchPage() {
             data?.priceIntent?.minPrice ?? data?.priceIntent?.applied?.minPrice;
           const intentMax =
             data?.priceIntent?.maxPrice ?? data?.priceIntent?.applied?.maxPrice;
-          const urlHasPrice = hasExplicitPriceParams(urlSearch);
+          const ignoreUrlPrice = ignoreUrlPriceRef.current;
+          if (ignoreUrlPrice) ignoreUrlPriceRef.current = false;
+          const urlHasPrice = !ignoreUrlPrice && hasExplicitPriceParams(urlSearch);
           const hasNlPrice =
-            !urlHasPrice &&
-            ((intentMin != null && intentMin > 0) ||
-              (intentMax != null && intentMax > 0 && intentMax < 500000));
+            (intentMin != null && intentMin > 0) ||
+            (intentMax != null && intentMax > 0 && intentMax < 500000);
 
           const nextSelected = {
             categories: urlFilters.categories,
@@ -472,14 +475,36 @@ export default function SearchPage() {
 
   useEffect(() => {
     if (!isInitialized) return;
-    skipNextFilterFetch.current = true;
-    setFilterUrlReady(false);
+    const queryChanged = prevSearchQueryRef.current !== searchQuery;
+    prevSearchQueryRef.current = searchQuery;
+    if (queryChanged) {
+      // A new phrase must not keep the previous amount, e.g. 50000 after typing 10000.
+      skipNextFilterFetch.current = true;
+      ignoreUrlPriceRef.current = true;
+      setFilterUrlReady(false);
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("min-price");
+        url.searchParams.delete("max-price");
+        url.searchParams.delete("minPrice");
+        url.searchParams.delete("maxPrice");
+        window.history.replaceState(
+          window.history.state,
+          "",
+          url.pathname + (url.search ? url.search : "")
+        );
+      }
+    }
     fetchResults(1, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, region, isInitialized]);
 
   useEffect(() => {
     if (!filterUrlReady) return;
+    if (skipNextFilterFetch.current) {
+      skipNextFilterFetch.current = false;
+      return;
+    }
     const key =
       selectionKey(selectedFilters) + "|" + page + "|" + searchQuery;
     if (key === lastFetchedFiltersKeyRef.current) {
