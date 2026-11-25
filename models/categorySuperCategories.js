@@ -34,8 +34,8 @@ const CategorySuperCategoriesSchema = new mongoose.Schema(
     },
     name: { type: String, default: "Explore Super-Categories" },
     kicker: { type: String, default: "DEPARTMENT MATRIX" },
-    viewAllText: { type: String, default: "View All 84 Sub-Categories" },
-    viewAllUrl: { type: String, default: "/categories" },
+    viewAllText: { type: String, default: "" },
+    viewAllUrl: { type: String, default: "" },
     items: { type: [SuperCategoryItemSchema], default: [] },
     status: {
       type: String,

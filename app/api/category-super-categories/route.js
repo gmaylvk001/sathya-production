@@ -62,8 +62,8 @@ export async function POST(req) {
     const pageId = formData.get("pageId");
     const name = String(formData.get("name") || "Explore Super-Categories").trim();
     const kicker = String(formData.get("kicker") || "DEPARTMENT MATRIX").trim();
-    const viewAllText = String(formData.get("viewAllText") || "View All 84 Sub-Categories").trim();
-    const viewAllUrl = String(formData.get("viewAllUrl") || "/categories").trim();
+    const viewAllText = String(formData.get("viewAllText") || "").trim();
+    const viewAllUrl = String(formData.get("viewAllUrl") || "").trim();
     const status = formData.get("status") || "active";
 
     if (!instanceId || !pageId) {

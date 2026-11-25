@@ -54,8 +54,8 @@ export default function SuperCategoriesConfigForm({
   const isListMode = !instanceId;
   const [name, setName] = useState("Explore Super-Categories");
   const [kicker, setKicker] = useState("DEPARTMENT MATRIX");
-  const [viewAllText, setViewAllText] = useState("View All 84 Sub-Categories");
-  const [viewAllUrl, setViewAllUrl] = useState("/categories");
+  const [viewAllText, setViewAllText] = useState("");
+  const [viewAllUrl, setViewAllUrl] = useState("");
   const [status, setStatus] = useState("active");
   const [items, setItems] = useState([emptyItem()]);
   const [loading, setLoading] = useState(!isListMode);
@@ -102,8 +102,8 @@ export default function SuperCategoriesConfigForm({
         if (data.success && data.data) {
           setName(data.data.name || "Explore Super-Categories");
           setKicker(data.data.kicker || "DEPARTMENT MATRIX");
-          setViewAllText(data.data.viewAllText || "View All 84 Sub-Categories");
-          setViewAllUrl(data.data.viewAllUrl || "/categories");
+          setViewAllText("");
+          setViewAllUrl("");
           setStatus(data.data.status || "active");
           const rows = data.data.items || [];
           setItems(
@@ -124,8 +124,8 @@ export default function SuperCategoriesConfigForm({
         } else {
           setName("Explore Super-Categories");
           setKicker("DEPARTMENT MATRIX");
-          setViewAllText("View All 84 Sub-Categories");
-          setViewAllUrl("/categories");
+          setViewAllText("");
+          setViewAllUrl("");
           setItems([emptyItem()]);
           setStatus("active");
         }
@@ -169,8 +169,8 @@ export default function SuperCategoriesConfigForm({
       fd.append("pageId", pageId);
       fd.append("name", name.trim());
       fd.append("kicker", kicker.trim());
-      fd.append("viewAllText", viewAllText.trim());
-      fd.append("viewAllUrl", viewAllUrl.trim());
+      fd.append("viewAllText", "");
+      fd.append("viewAllUrl", "");
       fd.append("status", status);
       fd.append(
         "itemsMeta",
@@ -426,37 +426,6 @@ export default function SuperCategoriesConfigForm({
               <option value="inactive">Inactive (Hidden)</option>
             </select>
             <p className="text-[11px] text-gray-400 mt-1">Control visibility on storefront</p>
-          </div>
-        </div>
-
-        {/* Row 2: View All Text, View All URL */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mt-3 pt-3 border-t border-gray-200/60">
-          <div className="md:col-span-6">
-            <label className="block text-xs font-bold text-gray-700 mb-1.5">
-              View All Link Text
-            </label>
-            <input
-              type="text"
-              value={viewAllText}
-              onChange={(e) => setViewAllText(e.target.value)}
-              placeholder="e.g. View All 84 Sub-Categories"
-              className="w-full rounded-xl border border-gray-300 px-3.5 py-2 text-sm focus:border-[#ED1C24] focus:ring-2 focus:ring-[#ED1C24]/10 focus:outline-none transition bg-white"
-            />
-            <p className="text-[11px] text-gray-400 mt-1">Right-side clickable link text</p>
-          </div>
-
-          <div className="md:col-span-6">
-            <label className="block text-xs font-bold text-gray-700 mb-1.5">
-              View All Target URL
-            </label>
-            <input
-              type="text"
-              value={viewAllUrl}
-              onChange={(e) => setViewAllUrl(e.target.value)}
-              placeholder="e.g. /categories"
-              className="w-full rounded-xl border border-gray-300 px-3.5 py-2 text-sm focus:border-[#ED1C24] focus:ring-2 focus:ring-[#ED1C24]/10 focus:outline-none transition bg-white"
-            />
-            <p className="text-[11px] text-gray-400 mt-1">Destination URL when View All is clicked</p>
           </div>
         </div>
       </div>

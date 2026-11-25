@@ -47,37 +47,20 @@ export default function CategorySuperCategories({ config }) {
 
   const kicker = String(config?.kicker || "DEPARTMENT MATRIX").trim();
   const heading = String(config?.name || "Explore Super-Categories").trim();
-  const viewAllText = String(config?.viewAllText || "View All 84 Sub-Categories").trim();
-  const viewAllUrl = resolveItemHref({ url: config?.viewAllUrl || "/categories" });
 
   return (
     <section className="w-full mb-10 bg-white py-5">
       <div className="w-full px-4 sm:px-6">
-        {/* Header with kicker, title, and right view all link */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-6 sm:mb-7 px-1">
-          <div>
-            {kicker && (
-              <p className="text-[11px] sm:text-xs font-bold text-[#b91c1c] tracking-wider uppercase mb-1">
-                {kicker}
-              </p>
-            )}
-            <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[#111827] tracking-tight">
-              {heading}
-            </h2>
-          </div>
-
-          {viewAllText && (
-            <Link
-              href={viewAllUrl}
-              className="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-[#b91c1c] hover:text-[#991b1b] transition-colors group shrink-0"
-            >
-              <span>{viewAllText}</span>
-              <Icon
-                icon="mdi:arrow-right"
-                className="text-base group-hover:translate-x-1 transition-transform"
-              />
-            </Link>
+        {/* Header with kicker and title */}
+        <div className="mb-6 sm:mb-7 px-1">
+          {kicker && (
+            <p className="text-[11px] sm:text-xs font-bold text-[#b91c1c] tracking-wider uppercase mb-1">
+              {kicker}
+            </p>
           )}
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[#111827] tracking-tight">
+            {heading}
+          </h2>
         </div>
 
         {/* Super Categories Grid */}
