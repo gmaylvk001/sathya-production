@@ -280,6 +280,17 @@ export async function POST(req, { params }) {
         } else if (type === COMPONENT_TYPES.SPLIT_BANNER) {
           defaults.bannerCount = 1;
           defaults.banners = [];
+        } else if (type === COMPONENT_TYPES.DEAL_OF_THE_DAY) {
+          defaults.productId = null;
+          defaults.startAt = null;
+          defaults.endAt = null;
+          defaults.eyebrow = "DEAL OF THE DAY";
+          defaults.badgeLabel = "Spotlight 24H";
+          defaults.highlightSpecs = [
+            { label: "Display", value: "" },
+            { label: "Sound", value: "" },
+            { label: "Warranty", value: "" },
+          ];
         }
         const config = await ConfigModel.create(defaults);
         configId = config._id;

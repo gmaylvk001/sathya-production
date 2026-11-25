@@ -26,6 +26,7 @@ import CircleImageCarouselConfigForm from "../category-pages/CircleImageCarousel
 import SuperCategoriesConfigForm from "../category-pages/SuperCategoriesConfigForm";
 import WhyBuyReasonsConfigForm from "../category-pages/WhyBuyReasonsConfigForm";
 import TrendingVideosConfigForm from "./TrendingVideosConfigForm";
+import DealOfTheDayConfigForm from "./DealOfTheDayConfigForm";
 
 export default function HomePageBuilder() {
   const router = useRouter();
@@ -492,6 +493,11 @@ export default function HomePageBuilder() {
         Form: WhyBuyReasonsConfigForm,
         label: "Why Buy From Sathya",
         extra: { apiBase: "/api/home-why-buy-reasons" },
+      },
+      [COMPONENT_TYPES.DEAL_OF_THE_DAY]: {
+        Form: DealOfTheDayConfigForm,
+        label: "Deal of the Day",
+        extra: { apiBase: "/api/home-deal-of-the-day" },
       },
     };
 

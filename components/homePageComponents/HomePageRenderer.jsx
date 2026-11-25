@@ -19,6 +19,7 @@ import CategoryCircleImageCarousel from "@/components/categoryPageComponents/cat
 import CategorySuperCategories from "@/components/categoryPageComponents/CategorySuperCategories";
 import CategoryWhyBuyReasons from "@/components/categoryPageComponents/CategoryWhyBuyReasons";
 import TrendingVideoSection from "@/components/TrendingVideoSection";
+import DealOfTheDaySection from "@/components/homePageComponents/DealOfTheDaySection";
 
 // In-memory cache to prevent layout shift and avoid re-fetching on client navigation
 const homeRenderCache = new Map();
@@ -221,6 +222,14 @@ export default function HomePageRenderer({ onHasDesign }) {
         if (item.type === COMPONENT_TYPES.WHY_BUY_REASONS) {
           return (
             <CategoryWhyBuyReasons
+              key={item.instanceId || idx}
+              config={item.config}
+            />
+          );
+        }
+        if (item.type === COMPONENT_TYPES.DEAL_OF_THE_DAY) {
+          return (
+            <DealOfTheDaySection
               key={item.instanceId || idx}
               config={item.config}
             />
