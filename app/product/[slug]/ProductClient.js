@@ -237,6 +237,98 @@ const getSharedBrandData = () => {
   return sharedBrandPromise;
 };
 
+function PdpStockStatusBadge({
+  stockCount,
+  isInStock,
+  isOnlineAvailable,
+  size = "sm",
+  openBoxBadge = null,
+}) {
+  const isCompact = size === "sm";
+
+  if (!isInStock) {
+    return isCompact ? (
+      <span className="inline-flex items-center gap-1 bg-red-100 text-red-800 px-2.5 py-0.5 rounded-full font-semibold">
+        ✗ Out of Stock
+      </span>
+    ) : (
+      <span className="text-red-600 font-semibold text-sm">✗ Out of Stock</span>
+    );
+  }
+
+  const isLowStock = stockCount >= 1 && stockCount <= 9;
+
+  if (!isOnlineAvailable) {
+    const storeLabel = isLowStock
+      ? `Available in Store (Only ${stockCount} left)`
+      : "Available in Store";
+
+    return (
+      <div className={`flex items-center flex-wrap ${isCompact ? "gap-1.5" : "gap-2"}`}>
+        <span
+          className={`inline-flex items-center bg-gray-100 text-gray-700 border border-gray-300 rounded-full font-semibold ${
+            isCompact ? "gap-1 px-2 py-0.5" : "gap-1.5 px-3 py-1 text-sm"
+          }`}
+        >
+          Sold Out Online
+        </span>
+        <span
+          className={`inline-flex items-center bg-emerald-50 text-emerald-700 rounded-full font-semibold ${
+            isCompact
+              ? "gap-1 border border-emerald-300 px-2 py-0.5"
+              : "gap-1.5 border border-emerald-500 px-3 py-1 text-sm"
+          }`}
+        >
+          <FaStore className={isCompact ? "w-3 h-3 text-emerald-600" : "w-3.5 h-3.5"} />
+          {storeLabel}
+        </span>
+      </div>
+    );
+  }
+
+  const mainBadge = isLowStock ? (
+    <span
+      className={`inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full font-semibold ${
+        isCompact ? "px-2.5 py-0.5 text-xs" : "px-3 py-1 text-sm"
+      }`}
+    >
+      <span
+        className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse flex-shrink-0"
+        aria-hidden="true"
+      />
+      Only {stockCount} left in stock
+    </span>
+  ) : isCompact ? (
+    <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-2.5 py-0.5 rounded-full font-semibold">
+      ✓ In Stock
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm font-semibold">
+      <span className="flex items-center justify-center w-3 h-3 rounded-full bg-green-600 flex-shrink-0">
+        <svg
+          className="w-2.5 h-2.5 text-white"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          strokeWidth={3}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      </span>
+      In Stock
+    </span>
+  );
+
+  if (!openBoxBadge) return mainBadge;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {mainBadge}
+      {openBoxBadge}
+    </div>
+  );
+}
+
 export default function ProductClient({ initialProduct = null, lspPdpEnabled = false }) {
   const router = useRouter();
   const params = useParams();
@@ -559,9 +651,18 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
   const addToCartOutlineClass =
     "w-full border border-gray-300 rounded-md bg-white px-4 py-2.5 text-sm font-medium text-[#d72828] hover:border-red-400 hover:bg-red-50 transition-colors shadow-none";
 
-  const productQty = Number(product?.quantity ?? product?.stock ?? 0);
-  const rawStockStatus = String(product?.stock_status || (productQty > 0 ? "In Stock" : "")).trim();
-  const isOutOfStockStatus = productQty <= 0 || rawStockStatus === "Out of Stock" || rawStockStatus === "outofstock";
+  const rawParsedQty = Number(product?.quantity ?? product?.stock ?? 0);
+  const productQty = Number.isFinite(rawParsedQty)
+    ? Math.max(0, Math.floor(rawParsedQty))
+    : 0;
+  const rawStockStatus = String(
+    product?.stock_status || (productQty > 0 ? "In Stock" : "")
+  ).trim();
+  const normalizedStockStatus = rawStockStatus.toLowerCase();
+  const isOutOfStockStatus =
+    productQty <= 0 ||
+    normalizedStockStatus === "out of stock" ||
+    normalizedStockStatus === "outofstock";
   const isInStock = !isOutOfStockStatus && productQty > 0;
   // Do not use quantity < 10 for Sold Out Online — movement whitelist only
   // (retail-only movements e.g. NON ROL). display_stock gates enquiry separately.
@@ -687,15 +788,23 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
       .then((r) => r.json())
       .then((d) => setWarranties(d.warranties || []));
   }, [product?._id]);
+  useEffect(() => {
+    if (productQty > 0 && quantity > productQty) {
+      setQuantity(productQty);
+    }
+  }, [productQty, quantity]);
+
   const handleDecrease = () => {
-    setQuantity(Math.max(1, quantity - 1));
+    setQuantity((prev) => Math.max(1, prev - 1));
     setQuantityWarning(false); // clear warning when decreasing
   };
   const handleIncrease = () => {
-    if (quantity < product.quantity) {
-      setQuantity(quantity + 1);
+    if (productQty <= 0) return;
+    if (quantity < productQty) {
+      setQuantity((prev) => Math.min(productQty, prev + 1));
       setQuantityWarning(false); // clear warning if under limit
     } else {
+      setQuantity(Math.max(1, productQty));
       setQuantityWarning(true); // show warning if exceeding
     }
   };
@@ -1371,6 +1480,7 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
       setProduct(data);
       setSelectedImageIndex(0);
       setQuantity(1);
+      setQuantityWarning(false);
       if (data?.images?.[0]) setSelectedImage(`/uploads/products/${data.images[0]}`);
     };
 
@@ -1483,6 +1593,7 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
     setProduct(cached);
     setSelectedImageIndex(0);
     setQuantity(1);
+    setQuantityWarning(false);
     setSelectedWarrantyAmount(0);
     setSelectedWarrantyData(null);
     if (cached?.images?.[0]) setSelectedImage(`/uploads/products/${cached.images[0]}`);
@@ -1847,39 +1958,20 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
 
             {/* Stock */}
             <div className="mt-2">
-              {isInStock ? (
-                isOnlineAvailable ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm font-semibold">
-                      <span className="flex items-center justify-center w-3 h-3 rounded-full bg-green-600 flex-shrink-0">
-                        <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      </span>
-                      In Stock ({productQty} units)
+              <PdpStockStatusBadge
+                stockCount={productQty}
+                isInStock={isInStock}
+                isOnlineAvailable={isOnlineAvailable}
+                size="md"
+                openBoxBadge={
+                  isOpenBox ? (
+                    <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200 text-xs px-2.5 py-1 rounded-full font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                      <span>Clearance / Open Box Item - Direct Store/Phone Purchase Only</span>
                     </span>
-
-                    {isOpenBox && (
-                      <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 border border-amber-200 text-xs px-2.5 py-1 rounded-full font-medium">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                        <span>Clearance / Open Box Item - Direct Store/Phone Purchase Only</span>
-                      </span>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="inline-flex items-center gap-1.5 bg-gray-100 text-gray-700 border border-gray-300 px-3 py-1 rounded-full text-sm font-semibold">
-                      Sold Out Online
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 border border-emerald-500 text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full text-sm font-semibold">
-                      <FaStore className="w-3.5 h-3.5" />
-                      Available in Store ({productQty} units)
-                    </span>
-                  </div>
-                )
-              ) : (
-                <span className="text-red-600 font-semibold text-sm">✗ Out of Stock</span>
-              )}
+                  ) : null
+                }
+              />
               <p className="text-xs text-gray-600 mt-1">
                 Sold by{" "}
                 <span className="font-semibold">
@@ -1935,11 +2027,28 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
                 <div className="flex items-center gap-3 mb-3">
                   <span className="text-sm font-medium text-gray-700">Quantity:</span>
                   <div className="flex items-center border border-gray-300 rounded px-2 py-1 gap-3">
-                    <button onClick={handleDecrease} className="text-gray-600 font-bold text-base">−</button>
+                    <button
+                      type="button"
+                      onClick={handleDecrease}
+                      disabled={quantity <= 1}
+                      aria-label="Decrease quantity"
+                      className="text-gray-600 font-bold text-base disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      −
+                    </button>
                     <span className="text-sm font-semibold w-5 text-center">{quantity}</span>
-                    <button onClick={handleIncrease} className="text-gray-600 font-bold text-base">+</button>
+                    <button
+                      type="button"
+                      onClick={handleIncrease}
+                      disabled={quantity >= productQty}
+                      aria-label="Increase quantity"
+                      title={quantity >= productQty ? `Max ${productQty} available` : undefined}
+                      className="text-gray-600 font-bold text-base disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      +
+                    </button>
                   </div>
-                  {quantityWarning && <p className="text-red-500 text-xs">Max {product.quantity} only</p>}
+                  {quantityWarning && <p className="text-red-500 text-xs">Max {productQty} only</p>}
                 </div>
               )}
 
@@ -2422,26 +2531,12 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
 
                 {/* Stock Status & Product Code / SKU */}
                 <div className="flex items-center gap-2 text-xs flex-wrap">
-                  {isInStock ? (
-                    isOnlineAvailable ? (
-                      <span className="inline-flex items-center gap-1 bg-green-100 text-green-800 px-2 py-0.5 rounded-full font-semibold">
-                        ✓ In Stock ({productQty} units)
-                      </span>
-                    ) : (
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="inline-flex items-center gap-1 bg-gray-100 text-gray-700 border border-gray-300 px-2 py-0.5 rounded-full font-semibold">
-                          Sold Out Online
-                        </span>
-                        <span className="inline-flex items-center gap-1 bg-emerald-50 text-emerald-700 border border-emerald-300 px-2 py-0.5 rounded-full font-semibold">
-                          <FaStore className="w-3 h-3 text-emerald-600" /> Available in Store ({productQty} units)
-                        </span>
-                      </div>
-                    )
-                  ) : (
-                    <span className="inline-flex items-center gap-1 bg-red-100 text-red-800 px-2 py-0.5 rounded-full font-semibold">
-                      ✗ Out of Stock
-                    </span>
-                  )}
+                  <PdpStockStatusBadge
+                    stockCount={productQty}
+                    isInStock={isInStock}
+                    isOnlineAvailable={isOnlineAvailable}
+                    size="sm"
+                  />
                   {(product.item_code || product.model_number) && (
                     <span className="text-gray-500 font-medium">
                       {product.item_code ? `(Product Code: ${product.item_code})` : ''} {product.model_number ? `| Model: ${product.model_number}` : ''}
@@ -2759,13 +2854,37 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
 
                     {/* Quantity selector (visible for online purchasable in-stock products only) */}
                     {isInStock && isMovementAllowed && !isOpenBox && (
-                      <div className="flex items-center justify-between text-xs bg-gray-50 border border-gray-200 rounded p-2 mb-1">
-                        <span className="font-medium text-gray-700">Quantity:</span>
-                        <div className="flex items-center border border-gray-300 bg-white rounded px-2 py-0.5 gap-3">
-                          <button onClick={handleDecrease} className="text-gray-600 font-bold text-sm hover:text-[#d72828]">−</button>
-                          <span className="text-xs font-bold w-4 text-center">{quantity}</span>
-                          <button onClick={handleIncrease} className="text-gray-600 font-bold text-sm hover:text-[#d72828]">+</button>
+                      <div className="mb-1">
+                        <div className="flex items-center justify-between text-xs bg-gray-50 border border-gray-200 rounded p-2">
+                          <span className="font-medium text-gray-700">Quantity:</span>
+                          <div className="flex items-center border border-gray-300 bg-white rounded px-2 py-0.5 gap-3">
+                            <button
+                              type="button"
+                              onClick={handleDecrease}
+                              disabled={quantity <= 1}
+                              aria-label="Decrease quantity"
+                              className="text-gray-600 font-bold text-sm hover:text-[#d72828] disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              −
+                            </button>
+                            <span className="text-xs font-bold w-4 text-center">{quantity}</span>
+                            <button
+                              type="button"
+                              onClick={handleIncrease}
+                              disabled={quantity >= productQty}
+                              aria-label="Increase quantity"
+                              title={quantity >= productQty ? `Max ${productQty} available` : undefined}
+                              className="text-gray-600 font-bold text-sm hover:text-[#d72828] disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              +
+                            </button>
+                          </div>
                         </div>
+                        {quantityWarning && (
+                          <p className="text-red-500 text-[11px] font-medium mt-1">
+                            Max {productQty} only
+                          </p>
+                        )}
                       </div>
                     )}
 
