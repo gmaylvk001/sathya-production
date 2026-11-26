@@ -51,31 +51,6 @@ function BannerPicture({ desktopImage, mobileImage, alt = "Hero banner", priorit
   );
 }
 
-function SmallBannerCard({ banner, alt, positionClass = "" }) {
-  const hasUrl = Boolean(normalizeHref(banner?.url));
-  const inner = (
-    <div className="group relative w-full h-full overflow-hidden rounded-xl bg-gray-100 shadow-sm">
-      <BannerPicture
-        desktopImage={banner?.desktopImage}
-        mobileImage={banner?.mobileImage}
-        alt={alt}
-      />
-    </div>
-  );
-
-  const wrapperClass = `min-w-0 w-full aspect-[16/9] sm:aspect-[16/10] lg:aspect-auto lg:h-full ${positionClass}`;
-
-  if (!hasUrl) {
-    return <div className={wrapperClass}>{inner}</div>;
-  }
-
-  return (
-    <SlotLink href={banner.url} className={`block ${wrapperClass}`}>
-      {inner}
-    </SlotLink>
-  );
-}
-
 function getAlignmentClasses(align) {
   if (align === "center-left") {
     return {
@@ -95,6 +70,106 @@ function getAlignmentClasses(align) {
   };
 }
 
+const SLOT_VARIANTS = {
+  large: {
+    containerPad: "p-4 sm:p-6 lg:p-8",
+    innerWidth: "w-full max-w-xl",
+    heading:
+      "text-lg sm:text-2xl lg:text-[28px] font-bold leading-tight tracking-tight drop-shadow-sm break-words line-clamp-2",
+    description:
+      "mt-1.5 sm:mt-2 text-xs sm:text-sm opacity-95 leading-relaxed line-clamp-2 drop-shadow-sm break-words",
+    buttonWrap: "mt-3 sm:mt-4",
+    buttonBase:
+      "inline-flex items-center gap-1.5 rounded-lg bg-[#ED1C24] px-4 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm",
+  },
+  small: {
+    containerPad: "p-3.5 sm:p-4",
+    innerWidth: "w-full max-w-md",
+    heading:
+      "text-sm sm:text-base xl:text-lg font-bold leading-tight tracking-tight drop-shadow-sm break-words line-clamp-2",
+    description:
+      "mt-1 text-xs sm:text-[13px] opacity-90 leading-snug line-clamp-2 drop-shadow-sm break-words",
+    buttonWrap: "mt-2 sm:mt-2.5",
+    buttonBase:
+      "inline-flex items-center gap-1.5 rounded-md bg-[#ED1C24] px-3 py-1.5 text-xs font-semibold text-white shadow-sm",
+  },
+};
+
+function HeroBannerSlot({
+  banner,
+  size = "small",
+  wrapperClass = "",
+  fallbackAlt = "Hero banner",
+  priority = false,
+}) {
+  const styles = SLOT_VARIANTS[size] || SLOT_VARIANTS.small;
+  const heading = String(banner?.heading || "").trim();
+  const description = String(banner?.description || "").trim();
+  const buttonText = String(banner?.buttonText || "").trim();
+  const hasOverlayContent = Boolean(heading || description || buttonText);
+  const bannerHref = normalizeHref(banner?.url);
+  const buttonHref = normalizeHref(banner?.buttonUrl) || bannerHref;
+  const alignStyles = getAlignmentClasses(banner?.overlayAlign);
+  const textColor = banner?.textColor || "#ffffff";
+  const showGradient = banner?.showGradientOverlay !== false;
+  const HeadingTag = size === "large" ? "h2" : "h3";
+
+  return (
+    <div
+      className={`group relative min-w-0 w-full overflow-hidden rounded-xl bg-gray-100 shadow-sm ${wrapperClass}`}
+    >
+      <BannerPicture
+        desktopImage={banner?.desktopImage}
+        mobileImage={banner?.mobileImage}
+        alt={heading || fallbackAlt}
+        priority={priority}
+      />
+
+      {/* Background click layer (sibling to CTA so nested <a> never occurs) */}
+      {bannerHref && (
+        <SlotLink
+          href={bannerHref}
+          ariaLabel={heading || fallbackAlt}
+          className="absolute inset-0 z-[1]"
+        />
+      )}
+
+      {/* Render overlay box strictly when heading, description, or button exists */}
+      {hasOverlayContent && (
+        <div
+          className={`absolute inset-0 z-[2] pointer-events-none flex ${alignStyles.container} ${styles.containerPad} ${
+            showGradient ? alignStyles.gradient : ""
+          }`}
+        >
+          <div
+            className={`${styles.innerWidth} ${
+              banner?.overlayAlign === "bottom-center" ? "mx-auto" : ""
+            }`}
+            style={{ color: textColor }}
+          >
+            {heading && <HeadingTag className={styles.heading}>{heading}</HeadingTag>}
+            {description && <p className={styles.description}>{description}</p>}
+            {buttonText && (
+              <div className={styles.buttonWrap}>
+                {buttonHref ? (
+                  <SlotLink
+                    href={buttonHref}
+                    className={`pointer-events-auto hover:bg-[#C4161D] transition-colors ${styles.buttonBase}`}
+                  >
+                    {buttonText}
+                  </SlotLink>
+                ) : (
+                  <span className={styles.buttonBase}>{buttonText}</span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * Storefront: 3-banner Hero Grid matching existing Top Banner container space.
  * Supports `variant: "big-left" | "big-right"` and `embedded` carousel mode.
@@ -112,16 +187,6 @@ export default function HeroBannerGrid({ config, embedded = false }) {
   if (!largeHasImg || !small1HasImg || !small2HasImg) {
     return null;
   }
-
-  const heading = String(large.heading || "").trim();
-  const description = String(large.description || "").trim();
-  const buttonText = String(large.buttonText || "").trim();
-  const hasOverlayContent = Boolean(heading || description || buttonText);
-  const bannerHref = normalizeHref(large.url);
-  const buttonHref = normalizeHref(large.buttonUrl) || bannerHref;
-  const alignStyles = getAlignmentClasses(large.overlayAlign);
-  const textColor = large.textColor || "#ffffff";
-  const showGradient = large.showGradientOverlay !== false;
 
   const isBigRight = variant === "big-right";
 
@@ -149,87 +214,36 @@ export default function HeroBannerGrid({ config, embedded = false }) {
     ? "lg:h-full"
     : "lg:h-[370px] xl:h-[410px] 2xl:h-[420px]";
 
+  const smallBaseClass = "aspect-[16/9] sm:aspect-[16/10] lg:aspect-auto lg:h-full";
+
   return (
     <div className={containerClass}>
       <div
         className={`grid grid-cols-1 sm:grid-cols-2 ${gridTemplateClass} lg:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-3 lg:gap-4 w-full ${gridHeightClass}`}
       >
         {/* Large Hero Banner Slot */}
-        <div
-          className={`group relative min-w-0 w-full aspect-[16/10] sm:aspect-[21/10] lg:aspect-auto lg:h-full overflow-hidden rounded-xl bg-gray-100 shadow-sm ${largePosClass}`}
-        >
-          <BannerPicture
-            desktopImage={large.desktopImage}
-            mobileImage={large.mobileImage}
-            alt={heading || "Featured promotion"}
-            priority
-          />
-
-          {/* Background click layer (sibling to CTA so nested <a> never occurs) */}
-          {bannerHref && (
-            <SlotLink
-              href={bannerHref}
-              ariaLabel={heading || "View promotion"}
-              className="absolute inset-0 z-[1]"
-            />
-          )}
-
-          {/* Render overlay box strictly when heading, description, or button exists */}
-          {hasOverlayContent && (
-            <div
-              className={`absolute inset-0 z-[2] pointer-events-none flex ${alignStyles.container} p-4 sm:p-6 lg:p-8 ${
-                showGradient ? alignStyles.gradient : ""
-              }`}
-            >
-              <div
-                className={`w-full max-w-xl ${
-                  large.overlayAlign === "bottom-center" ? "mx-auto" : ""
-                }`}
-                style={{ color: textColor }}
-              >
-                {heading && (
-                  <h2 className="text-lg sm:text-2xl lg:text-[28px] font-bold leading-tight tracking-tight drop-shadow-sm break-words line-clamp-2">
-                    {heading}
-                  </h2>
-                )}
-                {description && (
-                  <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm opacity-95 leading-relaxed line-clamp-2 drop-shadow-sm break-words">
-                    {description}
-                  </p>
-                )}
-                {buttonText && (
-                  <div className="mt-3 sm:mt-4">
-                    {buttonHref ? (
-                      <SlotLink
-                        href={buttonHref}
-                        className="pointer-events-auto inline-flex items-center gap-1.5 rounded-lg bg-[#ED1C24] hover:bg-[#C4161D] px-4 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm transition-colors"
-                      >
-                        {buttonText}
-                      </SlotLink>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#ED1C24] px-4 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm">
-                        {buttonText}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
+        <HeroBannerSlot
+          banner={large}
+          size="large"
+          priority
+          fallbackAlt="Featured promotion"
+          wrapperClass={`aspect-[16/10] sm:aspect-[21/10] lg:aspect-auto lg:h-full ${largePosClass}`}
+        />
 
         {/* Small Banner 1 (Top Small) */}
-        <SmallBannerCard
+        <HeroBannerSlot
           banner={small1}
-          alt="Secondary offer 1"
-          positionClass={small1PosClass}
+          size="small"
+          fallbackAlt="Secondary offer 1"
+          wrapperClass={`${smallBaseClass} ${small1PosClass}`}
         />
 
         {/* Small Banner 2 (Bottom Small) */}
-        <SmallBannerCard
+        <HeroBannerSlot
           banner={small2}
-          alt="Secondary offer 2"
-          positionClass={small2PosClass}
+          size="small"
+          fallbackAlt="Secondary offer 2"
+          wrapperClass={`${smallBaseClass} ${small2PosClass}`}
         />
       </div>
     </div>

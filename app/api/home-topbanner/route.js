@@ -52,6 +52,57 @@ function isSlideRenderable(banner) {
   return mainImg && small1Img && small2Img;
 }
 
+function normalizeOverlayFields(source, existing) {
+  const rawAlign = hasOwn(source, "overlayAlign")
+    ? source?.overlayAlign
+    : existing?.overlayAlign;
+  const overlayAlign = ALLOWED_ALIGNMENTS.has(rawAlign) ? rawAlign : "bottom-left";
+
+  const rawColor = hasOwn(source, "textColor")
+    ? source?.textColor
+    : existing?.textColor;
+  const textColor = String(rawColor || "").trim() || "#ffffff";
+
+  const showGradientOverlay = hasOwn(source, "showGradientOverlay")
+    ? source?.showGradientOverlay !== false
+    : existing?.showGradientOverlay !== false;
+
+  return {
+    heading: String(
+      (hasOwn(source, "heading") ? source?.heading : existing?.heading) || ""
+    ).trim(),
+    description: String(
+      (hasOwn(source, "description") ? source?.description : existing?.description) || ""
+    ).trim(),
+    buttonText: String(
+      (hasOwn(source, "buttonText") ? source?.buttonText : existing?.buttonText) || ""
+    ).trim(),
+    buttonUrl: String(
+      (hasOwn(source, "buttonUrl") ? source?.buttonUrl : existing?.buttonUrl) || ""
+    ).trim(),
+    overlayAlign,
+    textColor,
+    showGradientOverlay,
+  };
+}
+
+async function normalizeSmallBannerSlot(source, existing, formData, filePrefix, index) {
+  return {
+    desktopImage: await resolveUploadSlot(
+      formData,
+      `${filePrefix}DesktopImage_${index}`,
+      hasOwn(source, "desktopImage") ? source?.desktopImage : existing?.desktopImage
+    ),
+    mobileImage: await resolveUploadSlot(
+      formData,
+      `${filePrefix}MobileImage_${index}`,
+      hasOwn(source, "mobileImage") ? source?.mobileImage : existing?.mobileImage
+    ),
+    url: String((hasOwn(source, "url") ? source?.url : existing?.url) || "").trim(),
+    ...normalizeOverlayFields(source, existing),
+  };
+}
+
 async function normalizeSlidePayload(item, index, formData, existingSlide) {
   const rawMode = hasOwn(item, "mode") ? item.mode : existingSlide?.mode;
   const mode = ALLOWED_MODES.has(rawMode) ? rawMode : "single";
@@ -62,41 +113,27 @@ async function normalizeSlidePayload(item, index, formData, existingSlide) {
   const s1Source = hasOwn(item, "smallBanner1") ? item.smallBanner1 || {} : existingSlide?.smallBanner1 || {};
   const s2Source = hasOwn(item, "smallBanner2") ? item.smallBanner2 || {} : existingSlide?.smallBanner2 || {};
 
-  const smallBanner1 = {
-    desktopImage: await resolveUploadSlot(formData, `small1DesktopImage_${index}`, s1Source.desktopImage),
-    mobileImage: await resolveUploadSlot(formData, `small1MobileImage_${index}`, s1Source.mobileImage),
-    url: String(s1Source.url || "").trim(),
-  };
-
-  const smallBanner2 = {
-    desktopImage: await resolveUploadSlot(formData, `small2DesktopImage_${index}`, s2Source.desktopImage),
-    mobileImage: await resolveUploadSlot(formData, `small2MobileImage_${index}`, s2Source.mobileImage),
-    url: String(s2Source.url || "").trim(),
-  };
-
-  const rawAlign = hasOwn(item, "overlayAlign") ? item.overlayAlign : existingSlide?.overlayAlign;
-  const overlayAlign = ALLOWED_ALIGNMENTS.has(rawAlign) ? rawAlign : "bottom-left";
-
-  const textColor = String(
-    hasOwn(item, "textColor") ? item.textColor : existingSlide?.textColor || "#ffffff"
-  ).trim() || "#ffffff";
-
-  const showGradientOverlay = hasOwn(item, "showGradientOverlay")
-    ? item.showGradientOverlay !== false
-    : existingSlide?.showGradientOverlay !== false;
+  const smallBanner1 = await normalizeSmallBannerSlot(
+    s1Source,
+    existingSlide?.smallBanner1,
+    formData,
+    "small1",
+    index
+  );
+  const smallBanner2 = await normalizeSmallBannerSlot(
+    s2Source,
+    existingSlide?.smallBanner2,
+    formData,
+    "small2",
+    index
+  );
 
   return withBannerId(item, {
     mode,
     desktopImage,
     mobileImage,
-    url: String(item?.url || "").trim(),
-    heading: String(hasOwn(item, "heading") ? item.heading : existingSlide?.heading || "").trim(),
-    description: String(hasOwn(item, "description") ? item.description : existingSlide?.description || "").trim(),
-    buttonText: String(hasOwn(item, "buttonText") ? item.buttonText : existingSlide?.buttonText || "").trim(),
-    buttonUrl: String(hasOwn(item, "buttonUrl") ? item.buttonUrl : existingSlide?.buttonUrl || "").trim(),
-    overlayAlign,
-    textColor,
-    showGradientOverlay,
+    url: String((hasOwn(item, "url") ? item?.url : existingSlide?.url) || "").trim(),
+    ...normalizeOverlayFields(item, existingSlide),
     smallBanner1,
     smallBanner2,
     state: item?.state || "all",

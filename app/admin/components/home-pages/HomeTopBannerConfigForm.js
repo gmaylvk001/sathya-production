@@ -50,6 +50,16 @@ const MODE_LABELS = {
   "big-right": "Big Right Side",
 };
 
+const emptyOverlayFields = () => ({
+  heading: "",
+  description: "",
+  buttonText: "",
+  buttonUrl: "",
+  overlayAlign: "bottom-left",
+  textColor: "#ffffff",
+  showGradientOverlay: true,
+});
+
 const emptySmallSlot = () => ({
   desktopImage: "",
   mobileImage: "",
@@ -58,6 +68,7 @@ const emptySmallSlot = () => ({
   desktopPreview: "",
   mobilePreview: "",
   url: "",
+  ...emptyOverlayFields(),
 });
 
 const emptySlide = () => ({
@@ -70,13 +81,7 @@ const emptySlide = () => ({
   desktopPreview: "",
   mobilePreview: "",
   url: "",
-  heading: "",
-  description: "",
-  buttonText: "",
-  buttonUrl: "",
-  overlayAlign: "bottom-left",
-  textColor: "#ffffff",
-  showGradientOverlay: true,
+  ...emptyOverlayFields(),
   smallBanner1: emptySmallSlot(),
   smallBanner2: emptySmallSlot(),
   state: "all",
@@ -132,11 +137,43 @@ function getBannerTimerStatus(startDate, endDate) {
   return { label: "Live", color: "bg-emerald-50 text-emerald-800 border-emerald-300 font-medium" };
 }
 
+function toSmallSlotDraft(slot = {}) {
+  return {
+    desktopImage: slot.desktopImage || "",
+    mobileImage: slot.mobileImage || "",
+    desktopFile: null,
+    mobileFile: null,
+    desktopPreview: slot.desktopImage || "",
+    mobilePreview: slot.mobileImage || "",
+    url: slot.url || "",
+    heading: slot.heading || "",
+    description: slot.description || "",
+    buttonText: slot.buttonText || "",
+    buttonUrl: slot.buttonUrl || "",
+    overlayAlign: slot.overlayAlign || "bottom-left",
+    textColor: slot.textColor || "#ffffff",
+    showGradientOverlay: slot.showGradientOverlay !== false,
+  };
+}
+
+function serializeSmallSlot(slot = {}) {
+  return {
+    desktopImage: slot.desktopImage || "",
+    mobileImage: slot.mobileImage || "",
+    url: slot.url || "",
+    heading: slot.heading || "",
+    description: slot.description || "",
+    buttonText: slot.buttonText || "",
+    buttonUrl: slot.buttonUrl || "",
+    overlayAlign: slot.overlayAlign || "bottom-left",
+    textColor: slot.textColor || "#ffffff",
+    showGradientOverlay: slot.showGradientOverlay !== false,
+  };
+}
+
 function toSlideDraft(raw) {
   const mode =
     raw?.mode === "big-left" || raw?.mode === "big-right" ? raw.mode : "single";
-  const s1 = raw?.smallBanner1 || {};
-  const s2 = raw?.smallBanner2 || {};
   return {
     _id: raw?._id ? String(raw._id) : "",
     mode,
@@ -154,24 +191,8 @@ function toSlideDraft(raw) {
     overlayAlign: raw?.overlayAlign || "bottom-left",
     textColor: raw?.textColor || "#ffffff",
     showGradientOverlay: raw?.showGradientOverlay !== false,
-    smallBanner1: {
-      desktopImage: s1.desktopImage || "",
-      mobileImage: s1.mobileImage || "",
-      desktopFile: null,
-      mobileFile: null,
-      desktopPreview: s1.desktopImage || "",
-      mobilePreview: s1.mobileImage || "",
-      url: s1.url || "",
-    },
-    smallBanner2: {
-      desktopImage: s2.desktopImage || "",
-      mobileImage: s2.mobileImage || "",
-      desktopFile: null,
-      mobileFile: null,
-      desktopPreview: s2.desktopImage || "",
-      mobilePreview: s2.mobileImage || "",
-      url: s2.url || "",
-    },
+    smallBanner1: toSmallSlotDraft(raw?.smallBanner1),
+    smallBanner2: toSmallSlotDraft(raw?.smallBanner2),
     state: raw?.state || "all",
     isActive: raw?.isActive !== false,
     startDate: raw?.startDate ? formatDateTimeForInput(raw.startDate) : "",
@@ -241,6 +262,129 @@ function ImageUploadBox({ label, required = false, preview, onPick, onClear }) {
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+function OverlayFieldsSection({ values, onChange, compact = false }) {
+  const textColor = values?.textColor ?? "#ffffff";
+  const colorPickerValue = /^#[0-9a-f]{6}$/i.test(textColor)
+    ? textColor
+    : "#ffffff";
+
+  return (
+    <div className="rounded-lg border border-gray-200 bg-white p-3.5 space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="text-xs font-semibold text-gray-800">
+          Customizable Overlay Content (Optional)
+        </span>
+        <span className="text-[11px] text-gray-400">
+          Leave empty to render a clean plain image
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Heading
+          </label>
+          <input
+            type="text"
+            value={values?.heading || ""}
+            onChange={(e) => onChange({ heading: e.target.value })}
+            placeholder="Optional headline"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Button Text
+          </label>
+          <input
+            type="text"
+            value={values?.buttonText || ""}
+            onChange={(e) => onChange({ buttonText: e.target.value })}
+            placeholder="e.g. Shop Now"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Description
+          </label>
+          <textarea
+            rows={2}
+            value={values?.description || ""}
+            onChange={(e) => onChange({ description: e.target.value })}
+            placeholder="Optional short description"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Button URL
+          </label>
+          <input
+            type="text"
+            value={values?.buttonUrl || ""}
+            onChange={(e) => onChange({ buttonUrl: e.target.value })}
+            placeholder="/category/... or https://..."
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+        </div>
+      </div>
+
+      <div
+        className={`grid grid-cols-1 gap-3 items-end ${
+          compact ? "sm:grid-cols-2" : "sm:grid-cols-3"
+        }`}
+      >
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Overlay Alignment
+          </label>
+          <select
+            value={values?.overlayAlign || "bottom-left"}
+            onChange={(e) => onChange({ overlayAlign: e.target.value })}
+            className="w-full rounded-lg border border-gray-300 px-2.5 py-2 text-xs bg-white"
+          >
+            <option value="bottom-left">Bottom Left</option>
+            <option value="center-left">Center Left</option>
+            <option value="bottom-center">Bottom Center</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Text Color
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={colorPickerValue}
+              onChange={(e) => onChange({ textColor: e.target.value })}
+              className="h-9 w-12 shrink-0 cursor-pointer rounded border border-gray-300 p-0.5 bg-white"
+            />
+            <input
+              type="text"
+              value={textColor}
+              onChange={(e) => onChange({ textColor: e.target.value })}
+              className="min-w-0 flex-1 rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-mono"
+            />
+          </div>
+        </div>
+        <label className="inline-flex items-center gap-2 text-xs text-gray-700 pb-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={values?.showGradientOverlay !== false}
+            onChange={(e) => onChange({ showGradientOverlay: e.target.checked })}
+            className="rounded border-gray-300 text-[#ED1C24] focus:ring-[#ED1C24]"
+          />
+          <span>Dark gradient scrim</span>
+        </label>
+      </div>
     </div>
   );
 }
@@ -321,16 +465,8 @@ export default function HomeTopBannerConfigForm({
           overlayAlign: s.overlayAlign || "bottom-left",
           textColor: s.textColor || "#ffffff",
           showGradientOverlay: s.showGradientOverlay !== false,
-          smallBanner1: {
-            desktopImage: s.smallBanner1?.desktopImage || "",
-            mobileImage: s.smallBanner1?.mobileImage || "",
-            url: s.smallBanner1?.url || "",
-          },
-          smallBanner2: {
-            desktopImage: s.smallBanner2?.desktopImage || "",
-            mobileImage: s.smallBanner2?.mobileImage || "",
-            url: s.smallBanner2?.url || "",
-          },
+          smallBanner1: serializeSmallSlot(s.smallBanner1),
+          smallBanner2: serializeSmallSlot(s.smallBanner2),
           state: s.state || "all",
           isActive: s.isActive !== false,
           startDate: toIsoStringOrNull(s.startDate),
@@ -890,132 +1026,10 @@ export default function HomeTopBannerConfigForm({
               />
             </div>
 
-            <div className="rounded-lg border border-gray-200 bg-white p-3.5 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs font-semibold text-gray-800">
-                  Customizable Overlay Content (Optional)
-                </span>
-                <span className="text-[11px] text-gray-400">
-                  Leave empty to render a clean plain image
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Heading
-                  </label>
-                  <input
-                    type="text"
-                    value={draft.heading}
-                    onChange={(e) => setDraft((p) => ({ ...p, heading: e.target.value }))}
-                    placeholder="Optional headline"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Button Text
-                  </label>
-                  <input
-                    type="text"
-                    value={draft.buttonText}
-                    onChange={(e) =>
-                      setDraft((p) => ({ ...p, buttonText: e.target.value }))
-                    }
-                    placeholder="e.g. Shop Now"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={draft.description}
-                    onChange={(e) =>
-                      setDraft((p) => ({ ...p, description: e.target.value }))
-                    }
-                    placeholder="Optional short description"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Button URL
-                  </label>
-                  <input
-                    type="text"
-                    value={draft.buttonUrl}
-                    onChange={(e) =>
-                      setDraft((p) => ({ ...p, buttonUrl: e.target.value }))
-                    }
-                    placeholder="/category/... or https://..."
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Overlay Alignment
-                  </label>
-                  <select
-                    value={draft.overlayAlign}
-                    onChange={(e) =>
-                      setDraft((p) => ({ ...p, overlayAlign: e.target.value }))
-                    }
-                    className="w-full rounded-lg border border-gray-300 px-2.5 py-2 text-xs bg-white"
-                  >
-                    <option value="bottom-left">Bottom Left</option>
-                    <option value="center-left">Center Left</option>
-                    <option value="bottom-center">Bottom Center</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    Text Color
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={draft.textColor || "#ffffff"}
-                      onChange={(e) =>
-                        setDraft((p) => ({ ...p, textColor: e.target.value }))
-                      }
-                      className="h-9 w-12 cursor-pointer rounded border border-gray-300 p-0.5 bg-white"
-                    />
-                    <input
-                      type="text"
-                      value={draft.textColor || "#ffffff"}
-                      onChange={(e) =>
-                        setDraft((p) => ({ ...p, textColor: e.target.value }))
-                      }
-                      className="w-full rounded-lg border border-gray-300 px-2.5 py-1.5 text-xs font-mono"
-                    />
-                  </div>
-                </div>
-                <label className="inline-flex items-center gap-2 text-xs text-gray-700 pb-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={draft.showGradientOverlay}
-                    onChange={(e) =>
-                      setDraft((p) => ({
-                        ...p,
-                        showGradientOverlay: e.target.checked,
-                      }))
-                    }
-                    className="rounded border-gray-300 text-[#ED1C24] focus:ring-[#ED1C24]"
-                  />
-                  <span>Dark gradient scrim</span>
-                </label>
-              </div>
-            </div>
+            <OverlayFieldsSection
+              values={draft}
+              onChange={(patch) => setDraft((p) => ({ ...p, ...patch }))}
+            />
           </div>
 
           {/* 2 & 3. Two stacked Small Banners */}
@@ -1068,6 +1082,11 @@ export default function HomeTopBannerConfigForm({
                       className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
                     />
                   </div>
+                  <OverlayFieldsSection
+                    values={slot}
+                    onChange={(patch) => updateSmallSlot(key, patch)}
+                    compact
+                  />
                 </div>
               );
             })}

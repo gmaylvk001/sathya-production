@@ -1,10 +1,40 @@
 import mongoose from "mongoose";
 
+const OVERLAY_ALIGNMENTS = ["bottom-left", "center-left", "bottom-center"];
+
+const OVERLAY_FIELDS = {
+  heading: { type: String, default: "" },
+  description: { type: String, default: "" },
+  buttonText: { type: String, default: "" },
+  buttonUrl: { type: String, default: "" },
+  overlayAlign: {
+    type: String,
+    enum: OVERLAY_ALIGNMENTS,
+    default: "bottom-left",
+  },
+  textColor: { type: String, default: "#ffffff" },
+  showGradientOverlay: { type: Boolean, default: true },
+};
+
+const createDefaultHeroSlot = () => ({
+  desktopImage: "",
+  mobileImage: "",
+  url: "",
+  heading: "",
+  description: "",
+  buttonText: "",
+  buttonUrl: "",
+  overlayAlign: "bottom-left",
+  textColor: "#ffffff",
+  showGradientOverlay: true,
+});
+
 const HeroSlotSchema = new mongoose.Schema(
   {
     desktopImage: { type: String, default: "" },
     mobileImage: { type: String, default: "" },
     url: { type: String, default: "" },
+    ...OVERLAY_FIELDS,
   },
   { _id: false }
 );
@@ -19,24 +49,14 @@ const BannerItemSchema = new mongoose.Schema(
     desktopImage: { type: String, default: "" },
     mobileImage: { type: String, default: "" },
     url: { type: String, default: "" },
-    heading: { type: String, default: "" },
-    description: { type: String, default: "" },
-    buttonText: { type: String, default: "" },
-    buttonUrl: { type: String, default: "" },
-    overlayAlign: {
-      type: String,
-      enum: ["bottom-left", "center-left", "bottom-center"],
-      default: "bottom-left",
-    },
-    textColor: { type: String, default: "#ffffff" },
-    showGradientOverlay: { type: Boolean, default: true },
+    ...OVERLAY_FIELDS,
     smallBanner1: {
       type: HeroSlotSchema,
-      default: () => ({ desktopImage: "", mobileImage: "", url: "" }),
+      default: createDefaultHeroSlot,
     },
     smallBanner2: {
       type: HeroSlotSchema,
-      default: () => ({ desktopImage: "", mobileImage: "", url: "" }),
+      default: createDefaultHeroSlot,
     },
     state: {
       type: String,
