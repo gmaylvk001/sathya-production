@@ -263,8 +263,8 @@ export default function NavbarSettingsPage() {
           type="button"
           onClick={() => switchTab("design")}
           className={`flex-1 flex items-center justify-between sm:justify-center gap-3 px-5 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === "design"
-              ? "bg-red-600 text-white shadow-xs"
-              : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+            ? "bg-red-600 text-white shadow-xs"
+            : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
             }`}
         >
           <div className="flex items-center gap-2.5">
@@ -276,8 +276,8 @@ export default function NavbarSettingsPage() {
           </div>
           <span
             className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md ${activeTab === "design"
-                ? "bg-white/20 text-white"
-                : "bg-red-50 text-red-600 border border-red-200/60"
+              ? "bg-white/20 text-white"
+              : "bg-red-50 text-red-600 border border-red-200/60"
               }`}
           >
             {form.headerStyle === "modern" ? "Modern Retail" : "Classic Red"}
@@ -289,8 +289,8 @@ export default function NavbarSettingsPage() {
           type="button"
           onClick={() => switchTab("colors")}
           className={`flex-1 flex items-center justify-between sm:justify-center gap-3 px-5 py-3 rounded-xl font-bold text-sm transition-all ${activeTab === "colors"
-              ? "bg-red-600 text-white shadow-xs"
-              : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+            ? "bg-red-600 text-white shadow-xs"
+            : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
             }`}
         >
           <div className="flex items-center gap-2.5">
@@ -312,8 +312,8 @@ export default function NavbarSettingsPage() {
             />
             <span
               className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md ${activeTab === "colors"
-                  ? "bg-white/20 text-white"
-                  : "bg-gray-100 text-gray-600"
+                ? "bg-white/20 text-white"
+                : "bg-gray-100 text-gray-600"
                 }`}
             >
               {form.bgType === "gradient" ? "Gradient" : form.bgColor}
@@ -351,8 +351,8 @@ export default function NavbarSettingsPage() {
                 <div
                   onClick={() => setForm({ ...form, headerStyle: "classic" })}
                   className={`relative rounded-2xl border-2 p-5 cursor-pointer transition-all duration-200 flex flex-col justify-between ${form.headerStyle === "classic"
-                      ? "border-red-600 bg-red-50/20 ring-2 ring-red-500/20 shadow-md"
-                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/50"
+                    ? "border-red-600 bg-red-50/20 ring-2 ring-red-500/20 shadow-md"
+                    : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/50"
                     }`}
                 >
                   <div>
@@ -370,8 +370,8 @@ export default function NavbarSettingsPage() {
                       </div>
                       <div
                         className={`w-6 h-6 rounded-full border flex items-center justify-center shrink-0 transition-colors ${form.headerStyle === "classic"
-                            ? "border-red-600 bg-red-600 text-white"
-                            : "border-gray-300 bg-white"
+                          ? "border-red-600 bg-red-600 text-white"
+                          : "border-gray-300 bg-white"
                           }`}
                       >
                         {form.headerStyle === "classic" && (
@@ -450,8 +450,8 @@ export default function NavbarSettingsPage() {
                 <div
                   onClick={() => setForm({ ...form, headerStyle: "modern" })}
                   className={`relative rounded-2xl border-2 p-5 cursor-pointer transition-all duration-200 flex flex-col justify-between ${form.headerStyle === "modern"
-                      ? "border-red-600 bg-red-50/20 ring-2 ring-red-500/20 shadow-md"
-                      : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/50"
+                    ? "border-red-600 bg-red-50/20 ring-2 ring-red-500/20 shadow-md"
+                    : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/50"
                     }`}
                 >
                   <div>
@@ -469,8 +469,8 @@ export default function NavbarSettingsPage() {
                       </div>
                       <div
                         className={`w-6 h-6 rounded-full border flex items-center justify-center shrink-0 transition-colors ${form.headerStyle === "modern"
-                            ? "border-red-600 bg-red-600 text-white"
-                            : "border-gray-300 bg-white"
+                          ? "border-red-600 bg-red-600 text-white"
+                          : "border-gray-300 bg-white"
                           }`}
                       >
                         {form.headerStyle === "modern" && (
@@ -494,32 +494,29 @@ export default function NavbarSettingsPage() {
                           </span>
                           <span className="text-gray-300 truncate">Up to 55% Off TVs &amp; ACs</span>
                         </div>
-                        <div className="flex items-center gap-2 text-gray-400 text-[8.5px] shrink-0">
+                        <div className="flex items-center gap-1.5 text-gray-400 text-[8.5px] shrink-0">
+                          <span className="bg-gradient-to-r from-cyan-400 via-rose-500 to-amber-400 text-black font-extrabold px-1.5 py-0.2 rounded-full text-[7.5px]">🔥 Deals</span>
                           <span>180+ Stores</span>
                           <span className="text-amber-300 font-bold">+91 88805 98985</span>
+                          <span className="text-white font-semibold">Sign In</span>
                         </div>
                       </div>
                       {/* Tier 2: White Main Bar */}
                       <div className="bg-white px-3 py-2 border-b flex items-center justify-between text-[10px]">
                         <div className="flex items-center gap-1">
-                          <span className="font-black text-red-600 text-xs">SATHYA</span>
-                          <span className="text-[7.5px] font-bold text-gray-700 uppercase -ml-0.5">
-                            RETAIL
-                          </span>
+                          <span className="font-black text-red-600 text-xs px-1.5 py-0.5 rounded bg-red-50 border border-red-200">SATHYA</span>
                         </div>
                         <div className="h-5 bg-gray-100 rounded-lg px-2 flex items-center text-[8.5px] text-gray-500 border border-gray-200 w-36 justify-between">
-                          <span>All Depts ▾</span>
-                          <span className="text-gray-400">Search...</span>
+                          <span>All Category ▾</span>
+                          <span className="text-gray-400">Search for &ldquo;...&rdquo;</span>
                           <span className="w-3.5 h-3.5 bg-red-600 text-white rounded flex items-center justify-center text-[7px]">
                             🔍
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 text-[9px] text-gray-600">
+                        <div className="flex items-center gap-2.5 text-[9px] text-gray-700 font-semibold">
+                          <span>Store</span>
                           <span>Wishlist</span>
                           <span>Cart (2)</span>
-                          <div className="w-4 h-4 rounded-full bg-red-600 text-white flex items-center justify-center text-[8px] font-bold">
-                            U
-                          </div>
                         </div>
                       </div>
                       {/* Tier 3: Dark Charcoal Category Navbar */}
@@ -782,8 +779,8 @@ export default function NavbarSettingsPage() {
                     type="button"
                     onClick={() => setForm((prev) => ({ ...prev, bgType: "solid" }))}
                     className={`py-3 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border transition-all ${form.bgType === "solid"
-                        ? "border-red-600 bg-red-50 text-red-700 shadow-xs ring-1 ring-red-500/20"
-                        : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                      ? "border-red-600 bg-red-50 text-red-700 shadow-xs ring-1 ring-red-500/20"
+                      : "border-gray-200 text-gray-600 hover:bg-gray-50"
                       }`}
                   >
                     <span
@@ -796,8 +793,8 @@ export default function NavbarSettingsPage() {
                     type="button"
                     onClick={() => setForm((prev) => ({ ...prev, bgType: "gradient" }))}
                     className={`py-3 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border transition-all ${form.bgType === "gradient"
-                        ? "border-red-600 bg-red-50 text-red-700 shadow-xs ring-1 ring-red-500/20"
-                        : "border-gray-200 text-gray-600 hover:bg-gray-50"
+                      ? "border-red-600 bg-red-50 text-red-700 shadow-xs ring-1 ring-red-500/20"
+                      : "border-gray-200 text-gray-600 hover:bg-gray-50"
                       }`}
                   >
                     <span
@@ -854,8 +851,8 @@ export default function NavbarSettingsPage() {
                           }
                           title={preset.name}
                           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition-all ${form.bgColor.toLowerCase() === preset.color.toLowerCase()
-                              ? "border-red-600 ring-2 ring-red-500/20 font-bold bg-red-50/50 text-red-700"
-                              : "border-gray-200 hover:bg-gray-50 text-gray-700"
+                            ? "border-red-600 ring-2 ring-red-500/20 font-bold bg-red-50/50 text-red-700"
+                            : "border-gray-200 hover:bg-gray-50 text-gray-700"
                             }`}
                         >
                           <span

@@ -2352,6 +2352,165 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
     ids.forEach((id) => { ensureSubcategories(id); });
   }, [isMobileMenuOpen, categories, ensureSubcategories]);
 
+  const renderAccountDropdown = (alignClass = "right-0 top-full pt-2") => (
+    <div
+      className={`absolute ${alignClass} z-50 transition-all duration-200 text-gray-800`}
+      style={{ minWidth: "220px" }}
+    >
+      <div className="w-56 bg-white rounded-xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.15),0_8px_10px_-6px_rgba(0,0,0,0.1)] border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+        {isAuthenticated ? (
+          /* Logged-In User Menu */
+          <>
+            <div className="p-3 bg-gradient-to-r from-red-50/80 to-amber-50/50 border-b border-gray-100">
+              <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Signed In As</p>
+              <p className="text-[13px] font-bold text-gray-900 truncate mt-0.5">
+                {userData?.name || userData?.username || "My Account"}
+              </p>
+              {(userData?.mobile || userData?.email) && (
+                <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                  {userData?.mobile || userData?.email}
+                </p>
+              )}
+            </div>
+
+            <div className="py-1.5">
+              {isAdmin && (
+                <Link
+                  href="/admin/dashboard"
+                  onClick={() => setIsAccountMenuOpen(false)}
+                  className="flex items-center gap-3 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:text-brandRed hover:bg-red-50/80 transition-colors group/item"
+                >
+                  <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-brandRed group-hover/item:bg-brandRed group-hover/item:text-white transition-colors">
+                    <FaUserShield size={14} />
+                  </span>
+                  <span className="text-[13px] font-medium">Admin Panel</span>
+                </Link>
+              )}
+
+              <Link
+                href="/profile"
+                onClick={() => setIsAccountMenuOpen(false)}
+                className="flex items-center gap-3 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:text-brandRed hover:bg-red-50/80 transition-colors group/item"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-brandRed group-hover/item:bg-brandRed group-hover/item:text-white transition-colors">
+                  <FiUser size={15} strokeWidth={1.8} />
+                </span>
+                <span className="text-[13px] font-medium">My Profile</span>
+              </Link>
+
+              <Link
+                href="/orders"
+                onClick={() => setIsAccountMenuOpen(false)}
+                className="flex items-center gap-3 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:text-brandRed hover:bg-red-50/80 transition-colors group/item"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-brandRed group-hover/item:bg-brandRed group-hover/item:text-white transition-colors">
+                  <HiOutlineShoppingBag size={15} strokeWidth={1.8} />
+                </span>
+                <span className="text-[13px] font-medium">My Orders</span>
+              </Link>
+
+              <Link
+                href="/address"
+                onClick={() => setIsAccountMenuOpen(false)}
+                className="flex items-center gap-3 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:text-brandRed hover:bg-red-50/80 transition-colors group/item"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-brandRed group-hover/item:bg-brandRed group-hover/item:text-white transition-colors">
+                  <FiMapPin size={15} strokeWidth={1.8} />
+                </span>
+                <span className="text-[13px] font-medium">My Addresses</span>
+              </Link>
+
+              <div className="h-px bg-gray-100 my-1 mx-2" />
+
+              <Link
+                href="/loyalty"
+                onClick={() => setIsAccountMenuOpen(false)}
+                className="flex items-center gap-3 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:text-brandRed hover:bg-red-50/80 transition-colors group/item"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-brandRed group-hover/item:bg-brandRed group-hover/item:text-white transition-colors">
+                  <HiOutlineGift size={16} strokeWidth={1.8} />
+                </span>
+                <span className="text-[13px] font-medium">Loyalty</span>
+              </Link>
+
+              <Link
+                href="/brands"
+                onClick={() => setIsAccountMenuOpen(false)}
+                className="flex items-center gap-3 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:text-brandRed hover:bg-red-50/80 transition-colors group/item"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-brandRed group-hover/item:bg-brandRed group-hover/item:text-white transition-colors">
+                  <HiOutlineTag size={16} strokeWidth={1.8} />
+                </span>
+                <span className="text-[13px] font-medium">All Brands</span>
+              </Link>
+
+              <div className="h-px bg-gray-100 my-1 mx-2" />
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAccountMenuOpen(false);
+                  handleLogout();
+                }}
+                aria-label="Logout"
+                className="w-full flex items-center gap-3 px-3.5 py-2 text-xs font-semibold text-red-600 hover:text-white hover:bg-[#ED1C24] transition-colors group/item cursor-pointer text-left"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-red-600 group-hover/item:bg-white group-hover/item:text-[#ED1C24] transition-colors">
+                  <IoLogOut size={16} />
+                </span>
+                <span className="text-[13px] font-medium">Logout</span>
+              </button>
+            </div>
+          </>
+        ) : (
+          /* Guest State with Sign In Button */
+          <>
+            <div className="p-3 bg-gradient-to-r from-red-50/80 to-amber-50/50 border-b border-gray-100">
+              <p className="text-[11px] text-gray-600 font-medium">Welcome to Sathya Store</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAccountMenuOpen(false);
+                  setShowAuthModal(true);
+                }}
+                className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#ED1C24] hover:bg-[#C4161D] text-white text-xs font-bold shadow-xs hover:shadow transition-all active:scale-95 cursor-pointer"
+              >
+                <FiUser size={14} />
+                <span>Sign In / Register</span>
+              </button>
+            </div>
+
+            <div className="py-1.5">
+              <Link
+                href="/loyalty"
+                onClick={() => setIsAccountMenuOpen(false)}
+                className="flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold text-gray-700 hover:text-brandRed hover:bg-red-50/80 transition-colors group/item"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-brandRed group-hover/item:bg-brandRed group-hover/item:text-white transition-colors">
+                  <HiOutlineGift size={16} strokeWidth={1.8} />
+                </span>
+                <span className="text-[13px] font-medium">Loyalty</span>
+              </Link>
+
+              <div className="h-px bg-gray-100 my-1 mx-2" />
+
+              <Link
+                href="/brands"
+                onClick={() => setIsAccountMenuOpen(false)}
+                className="flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold text-gray-700 hover:text-brandRed hover:bg-red-50/80 transition-colors group/item"
+              >
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-brandRed group-hover/item:bg-brandRed group-hover/item:text-white transition-colors">
+                  <HiOutlineTag size={16} strokeWidth={1.8} />
+                </span>
+                <span className="text-[13px] font-medium">All Brands</span>
+              </Link>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <>
       <header className="sticky top-0 z-50 w-full bg-white shadow-xs select-none">
@@ -2372,8 +2531,25 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
                 </span>
               </div>
 
-              {/* Right: Stores & 24/7 Helpline */}
-              <div className="hidden md:flex items-center gap-5 shrink-0 text-gray-300 text-[11px] sm:text-xs font-medium">
+              {/* Right: Deals, Stores, 24/7 Helpline & Sign In */}
+              <div className="hidden md:flex items-center gap-4 lg:gap-5 shrink-0 text-gray-300 text-[11px] sm:text-xs font-medium">
+                {/* Deals Button (Moved to top announcement bar) */}
+                {showDealsButton && (
+                  <Link
+                    href="/deals-offer"
+                    aria-label="View Deals & Special Offers"
+                    className="inline-flex items-center justify-center px-3 py-1 rounded-full text-black font-bold text-xs leading-none transition-all duration-200 shadow-xs hover:shadow hover:opacity-95 active:scale-95 shrink-0"
+                    style={{
+                      background: "linear-gradient(135deg, #00b4db 0%, #f44336 55%, #ffc107 100%)",
+                    }}
+                    title="View Deals & Special Offers"
+                  >
+                    🔥 Deals
+                  </Link>
+                )}
+
+                <span className="h-3 w-px bg-white/20" />
+
                 <a
                   href="https://sathya.adtarbo.com/stores"
                   target="_blank"
@@ -2396,6 +2572,40 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
                     {navbarSettings?.helplineText || "+91 88805 98985"}
                   </span>
                 </a>
+
+                <span className="h-3 w-px bg-white/20" />
+
+                {/* Sign In / My Account */}
+                <div
+                  className="relative"
+                  ref={isModern ? accountMenuRef : null}
+                  onMouseEnter={handleMenuMouseEnter}
+                  onMouseLeave={handleMenuMouseLeave}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isAuthenticated) {
+                        setIsAccountMenuOpen((prev) => !prev);
+                      } else {
+                        setShowAuthModal(true);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 text-gray-200 hover:text-white transition-colors cursor-pointer"
+                    aria-label={isAuthenticated ? "Account Menu" : "Login"}
+                    aria-expanded={isAccountMenuOpen}
+                    aria-haspopup="true"
+                    title={isAuthenticated ? (userData?.name || userData?.mobile || "Account") : "Login / Sign In"}
+                  >
+                    <FiUser className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="font-semibold text-white">
+                      {isAuthenticated ? (userDisplayName || "Account") : "Sign In"}
+                    </span>
+                    <FiChevronDown className="w-3 h-3 text-gray-400" />
+                  </button>
+
+                  {isModern && isAccountMenuOpen && renderAccountDropdown()}
+                </div>
               </div>
             </div>
           </div>
@@ -2800,16 +3010,6 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
             <div className={`hidden sm:flex items-center gap-3 py-1.5 rounded-lg shrink-0 ${currentBannerUrl ? "bg-transparent" : "bg-white"}`}>
               <Link href="/" aria-label="SATHYA Store Homepage" className="flex items-center gap-2 shrink-0 group">
                 <img src="/uploads/sathya-header-logo.webp" alt="SATHYA Store Logo" className="h-9 w-auto object-contain" width={100} height={57} />
-                {isModern && (
-                  <div className="flex flex-col leading-tight">
-                    <span className="text-xl sm:text-2xl font-black text-[#d72828] tracking-tight group-hover:opacity-95 transition-opacity">
-                      SATHYA
-                    </span>
-                    <span className="text-[8.5px] sm:text-[9.5px] font-extrabold text-gray-800 tracking-wider uppercase -mt-1">
-                      ELECTRONICS &amp; RETAIL
-                    </span>
-                  </div>
-                )}
               </Link>
 
               {/* Deliver To Selector Pill (Modern Header) */}
@@ -2854,7 +3054,7 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
                   aria-label="Search category"
                   title={selectedCategory}
                 >
-                  <option value="All Category">{isModern ? "All Departments" : "All Category"}</option>
+                  <option value="All Category">All Category</option>
                   {categories.map((cat) => (
                     <option key={String(cat._id)} value={cat.category_name}>
                       {cat.category_name}
@@ -2888,12 +3088,8 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
                 />
                 {searchQuery.trim() === "" && (
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none z-10">
-                    <span className="text-gray-400 text-sm">
-                      {isModern ? "Search QLED TVs, 5G Mobiles, Double Door Fridges..." : "Search for"}
-                    </span>
-                    {!isModern && (
-                      <span className="text-gray-900 text-sm font-medium">"{typedPreview}"</span>
-                    )}
+                    <span className="text-gray-400 text-sm">Search for</span>
+                    <span className="text-gray-900 text-sm font-medium">"{typedPreview}"</span>
                   </div>
                 )}
                 {searchQuery.trim() !== "" && (
@@ -2907,18 +3103,6 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
                   </button>
                 )}
               </div>
-              {/* Voice search button (Modern) */}
-              {isModern && (
-                <button
-                  type="button"
-                  onClick={handleVoiceSearch}
-                  title="Voice Search"
-                  className={`px-2 text-gray-500 hover:text-[#d72828] transition-colors focus:outline-none ${isListening ? "text-[#d72828] animate-pulse" : ""
-                    }`}
-                >
-                  <FiMic size={16} />
-                </button>
-              )}
               <button
                 type="button"
                 className="header-search-btn"
@@ -2929,7 +3113,7 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
               </button>
             </div>
             {/* Active / Upcoming Offer Countdown Widget (Matches Screenshot Image 1) */}
-            {effectiveOfferTimer && (
+            {!isModern && effectiveOfferTimer && (
               <HeaderOfferTimer timer={effectiveOfferTimer} />
             )}
 
@@ -2940,313 +3124,185 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
                 <FiSearch size={20} />
               </button>
 
-              {/* Deals Button — hidden when offer timer is active for this state */}
-              {showDealsButton && (
-                <Link
-                  href="/deals-offer"
-                  aria-label="View Deals & Special Offers"
-                  className="hidden sm:inline-flex items-center justify-center px-3.5 py-1.5 rounded-md text-[#000000] font-bold text-[13px] leading-tight transition-all duration-200 shadow-xs hover:shadow hover:opacity-95 active:scale-95 shrink-0 self-center"
-                  style={{
-                    background: "linear-gradient(135deg, #00b4db 0%, #f44336 55%, #ffc107 100%)",
-                  }}
-                  title="View Deals & Special Offers"
-                >
-                  Deals
-                </Link>
-              )}
-
-              {/* State / Region Selector Button (Classic only) */}
-              {!isModern && (
-                <button
-                  type="button"
-                  onClick={openRegionModal}
-                  aria-label={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'}`}
-                  className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[50px] md:min-w-[54px] cursor-pointer`}
-                  title={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'} (${selectedRegion?.name || 'Tamil Nadu'}). Click to change.`}
-                  suppressHydrationWarning
-                >
-                  <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
-                    <FiMapPin size={18} strokeWidth={1.75} />
-                  </div>
-                  <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS} max-w-[62px] truncate`} suppressHydrationWarning>
-                    {pincode ? pincode : (selectedRegion?.code || 'Region')} ▾
-                  </span>
-                </button>
-              )}
-
-              {/* Contact Button (Classic only) */}
-              {!isModern && (
-                <Link
-                  href="/contact"
-                  aria-label="Contact Us"
-                  className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[48px] md:min-w-[52px]`}
-                  title="Contact Us"
-                >
-                  <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
-                    <HiOutlinePhone size={18} strokeWidth={1.75} />
-                  </div>
-                  <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Contact</span>
-                </Link>
-              )}
-
-              {!isModern && (
-                <a
-                  href="https://sathya.adtarbo.com/stores"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Store Locations"
-                  className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[52px]`}
-                >
-                  <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
-                    <HiOutlineBuildingStorefront size={18} strokeWidth={1.75} />
-                  </div>
-                  <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Store</span>
-                </a>
-              )}
-
-              <Link href="/wishlist" aria-label={`Wishlist (${wishlistCount || 0} items)`} className={`${HEADER_ACTION_LINK_CLASS} flex min-w-[52px] relative`}>
-                <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
-                  <HiOutlineHeart size={18} strokeWidth={1.75} />
-                  <span className={HEADER_ACTION_BADGE_CLASS} suppressHydrationWarning>
-                    {wishlistCount}
-                  </span>
-                </div>
-                <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Wishlist</span>
-              </Link>
-
-              <Link href="/cart" aria-label={`Cart (${cartCount || 0} items)`} className={`${HEADER_ACTION_LINK_CLASS} flex min-w-[52px] relative`}>
-                <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
-                  <HiOutlineShoppingBag size={18} strokeWidth={1.75} />
-                  <span className={HEADER_ACTION_BADGE_CLASS} suppressHydrationWarning>
-                    {cartCount}
-                  </span>
-                </div>
-                <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Cart</span>
-              </Link>
-
-              {/* Deals Offer PDF Export Icon - Visible ONLY for Authenticated Users */}
-              {Boolean(isLoggedIn && userData) && (
-                <DealsPdfButton />
-              )}
-
-              {/* User Account / Login Dropdown */}
-              <div
-                className="relative hidden sm:block"
-                ref={accountMenuRef}
-                onMouseEnter={handleMenuMouseEnter}
-                onMouseLeave={handleMenuMouseLeave}
-              >
-                {isModern ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isAuthenticated) {
-                        setIsAccountMenuOpen((prev) => !prev);
-                      } else {
-                        setShowAuthModal(true);
-                      }
-                    }}
-                    className="flex items-center gap-2 group text-left focus:outline-none cursor-pointer"
-                    aria-label={isAuthenticated ? "Account Menu" : "Login"}
-                    aria-expanded={isAccountMenuOpen}
-                    aria-haspopup="true"
-                    title={isAuthenticated ? (userData?.name || userData?.mobile || "Account") : "Login / Sign In"}
+              {isModern ? (
+                /* Modern Header Action Group: Exactly 3 items (Store, Wishlist, Cart) with equal spacing */
+                <div className="hidden sm:flex items-center gap-5 lg:gap-7 shrink-0">
+                  {/* Store */}
+                  <a
+                    href="https://sathya.adtarbo.com/stores"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Store Locations"
+                    className="flex flex-col items-center justify-center min-w-[54px] text-gray-700 hover:text-[#d72828] transition-colors group cursor-pointer"
+                    title="Store Locations"
                   >
-                    <div className="w-9 h-9 rounded-full bg-[#d72828] text-white flex items-center justify-center shadow-xs font-bold text-sm shrink-0 group-hover:opacity-90 transition-opacity">
-                      {isAuthenticated && userDisplayName ? (
-                        userDisplayName.charAt(0).toUpperCase()
-                      ) : (
-                        <FiUser className="w-4 h-4 text-white" />
-                      )}
+                    <div className="relative flex items-center justify-center w-7 h-7">
+                      <HiOutlineBuildingStorefront className="w-6 h-6 text-gray-700 group-hover:text-[#d72828] transition-colors" />
                     </div>
-                    <div className="hidden lg:flex flex-col leading-none">
-                      <span className="text-[10px] text-gray-500 font-medium">Welcome</span>
-                      <span className="text-xs font-bold text-gray-900 group-hover:text-[#d72828] transition-colors truncate max-w-[100px] mt-0.5" suppressHydrationWarning>
-                        {isAuthenticated ? userDisplayName : "Sign In"}
+                    <span className="text-[11px] font-medium text-gray-700 group-hover:text-[#d72828] mt-1 transition-colors leading-none">
+                      Store
+                    </span>
+                  </a>
+
+                  {/* Wishlist */}
+                  <Link
+                    href="/wishlist"
+                    aria-label={`Wishlist (${wishlistCount || 0} items)`}
+                    className="flex flex-col items-center justify-center min-w-[54px] text-gray-700 hover:text-[#d72828] transition-colors group cursor-pointer"
+                    title="Wishlist"
+                  >
+                    <div className="relative flex items-center justify-center w-7 h-7">
+                      <HiOutlineHeart className="w-6 h-6 text-gray-700 group-hover:text-[#d72828] transition-colors" />
+                      <span
+                        className="absolute -top-1 -right-2 bg-[#d72828] text-white text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center leading-none"
+                        suppressHydrationWarning
+                      >
+                        {wishlistCount}
                       </span>
                     </div>
-                  </button>
-                ) : (
+                    <span className="text-[11px] font-medium text-gray-700 group-hover:text-[#d72828] mt-1 transition-colors leading-none">
+                      Wishlist
+                    </span>
+                  </Link>
+
+                  {/* Cart */}
+                  <Link
+                    href="/cart"
+                    aria-label={`Cart (${cartCount || 0} items)`}
+                    className="flex flex-col items-center justify-center min-w-[54px] text-gray-700 hover:text-[#d72828] transition-colors group cursor-pointer"
+                    title="Shopping Cart"
+                  >
+                    <div className="relative flex items-center justify-center w-7 h-7">
+                      <HiOutlineShoppingBag className="w-6 h-6 text-gray-700 group-hover:text-[#d72828] transition-colors" />
+                      <span
+                        className="absolute -top-1 -right-2 bg-[#d72828] text-white text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center leading-none"
+                        suppressHydrationWarning
+                      >
+                        {cartCount}
+                      </span>
+                    </div>
+                    <span className="text-[11px] font-medium text-gray-700 group-hover:text-[#d72828] mt-1 transition-colors leading-none">
+                      Cart
+                    </span>
+                  </Link>
+                </div>
+              ) : (
+                /* Classic Header Action Group: Original 7 options intact */
+                <>
+                  {/* Deals Button — hidden when offer timer is active for this state */}
+                  {showDealsButton && (
+                    <Link
+                      href="/deals-offer"
+                      aria-label="View Deals & Special Offers"
+                      className="hidden sm:inline-flex items-center justify-center px-3.5 py-1.5 rounded-md text-[#000000] font-bold text-[13px] leading-tight transition-all duration-200 shadow-xs hover:shadow hover:opacity-95 active:scale-95 shrink-0 self-center"
+                      style={{
+                        background: "linear-gradient(135deg, #00b4db 0%, #f44336 55%, #ffc107 100%)",
+                      }}
+                      title="View Deals & Special Offers"
+                    >
+                      Deals
+                    </Link>
+                  )}
+
+                  {/* State / Region Selector Button (Classic only) */}
                   <button
                     type="button"
-                    onClick={() => setIsAccountMenuOpen((prev) => !prev)}
-                    className={`${HEADER_ACTION_LINK_CLASS} min-w-[48px] md:min-w-[52px] focus:outline-none cursor-pointer`}
-                    aria-label={isAuthenticated ? "Account Menu" : "Login"}
-                    aria-expanded={isAccountMenuOpen}
-                    aria-haspopup="true"
-                    title={isAuthenticated ? (userData?.name || userData?.mobile || "Account") : "Login / Sign In"}
+                    onClick={openRegionModal}
+                    aria-label={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'}`}
+                    className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[50px] md:min-w-[54px] cursor-pointer`}
+                    title={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'} (${selectedRegion?.name || 'Tamil Nadu'}). Click to change.`}
+                    suppressHydrationWarning
                   >
-                    <div
-                      className={`${HEADER_ACTION_ICON_WRAP_CLASS} ${isAccountMenuOpen ? "!border-[#ED1C24] !bg-[#FFF200] !text-[#C4161D] shadow-[0_4px_10px_rgba(215,40,40,0.18)]" : ""
-                        }`}
-                    >
-                      <FiUser size={18} strokeWidth={1.75} />
+                    <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
+                      <FiMapPin size={18} strokeWidth={1.75} />
                     </div>
                     <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS} max-w-[62px] truncate`} suppressHydrationWarning>
-                      {isAuthenticated ? userDisplayName : 'Login'}
+                      {pincode ? pincode : (selectedRegion?.code || 'Region')} ▾
                     </span>
                   </button>
-                )}
 
-                {isAccountMenuOpen && (
-                  <div
-                    className="absolute right-0 top-full pt-2 z-50 transition-all duration-200"
-                    style={{ minWidth: "220px" }}
+                  {/* Contact Button (Classic only) */}
+                  <Link
+                    href="/contact"
+                    aria-label="Contact Us"
+                    className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[48px] md:min-w-[52px]`}
+                    title="Contact Us"
                   >
-                    <div className="w-56 bg-white rounded-xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.15),0_8px_10px_-6px_rgba(0,0,0,0.1)] border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
-                      {isAuthenticated ? (
-                        /* Logged-In User Menu */
-                        <>
-                          <div className="p-3 bg-gradient-to-r from-red-50/80 to-amber-50/50 border-b border-gray-100">
-                            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Signed In As</p>
-                            <p className="text-[13px] font-bold text-gray-900 truncate mt-0.5">
-                              {userData.name || userData.username || "My Account"}
-                            </p>
-                            {(userData.mobile || userData.email) && (
-                              <p className="text-[11px] text-gray-500 truncate mt-0.5">
-                                {userData.mobile || userData.email}
-                              </p>
-                            )}
-                          </div>
-
-                          <div className="py-1.5">
-                            {isAdmin && (
-                              <Link
-                                href="/admin/dashboard"
-                                onClick={() => setIsAccountMenuOpen(false)}
-                                className="flex items-center gap-3 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:text-brandRed hover:bg-red-50/80 transition-colors group/item"
-                              >
-                                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-brandRed group-hover/item:bg-brandRed group-hover/item:text-white transition-colors">
-                                  <FaUserShield size={14} />
-                                </span>
-                                <span className="text-[13px] font-medium">Admin Panel</span>
-                              </Link>
-                            )}
-
-                            <Link
-                              href="/profile"
-                              onClick={() => setIsAccountMenuOpen(false)}
-                              className="flex items-center gap-3 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:text-brandRed hover:bg-red-50/80 transition-colors group/item"
-                            >
-                              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-brandRed group-hover/item:bg-brandRed group-hover/item:text-white transition-colors">
-                                <FiUser size={15} strokeWidth={1.8} />
-                              </span>
-                              <span className="text-[13px] font-medium">My Profile</span>
-                            </Link>
-
-                            <Link
-                              href="/orders"
-                              onClick={() => setIsAccountMenuOpen(false)}
-                              className="flex items-center gap-3 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:text-brandRed hover:bg-red-50/80 transition-colors group/item"
-                            >
-                              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-brandRed group-hover/item:bg-brandRed group-hover/item:text-white transition-colors">
-                                <HiOutlineShoppingBag size={15} strokeWidth={1.8} />
-                              </span>
-                              <span className="text-[13px] font-medium">My Orders</span>
-                            </Link>
-
-                            <Link
-                              href="/address"
-                              onClick={() => setIsAccountMenuOpen(false)}
-                              className="flex items-center gap-3 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:text-brandRed hover:bg-red-50/80 transition-colors group/item"
-                            >
-                              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-brandRed group-hover/item:bg-brandRed group-hover/item:text-white transition-colors">
-                                <FiMapPin size={15} strokeWidth={1.8} />
-                              </span>
-                              <span className="text-[13px] font-medium">My Addresses</span>
-                            </Link>
-
-                            <div className="h-px bg-gray-100 my-1 mx-2" />
-
-                            <Link
-                              href="/loyalty"
-                              onClick={() => setIsAccountMenuOpen(false)}
-                              className="flex items-center gap-3 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:text-brandRed hover:bg-red-50/80 transition-colors group/item"
-                            >
-                              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-brandRed group-hover/item:bg-brandRed group-hover/item:text-white transition-colors">
-                                <HiOutlineGift size={16} strokeWidth={1.8} />
-                              </span>
-                              <span className="text-[13px] font-medium">Loyalty</span>
-                            </Link>
-
-                            <Link
-                              href="/brands"
-                              onClick={() => setIsAccountMenuOpen(false)}
-                              className="flex items-center gap-3 px-3.5 py-2 text-xs font-semibold text-gray-700 hover:text-brandRed hover:bg-red-50/80 transition-colors group/item"
-                            >
-                              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-brandRed group-hover/item:bg-brandRed group-hover/item:text-white transition-colors">
-                                <HiOutlineTag size={16} strokeWidth={1.8} />
-                              </span>
-                              <span className="text-[13px] font-medium">All Brands</span>
-                            </Link>
-
-                            <div className="h-px bg-gray-100 my-1 mx-2" />
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsAccountMenuOpen(false);
-                                handleLogout();
-                              }}
-                              aria-label="Logout"
-                              className="w-full flex items-center gap-3 px-3.5 py-2 text-xs font-semibold text-red-600 hover:text-white hover:bg-[#ED1C24] transition-colors group/item cursor-pointer text-left"
-                            >
-                              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-red-600 group-hover/item:bg-white group-hover/item:text-[#ED1C24] transition-colors">
-                                <IoLogOut size={16} />
-                              </span>
-                              <span className="text-[13px] font-medium">Logout</span>
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        /* Guest State with Sign In Button */
-                        <>
-                          <div className="p-3 bg-gradient-to-r from-red-50/80 to-amber-50/50 border-b border-gray-100">
-                            <p className="text-[11px] text-gray-600 font-medium">Welcome to Sathya Store</p>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setIsAccountMenuOpen(false);
-                                setShowAuthModal(true);
-                              }}
-                              className="mt-2 w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#ED1C24] hover:bg-[#C4161D] text-white text-xs font-bold shadow-xs hover:shadow transition-all active:scale-95 cursor-pointer"
-                            >
-                              <FiUser size={14} />
-                              <span>Sign In / Register</span>
-                            </button>
-                          </div>
-
-                          <div className="py-1.5">
-                            <Link
-                              href="/loyalty"
-                              onClick={() => setIsAccountMenuOpen(false)}
-                              className="flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold text-gray-700 hover:text-brandRed hover:bg-red-50/80 transition-colors group/item"
-                            >
-                              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-brandRed group-hover/item:bg-brandRed group-hover/item:text-white transition-colors">
-                                <HiOutlineGift size={16} strokeWidth={1.8} />
-                              </span>
-                              <span className="text-[13px] font-medium">Loyalty</span>
-                            </Link>
-
-                            <div className="h-px bg-gray-100 my-1 mx-2" />
-
-                            <Link
-                              href="/brands"
-                              onClick={() => setIsAccountMenuOpen(false)}
-                              className="flex items-center gap-3 px-3.5 py-2.5 text-xs font-semibold text-gray-700 hover:text-brandRed hover:bg-red-50/80 transition-colors group/item"
-                            >
-                              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-50 text-brandRed group-hover/item:bg-brandRed group-hover/item:text-white transition-colors">
-                                <HiOutlineTag size={16} strokeWidth={1.8} />
-                              </span>
-                              <span className="text-[13px] font-medium">All Brands</span>
-                            </Link>
-                          </div>
-                        </>
-                      )}
+                    <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
+                      <HiOutlinePhone size={18} strokeWidth={1.75} />
                     </div>
+                    <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Contact</span>
+                  </Link>
+
+                  <a
+                    href="https://sathya.adtarbo.com/stores"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Store Locations"
+                    className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[52px]`}
+                  >
+                    <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
+                      <HiOutlineBuildingStorefront size={18} strokeWidth={1.75} />
+                    </div>
+                    <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Store</span>
+                  </a>
+
+                  <Link href="/wishlist" aria-label={`Wishlist (${wishlistCount || 0} items)`} className={`${HEADER_ACTION_LINK_CLASS} flex min-w-[52px] relative`}>
+                    <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
+                      <HiOutlineHeart size={18} strokeWidth={1.75} />
+                      <span className={HEADER_ACTION_BADGE_CLASS} suppressHydrationWarning>
+                        {wishlistCount}
+                      </span>
+                    </div>
+                    <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Wishlist</span>
+                  </Link>
+
+                  <Link href="/cart" aria-label={`Cart (${cartCount || 0} items)`} className={`${HEADER_ACTION_LINK_CLASS} flex min-w-[52px] relative`}>
+                    <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
+                      <HiOutlineShoppingBag size={18} strokeWidth={1.75} />
+                      <span className={HEADER_ACTION_BADGE_CLASS} suppressHydrationWarning>
+                        {cartCount}
+                      </span>
+                    </div>
+                    <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Cart</span>
+                  </Link>
+
+                  {/* Deals Offer PDF Export Icon - Visible ONLY for Authenticated Users */}
+                  {Boolean(isLoggedIn && userData) && (
+                    <DealsPdfButton />
+                  )}
+
+                  {/* Classic User Account / Login Dropdown */}
+                  <div
+                    className="relative hidden sm:block"
+                    ref={!isModern ? accountMenuRef : null}
+                    onMouseEnter={handleMenuMouseEnter}
+                    onMouseLeave={handleMenuMouseLeave}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setIsAccountMenuOpen((prev) => !prev)}
+                      className={`${HEADER_ACTION_LINK_CLASS} min-w-[48px] md:min-w-[52px] focus:outline-none cursor-pointer`}
+                      aria-label={isAuthenticated ? "Account Menu" : "Login"}
+                      aria-expanded={isAccountMenuOpen}
+                      aria-haspopup="true"
+                      title={isAuthenticated ? (userData?.name || userData?.mobile || "Account") : "Login / Sign In"}
+                    >
+                      <div
+                        className={`${HEADER_ACTION_ICON_WRAP_CLASS} ${isAccountMenuOpen ? "!border-[#ED1C24] !bg-[#FFF200] !text-[#C4161D] shadow-[0_4px_10px_rgba(215,40,40,0.18)]" : ""
+                          }`}
+                      >
+                        <FiUser size={18} strokeWidth={1.75} />
+                      </div>
+                      <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS} max-w-[62px] truncate`} suppressHydrationWarning>
+                        {isAuthenticated ? userDisplayName : 'Login'}
+                      </span>
+                    </button>
+
+                    {!isModern && isAccountMenuOpen && renderAccountDropdown()}
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </div>
           </div>
           {/* Mobile Menu (Hidden on desktop) */}
