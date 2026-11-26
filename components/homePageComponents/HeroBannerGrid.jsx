@@ -222,7 +222,6 @@ export default function HeroBannerGrid({ config, embedded = false }) {
         className={`grid grid-cols-1 sm:grid-cols-2 ${gridTemplateClass} lg:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-3 lg:gap-4 w-full ${gridHeightClass}`}
       >
         {/* Large Hero Banner Slot */}
-<<<<<<< Updated upstream
         <HeroBannerSlot
           banner={large}
           size="large"
@@ -230,68 +229,6 @@ export default function HeroBannerGrid({ config, embedded = false }) {
           fallbackAlt="Featured promotion"
           wrapperClass={`aspect-[16/10] sm:aspect-[21/10] lg:aspect-auto lg:h-full ${largePosClass}`}
         />
-=======
-        <div
-          className={`group relative min-w-0 w-full aspect-[16/10] sm:aspect-[21/10] lg:aspect-auto lg:h-full overflow-hidden rounded-xl bg-gray-100 shadow-sm ${largePosClass}`}
-        >
-          <BannerPicture
-            desktopImage={large.desktopImage}
-            mobileImage={large.mobileImage}
-            alt={heading || "Featured promotion"}
-            priority
-          />
-
-          {/* Background click layer (sibling to CTA so nested <a> never occurs) */}
-          {bannerHref && (
-            <SlotLink
-              href={bannerHref}
-              ariaLabel={heading || "View promotion"}
-              className="absolute inset-0 z-[1]"
-            />
-          )}
-
-          {/* Render overlay box strictly when heading, description, or button exists */}
-          {hasOverlayContent && (
-            <div
-              className={`absolute inset-0 z-[2] pointer-events-none flex ${alignStyles.container} p-4 sm:p-6 lg:p-8 ${showGradient ? alignStyles.gradient : ""
-                }`}
-            >
-              <div
-                className={`w-full max-w-xl ${large.overlayAlign === "bottom-center" ? "mx-auto" : ""
-                  }`}
-                style={{ color: textColor }}
-              >
-                {heading && (
-                  <h2 className="text-lg sm:text-2xl lg:text-[28px] font-bold leading-tight tracking-tight drop-shadow-sm break-words line-clamp-2">
-                    {heading}
-                  </h2>
-                )}
-                {description && (
-                  <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm opacity-95 leading-relaxed line-clamp-2 drop-shadow-sm break-words">
-                    {description}
-                  </p>
-                )}
-                {buttonText && (
-                  <div className="mt-3 sm:mt-4">
-                    {buttonHref ? (
-                      <SlotLink
-                        href={buttonHref}
-                        className="pointer-events-auto inline-flex items-center gap-1.5 rounded-lg bg-[#ED1C24] hover:bg-[#C4161D] px-4 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm transition-colors"
-                      >
-                        {buttonText}
-                      </SlotLink>
-                    ) : (
-                      <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#ED1C24] px-4 py-2 sm:px-5 sm:py-2.5 text-xs sm:text-sm font-semibold text-white shadow-sm">
-                        {buttonText}
-                      </span>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
->>>>>>> Stashed changes
 
         {/* Small Banner 1 (Top Small) */}
         <HeroBannerSlot
