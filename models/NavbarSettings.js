@@ -126,6 +126,15 @@ const NavbarSettingsSchema = new mongoose.Schema(
       type: String,
       default: "ZERO DOWNPAYMENT AVAILABLE",
     },
+    // Structured Header Builder v2 JSON config
+    headerConfig: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    schemaVersion: {
+      type: Number,
+      default: 2,
+    },
     isActive: {
       type: Boolean,
       default: true,

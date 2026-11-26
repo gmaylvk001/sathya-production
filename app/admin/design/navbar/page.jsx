@@ -18,6 +18,12 @@ const SOLID_PRESETS = [
 
 const GRADIENT_PRESETS = [
   {
+    name: "Blue to Pink (Radial)",
+    start: "#3F5EFB",
+    end: "#FC466B",
+    direction: "radial",
+  },
+  {
     name: "Red Sunset (Brand)",
     start: "#ED1C24",
     end: "#8B0000",
@@ -74,6 +80,7 @@ const DIRECTIONS = [
   { label: "Bottom to Top", value: "to top" },
   { label: "Diagonal (Top-Left to Bottom-Right, 135°)", value: "135deg" },
   { label: "Diagonal (Bottom-Left to Top-Right, 45°)", value: "45deg" },
+  { label: "Radial (Center Out)", value: "radial" },
 ];
 
 const DEFAULT_SETTINGS = {
@@ -193,7 +200,9 @@ export default function NavbarSettingsPage() {
   // Compute CSS background for live preview
   const previewBackground =
     form.bgType === "gradient"
-      ? `linear-gradient(${form.gradientDirection}, ${form.gradientStart}, ${form.gradientEnd})`
+      ? (form.gradientDirection === "radial"
+        ? `radial-gradient(circle, ${form.gradientStart} 0%, ${form.gradientEnd} 100%)`
+        : `linear-gradient(${form.gradientDirection}, ${form.gradientStart}, ${form.gradientEnd})`)
       : form.bgColor;
 
   if (loading) {
@@ -963,7 +972,10 @@ export default function NavbarSettingsPage() {
                           <span
                             className="w-6 h-6 rounded-lg shadow-2xs flex-shrink-0"
                             style={{
-                              background: `linear-gradient(${preset.direction}, ${preset.start}, ${preset.end})`,
+                              background:
+                                preset.direction === "radial"
+                                  ? `radial-gradient(circle, ${preset.start} 0%, ${preset.end} 100%)`
+                                  : `linear-gradient(${preset.direction}, ${preset.start}, ${preset.end})`,
                             }}
                           />
                           <span className="font-semibold text-gray-700 truncate">
