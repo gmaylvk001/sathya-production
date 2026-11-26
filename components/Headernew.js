@@ -11,7 +11,6 @@ import {
   HiOutlineBars3,
   HiOutlineGift,
   HiOutlineTag,
-  HiOutlineShieldCheck,
 } from "react-icons/hi2";
 import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
@@ -1008,11 +1007,7 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
 
   const isModern = (propHeaderStyle || navbarSettings?.headerStyle) === "modern";
 
-  const navbarBackgroundStyle = isModern
-    ? "#161616"
-    : (navbarSettings.bgType === "gradient"
-      ? `linear-gradient(${navbarSettings.gradientDirection || "to right"}, ${navbarSettings.gradientStart || "#ED1C24"}, ${navbarSettings.gradientEnd || "#990000"})`
-      : (navbarSettings.bgColor || "#ED1C24"));
+  const navbarBackgroundStyle = "radial-gradient(circle, rgba(63, 94, 251, 1) 0%, rgba(252, 70, 107, 1) 100%)";
 
   const navbarBorderTopStyle = isModern
     ? "none"
@@ -1041,7 +1036,7 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
   const badgeBgColorStyle = navbarSettings.badgeBgColor || "#ED1C24";
   const badgeTextColorStyle = navbarSettings.badgeTextColor || "#FFF200";
 
-  const topBarBgStyle = navbarSettings.topBarBg || "#FFFFFF";
+  const topBarBgStyle = "linear-gradient(90deg, rgba(2, 0, 36, 1) 0%, rgba(9, 9, 121, 1) 35%, rgba(0, 212, 255, 1) 100%)";
 
   const DEFAULT_MODERN_ENTRIES = [
     { kind: "custom", key: "tv-audio", label: "TV & Audio", href: "/category/television" },
@@ -2531,10 +2526,10 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
         {/* Modern Header Row 1: Top Announcement Bar */}
         {isModern && (
           <div
-            className="w-full text-[#ffffff] border-b border-white/10 select-none"
+            className="w-full text-white border-b border-white/10 select-none"
             style={{
               backgroundColor: "#020024",
-              background: "linear-gradient(90deg, rgba(2, 0, 36, 1) 0%, rgba(9, 9, 121, 1) 35%, rgba(0, 212, 255, 1) 100%)",
+              background: topBarBgStyle,
             }}
           >
             <div className="max-w-[1320px] mx-auto px-6 w-full flex items-center justify-between text-xs py-2 box-border">
@@ -2546,13 +2541,13 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
                 <span className="bg-[#d72828] text-white text-[10px] sm:text-[11px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider shrink-0 shadow-xs">
                   {navbarSettings?.flashSaleBadge || "FLASH SALE"}
                 </span>
-                <span className="text-[#ffffff] text-[11px] sm:text-xs truncate font-medium">
+                <span className="text-white text-[11px] sm:text-xs truncate font-medium">
                   {navbarSettings?.flashSaleText || "Smart TVs & Inverter ACs up to 55% Off + Extra Instant Bank Cashback"}
                 </span>
               </div>
 
               {/* Right: Deals, Stores, 24/7 Helpline & Sign In */}
-              <div className="hidden md:flex items-center gap-6 shrink-0 text-[#ffffff] text-[11px] sm:text-xs font-medium">
+              <div className="hidden md:flex items-center gap-6 shrink-0 text-white text-[11px] sm:text-xs font-medium">
                 {/* Deals Button (Moved to top announcement bar) */}
                 {showDealsButton && (
                   <Link
@@ -2574,21 +2569,21 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
                   href="https://sathya.adtarbo.com/stores"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-[#ffffff] hover:opacity-85 transition-opacity"
+                  className="flex items-center gap-1.5 text-white hover:opacity-85 transition-opacity"
                 >
-                  <HiOutlineBuildingStorefront className="w-4 h-4 text-[#ffffff]" />
-                  <span>{navbarSettings?.storeCountText || "180+ Stores in South India"}</span>
+                  <HiOutlineBuildingStorefront className="w-4 h-4 text-white" />
+                  <span className="text-white">{navbarSettings?.storeCountText || "180+ Stores in South India"}</span>
                 </a>
 
                 <span className="h-3 w-px bg-white/30" />
 
                 <a
                   href={`tel:${(navbarSettings?.helplineText || "+91 88805 98985").replace(/[^0-9+]/g, "")}`}
-                  className="flex items-center gap-1.5 text-[#ffffff] hover:opacity-85 transition-opacity"
+                  className="flex items-center gap-1.5 text-white hover:opacity-85 transition-opacity"
                 >
-                  <HiOutlinePhone className="w-3.5 h-3.5 text-[#ffffff]" />
-                  <span>24/7 Helpline:</span>
-                  <span className="text-[#ffffff] font-bold tracking-tight">
+                  <HiOutlinePhone className="w-3.5 h-3.5 text-white" />
+                  <span className="text-white">24/7 Helpline:</span>
+                  <span className="text-white font-bold tracking-tight">
                     {navbarSettings?.helplineText || "+91 88805 98985"}
                   </span>
                 </a>
@@ -2611,17 +2606,17 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
                         setShowAuthModal(true);
                       }
                     }}
-                    className="flex items-center gap-1.5 text-[#ffffff] hover:opacity-85 transition-opacity cursor-pointer"
+                    className="flex items-center gap-1.5 text-white hover:opacity-85 transition-opacity cursor-pointer"
                     aria-label={isAuthenticated ? "Account Menu" : "Login"}
                     aria-expanded={isAccountMenuOpen}
                     aria-haspopup="true"
                     title={isAuthenticated ? (userData?.name || userData?.mobile || "Account") : "Login / Sign In"}
                   >
-                    <FiUser className="w-3.5 h-3.5 text-[#ffffff]" />
-                    <span className="font-semibold text-[#ffffff]">
+                    <FiUser className="w-3.5 h-3.5 text-white" />
+                    <span className="font-semibold text-white">
                       {isAuthenticated ? (userDisplayName || "Account") : "Sign In"}
                     </span>
-                    <FiChevronDown className="w-3 h-3 text-[#ffffff]" />
+                    <FiChevronDown className="w-3 h-3 text-white" />
                   </button>
 
                   {isModern && isAccountMenuOpen && renderAccountDropdown()}
@@ -3808,9 +3803,7 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
           className={`hidden lg:flex relative w-full items-center shadow transition-all duration-200 select-none z-30`}
           style={{
             backgroundColor: "#3F5EFB",
-            background: isModern
-              ? "radial-gradient(circle, rgba(63, 94, 251, 1) 0%, rgba(252, 70, 107, 1) 100%)"
-              : navbarBackgroundStyle,
+            background: navbarBackgroundStyle,
             borderTop: isModern ? "none" : navbarBorderTopStyle,
           }}
         >
@@ -4019,15 +4012,6 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
                     </Swiper>
                   </div>
                 </div>
-              </div>
-            )}
-            {/* Right: Zero Downpayment Highlight Offer (Modern mode) */}
-            {isModern && (
-              <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-amber-400 shrink-0 ml-auto pl-4">
-                <HiOutlineShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
-                <span className="tracking-wider uppercase text-[11px] font-extrabold whitespace-nowrap">
-                  {navbarSettings?.zeroDownpaymentText || "ZERO DOWNPAYMENT AVAILABLE"}
-                </span>
               </div>
             )}
           </div>
