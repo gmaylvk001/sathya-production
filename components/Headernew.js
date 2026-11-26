@@ -1043,9 +1043,19 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
 
   const topBarBgStyle = navbarSettings.topBarBg || "#FFFFFF";
 
+  const DEFAULT_MODERN_ENTRIES = [
+    { kind: "custom", key: "tv-audio", label: "TV & Audio", href: "/category/television" },
+    { kind: "custom", key: "appliances", label: "Appliances", href: "/category/refrigerator" },
+    { kind: "custom", key: "mobiles-wearables", label: "Mobiles & Wearables", href: "/category/smartphones" },
+    { kind: "custom", key: "kitchen", label: "Kitchen Appliances", href: "/category/kitchen-appliances" },
+    { kind: "custom", key: "utility", label: "Utility Appliances", href: "/category/air-conditioner" },
+    { kind: "custom", key: "loyalty", label: "Loyalty", href: "/loyalty" },
+    { kind: "custom", key: "blogs", label: "Blogs", href: "/blogs" },
+  ];
+
   // Red bar entries: admin-managed menu when configured, otherwise every active root category.
   // Category items resolve against the header's own tree so the dropdown keeps brands/subcategories.
-  const redBarEntries = headerMenuItems.length > 0
+  const computedEntries = headerMenuItems.length > 0
     ? headerMenuItems
       .map((item) => {
         if (item.type === "custom") {
@@ -1068,6 +1078,10 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
       label: category.category_name,
       category,
     }));
+
+  const redBarEntries = (isModern && headerMenuItems.length === 0)
+    ? DEFAULT_MODERN_ENTRIES
+    : (computedEntries.length > 0 ? computedEntries : (isModern ? DEFAULT_MODERN_ENTRIES : []));
 
   const collectAvailabilityRequests = useCallback(
     (nodes, level = 0, out = [], seenBrandIds = new Set()) => {
@@ -2514,25 +2528,31 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
   return (
     <>
       <header className="sticky top-0 z-50 w-full bg-white shadow-xs select-none">
-        {/* Modern Header Row 1: Top Announcement Bar (Dark Charcoal #121212) */}
+        {/* Modern Header Row 1: Top Announcement Bar */}
         {isModern && (
-          <div className="w-full bg-[#121212] text-white py-1.5 px-4 sm:px-6 lg:px-8 text-xs border-b border-white/10">
-            <div className="w-full max-w-7xl mx-auto flex items-center justify-between gap-4">
+          <div
+            className="w-full text-[#ffffff] border-b border-white/10 select-none"
+            style={{
+              backgroundColor: "#020024",
+              background: "linear-gradient(90deg, rgba(2, 0, 36, 1) 0%, rgba(9, 9, 121, 1) 35%, rgba(0, 212, 255, 1) 100%)",
+            }}
+          >
+            <div className="max-w-[1320px] mx-auto px-6 w-full flex items-center justify-between text-xs py-2 box-border">
               {/* Left: Flash Sale Announcement */}
-              <div className="flex items-center gap-2 overflow-hidden">
+              <div className="flex items-center gap-2 overflow-hidden shrink-0">
                 <span className="text-amber-400 text-sm font-bold animate-pulse shrink-0">
                   ⚡
                 </span>
                 <span className="bg-[#d72828] text-white text-[10px] sm:text-[11px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider shrink-0 shadow-xs">
                   {navbarSettings?.flashSaleBadge || "FLASH SALE"}
                 </span>
-                <span className="text-gray-200 text-[11px] sm:text-xs truncate font-medium">
+                <span className="text-[#ffffff] text-[11px] sm:text-xs truncate font-medium">
                   {navbarSettings?.flashSaleText || "Smart TVs & Inverter ACs up to 55% Off + Extra Instant Bank Cashback"}
                 </span>
               </div>
 
               {/* Right: Deals, Stores, 24/7 Helpline & Sign In */}
-              <div className="hidden md:flex items-center gap-4 lg:gap-5 shrink-0 text-gray-300 text-[11px] sm:text-xs font-medium">
+              <div className="hidden md:flex items-center gap-6 shrink-0 text-[#ffffff] text-[11px] sm:text-xs font-medium">
                 {/* Deals Button (Moved to top announcement bar) */}
                 {showDealsButton && (
                   <Link
@@ -2548,32 +2568,32 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
                   </Link>
                 )}
 
-                <span className="h-3 w-px bg-white/20" />
+                <span className="h-3 w-px bg-white/30" />
 
                 <a
                   href="https://sathya.adtarbo.com/stores"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 hover:text-white transition-colors"
+                  className="flex items-center gap-1.5 text-[#ffffff] hover:opacity-85 transition-opacity"
                 >
-                  <HiOutlineBuildingStorefront className="w-4 h-4 text-gray-400" />
+                  <HiOutlineBuildingStorefront className="w-4 h-4 text-[#ffffff]" />
                   <span>{navbarSettings?.storeCountText || "180+ Stores in South India"}</span>
                 </a>
 
-                <span className="h-3 w-px bg-white/20" />
+                <span className="h-3 w-px bg-white/30" />
 
                 <a
                   href={`tel:${(navbarSettings?.helplineText || "+91 88805 98985").replace(/[^0-9+]/g, "")}`}
-                  className="flex items-center gap-1.5 hover:text-white transition-colors"
+                  className="flex items-center gap-1.5 text-[#ffffff] hover:opacity-85 transition-opacity"
                 >
-                  <HiOutlinePhone className="w-3.5 h-3.5 text-gray-400" />
+                  <HiOutlinePhone className="w-3.5 h-3.5 text-[#ffffff]" />
                   <span>24/7 Helpline:</span>
-                  <span className="text-amber-300 font-bold tracking-tight">
+                  <span className="text-[#ffffff] font-bold tracking-tight">
                     {navbarSettings?.helplineText || "+91 88805 98985"}
                   </span>
                 </a>
 
-                <span className="h-3 w-px bg-white/20" />
+                <span className="h-3 w-px bg-white/30" />
 
                 {/* Sign In / My Account */}
                 <div
@@ -2591,17 +2611,17 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
                         setShowAuthModal(true);
                       }
                     }}
-                    className="flex items-center gap-1.5 text-gray-200 hover:text-white transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 text-[#ffffff] hover:opacity-85 transition-opacity cursor-pointer"
                     aria-label={isAuthenticated ? "Account Menu" : "Login"}
                     aria-expanded={isAccountMenuOpen}
                     aria-haspopup="true"
                     title={isAuthenticated ? (userData?.name || userData?.mobile || "Account") : "Login / Sign In"}
                   >
-                    <FiUser className="w-3.5 h-3.5 text-gray-400" />
-                    <span className="font-semibold text-white">
+                    <FiUser className="w-3.5 h-3.5 text-[#ffffff]" />
+                    <span className="font-semibold text-[#ffffff]">
                       {isAuthenticated ? (userDisplayName || "Account") : "Sign In"}
                     </span>
-                    <FiChevronDown className="w-3 h-3 text-gray-400" />
+                    <FiChevronDown className="w-3 h-3 text-[#ffffff]" />
                   </button>
 
                   {isModern && isAccountMenuOpen && renderAccountDropdown()}
@@ -3004,42 +3024,52 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
               </div>
             </div>
           )}
-          {/* DESKTOP ROW (unchanged original content) */}
-          <div className="hidden sm:flex justify-between items-center gap-3">
-            {/* Logo */}
-            <div className={`hidden sm:flex items-center gap-3 py-1.5 rounded-lg shrink-0 ${currentBannerUrl ? "bg-transparent" : "bg-white"}`}>
-              <Link href="/" aria-label="SATHYA Store Homepage" className="flex items-center gap-2 shrink-0 group">
-                <img src="/uploads/sathya-header-logo.webp" alt="SATHYA Store Logo" className="h-9 w-auto object-contain" width={100} height={57} />
-              </Link>
+          {/* DESKTOP ROW — 1320px Common Container, 72px height, 20px gap */}
+          <div className="hidden sm:flex items-center gap-3 lg:gap-5 h-[72px] w-full max-w-[1320px] mx-auto px-6 box-border">
+            {/* Tablet/Mobile Nav Menu Toggle (< 1024px) */}
+            <button
+              type="button"
+              onClick={toggleMobileMenu}
+              className="lg:hidden flex items-center justify-center p-1.5 -ml-2 rounded-lg text-gray-700 hover:text-[#d72828] hover:bg-gray-100 transition-colors shrink-0"
+              aria-label="Open menu"
+            >
+              <FiMenu size={24} />
+            </button>
 
-              {/* Deliver To Selector Pill (Modern Header) */}
-              {isModern && (
-                <button
-                  type="button"
-                  onClick={openRegionModal}
-                  aria-label={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'}`}
-                  className="hidden md:flex items-center gap-2 bg-[#f8f9fa] hover:bg-gray-100 border border-gray-200/90 hover:border-red-300 rounded-xl px-3 py-1.5 transition-all text-left shadow-2xs group shrink-0 ml-1"
-                  title={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'} (${selectedRegion?.name || 'Tamil Nadu'}). Click to change.`}
-                  suppressHydrationWarning
-                >
-                  <div className="w-7 h-7 rounded-lg bg-red-50 text-[#d72828] flex items-center justify-center shrink-0">
-                    <FiMapPin className="w-4 h-4 text-[#d72828]" />
-                  </div>
-                  <div className="flex flex-col leading-none pr-1">
-                    <span className="text-[10px] text-gray-500 font-medium">Deliver to</span>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <span className="text-xs font-bold text-gray-900 truncate max-w-[120px] lg:max-w-[140px]" suppressHydrationWarning>
-                        {pincode ? `${pincode} ` : ""}{district || city || "Chennai"}
-                      </span>
-                      <FiChevronDown className="w-3 h-3 text-gray-400 group-hover:text-gray-700 transition-colors shrink-0" />
-                    </div>
-                  </div>
-                </button>
-              )}
+            {/* Logo */}
+            <div className={`flex items-center shrink-0 ${currentBannerUrl ? "bg-transparent" : "bg-white"}`}>
+              <Link href="/" aria-label="SATHYA Store Homepage" className="flex items-center shrink-0">
+                <img src="/uploads/sathya-header-logo.webp" alt="SATHYA Store Logo" className="h-[48px] w-auto object-contain shrink-0" width={110} height={48} />
+              </Link>
             </div>
 
+            {/* Deliver To Selector Pill (Modern Header, visible on >= 1024px) */}
+            {isModern && (
+              <button
+                type="button"
+                onClick={openRegionModal}
+                aria-label={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'}`}
+                className="hidden lg:flex items-center gap-2 bg-[#f8f9fa] hover:bg-gray-100 border border-gray-200/90 hover:border-red-300 rounded-xl px-3 py-1.5 h-[44px] w-[170px] shrink-0 text-left transition-all shadow-2xs group"
+                title={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'} (${selectedRegion?.name || 'Tamil Nadu'}). Click to change.`}
+                suppressHydrationWarning
+              >
+                <div className="w-7 h-7 rounded-lg bg-red-50 text-[#d72828] flex items-center justify-center shrink-0">
+                  <FiMapPin className="w-4 h-4 text-[#d72828]" />
+                </div>
+                <div className="flex flex-col leading-none min-w-0 pr-1">
+                  <span className="text-[10px] text-gray-500 font-medium">Deliver to</span>
+                  <div className="flex items-center gap-1 mt-0.5 min-w-0">
+                    <span className="text-xs font-bold text-gray-900 truncate" suppressHydrationWarning>
+                      {pincode ? `${pincode} ` : ""}{district || city || "Chennai"}
+                    </span>
+                    <FiChevronDown className="w-3 h-3 text-gray-400 group-hover:text-gray-700 transition-colors shrink-0" />
+                  </div>
+                </div>
+              </button>
+            )}
+
             {/* Search Bar */}
-            <div className="header-search relative hidden sm:flex flex-1 max-w-[460px] md:max-w-[490px] lg:max-w-[530px]" role="search">
+            <div className="header-search relative hidden sm:flex flex-1 max-w-[560px] h-[44px] bg-white border border-[#e5e7eb] rounded-full overflow-hidden shadow-xs focus-within:border-[#ED1C24] transition-all items-center" role="search">
               <div className="header-search-select-wrap">
                 <select
                   value={selectedCategory}
@@ -3118,15 +3148,15 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
             )}
 
             {/* Icons Group */}
-            <div className="flex items-center gap-1.5 md:gap-2 lg:gap-2.5 xl:gap-3 flex-shrink-0 mt-0.5">
+            <div className="flex items-center gap-1.5 md:gap-2 lg:gap-2.5 xl:gap-3 flex-shrink-0 mt-0.5 ml-auto">
               {/* Mobile Search Button (Hidden on desktop) */}
               <button onClick={toggleMobileMenu} aria-label="Open search" className="sm:hidden text-brandRed">
                 <FiSearch size={20} />
               </button>
 
               {isModern ? (
-                /* Modern Header Action Group: Exactly 3 items (Store, Wishlist, Cart) with equal spacing */
-                <div className="hidden sm:flex items-center gap-5 lg:gap-7 shrink-0">
+                /* Modern Header Action Group: Store / Wishlist / Cart with equal 24px gap */
+                <div className="hidden sm:flex items-center gap-4 lg:gap-6 shrink-0">
                   {/* Store */}
                   <a
                     href="https://sathya.adtarbo.com/stores"
@@ -3773,89 +3803,84 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
             </div>
           )}
         </div>
-        {/* Category listing bar — red bar with yellow line on top (Sathya brand) OR dark modern bar */}
+        {/* Category listing bar — red bar with yellow line on top (Sathya brand) OR gradient modern bar */}
         <div
-          className={`hidden sm:flex relative w-full ${isModern ? "min-h-[50px] justify-between" : "min-h-[56px] justify-center"} items-center px-6 shadow transition-all duration-200`}
+          className={`hidden lg:flex relative w-full items-center shadow transition-all duration-200 select-none z-30`}
           style={{
-            background: isModern ? "#161616" : navbarBackgroundStyle,
+            backgroundColor: "#3F5EFB",
+            background: isModern
+              ? "radial-gradient(circle, rgba(63, 94, 251, 1) 0%, rgba(252, 70, 107, 1) 100%)"
+              : navbarBackgroundStyle,
             borderTop: isModern ? "none" : navbarBorderTopStyle,
           }}
         >
-          {/* Menu (when enabled) and the categories form one centred group. Both ends of the
-              group carry the same 8px inset, so the bar stays balanced with Menu on or off. */}
-          {menuButtonEnabled && (
-            <div
-              className={`relative flex-shrink-0 self-stretch ${isModern ? "" : "-ml-4 pl-4"}`}
-              data-sathya-menu-toggle
-              onMouseEnter={() => {
-                if (menuHoverLeaveTimer.current) {
-                  clearTimeout(menuHoverLeaveTimer.current);
-                  menuHoverLeaveTimer.current = null;
-                }
-                setShowMenu(true);
-                cancelHide();
-                setHoveredCategory(null);
-                setActiveSubCategory(null);
-              }}
-              onMouseLeave={() => {
-                if (menuHoverLeaveTimer.current) clearTimeout(menuHoverLeaveTimer.current);
-                menuHoverLeaveTimer.current = setTimeout(() => {
-                  setShowMenu(false);
-                  menuHoverLeaveTimer.current = null;
-                }, 200);
-              }}
-            >
-              <button
-                type="button"
-                className={
-                  isModern
-                    ? "h-full px-5 py-3 flex items-center gap-2.5 font-bold text-xs sm:text-sm bg-[#ED1C24] hover:bg-[#C4161D] text-white transition-colors cursor-pointer shadow-xs"
-                    : "h-full self-stretch pl-2 pr-6 flex items-center gap-2.5 font-bold text-base bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent"
-                }
-                style={!isModern ? { color: navbarTextColorStyle } : undefined}
-                aria-label="Open menu"
-                aria-expanded={showMenu}
-                onClick={() => {
-                  // Touch / keyboard: toggle. Desktop opens on hover.
-                  setShowMenu((prev) => !prev);
+          {/* COMMON CONTAINER: max-width 1320px, margin: 0 auto, padding: 0 24px */}
+          <div className="max-w-[1320px] mx-auto px-6 w-full flex items-center h-[52px] box-border relative">
+            {/* Menu (when enabled) and the categories form one centred group. */}
+            {(isModern || menuButtonEnabled) && (
+              <div
+                className={`relative flex-shrink-0 h-full ${isModern ? "w-[180px]" : "-ml-4 pl-4"}`}
+                data-sathya-menu-toggle
+                onMouseEnter={() => {
+                  if (menuHoverLeaveTimer.current) {
+                    clearTimeout(menuHoverLeaveTimer.current);
+                    menuHoverLeaveTimer.current = null;
+                  }
+                  setShowMenu(true);
                   cancelHide();
                   setHoveredCategory(null);
                   setActiveSubCategory(null);
                 }}
+                onMouseLeave={() => {
+                  if (menuHoverLeaveTimer.current) clearTimeout(menuHoverLeaveTimer.current);
+                  menuHoverLeaveTimer.current = setTimeout(() => {
+                    setShowMenu(false);
+                    menuHoverLeaveTimer.current = null;
+                  }, 200);
+                }}
               >
-                <FiMenu size={18} strokeWidth={2.5} />
-                <span>{isModern ? "All Categories" : "Menu"}</span>
-                {isModern && <FiChevronDown size={14} className="opacity-80" />}
-              </button>
-              <HeaderMenuSidebar
-                open={showMenu}
-                onClose={() => setShowMenu(false)}
-                categories={categories}
-                resolveCategoryHref={resolveCategoryNavHref}
-                showDealsButton={showDealsButton}
-              />
-            </div>
-          )}
-          <div className="relative min-w-0 flex-1 px-2">
-            <div className="relative">
-              <div className={`flex ${isModern ? "justify-start" : "justify-center"} overflow-x-auto scrollbar-hide`}>
-                <Swiper
-                  modules={[Navigation]}
-                  navigation={{ prevEl: ".custom-swiper-prev", nextEl: ".custom-swiper-next" }}
-                  spaceBetween={isModern ? 16 : 20}
-                  slidesPerView="auto"
-                  watchOverflow={true}
-                  observer={true}
-                  observeParents={true}
-                  // Swiper puts the 20px gap after every slide, including the last; drop that trailing one.
-                  className="[&_.swiper-slide:last-child]:!mr-0"
+                <button
+                  type="button"
+                  className={
+                    isModern
+                      ? "w-full h-full px-3 flex items-center justify-center gap-2 font-bold text-xs sm:text-sm bg-[#ED1C24] hover:bg-[#C4161D] text-white whitespace-nowrap transition-colors cursor-pointer shadow-xs"
+                      : "h-full self-stretch pl-2 pr-6 flex items-center gap-2.5 font-bold text-base bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent whitespace-nowrap"
+                  }
+                  style={!isModern ? { color: navbarTextColorStyle } : undefined}
+                  aria-label="Open menu"
+                  aria-expanded={showMenu}
+                  onClick={() => {
+                    // Touch / keyboard: toggle. Desktop opens on hover.
+                    setShowMenu((prev) => !prev);
+                    cancelHide();
+                    setHoveredCategory(null);
+                    setActiveSubCategory(null);
+                  }}
                 >
+                  <FiMenu size={18} strokeWidth={2.5} className="shrink-0" />
+                  <span className="whitespace-nowrap">{isModern ? "All Categories" : "Menu"}</span>
+                  {isModern && <FiChevronDown size={14} className="opacity-80 shrink-0" />}
+                </button>
+                <HeaderMenuSidebar
+                  open={showMenu}
+                  onClose={() => setShowMenu(false)}
+                  categories={categories}
+                  resolveCategoryHref={resolveCategoryNavHref}
+                  showDealsButton={showDealsButton}
+                />
+              </div>
+            )}
+            {isModern ? (
+              /* Modern Nav links in the middle: gap: 28px, white-space: nowrap, no overflow clipping. "Blogs" fully visible */
+              <div className="relative min-w-0 flex-1 px-4 xl:px-6 overflow-hidden">
+                <div className="flex items-center gap-3.5 xl:gap-[28px] whitespace-nowrap overflow-x-auto scrollbar-hide py-1">
                   {redBarEntries.map((entry) => {
-                    if (entry.kind === "custom") return (
-                      <SwiperSlide key={`custom-${entry.key}`} className="!w-auto">
+                    if (entry.kind === "custom") {
+                      return (
                         <div
+                          key={`custom-${entry.key}`}
                           onMouseEnter={() => { cancelHide(); setHoveredCategory(null); }}
-                          className="px-2 py-2 flex flex-col items-center text-center"
+                          className="flex flex-col items-center shrink-0"
                         >
                           {/^https?:\/\//i.test(entry.href) ? (
                             <a
@@ -3863,7 +3888,7 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{ color: navbarTextColorStyle }}
-                              className="inline-block origin-center text-sm font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap"
+                              className="inline-block text-xs xl:text-sm font-semibold hover:text-amber-300 hover:scale-105 transition-all duration-150 whitespace-nowrap"
                             >
                               {entry.label}
                             </a>
@@ -3871,59 +3896,141 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
                             <Link
                               href={entry.href}
                               style={{ color: navbarTextColorStyle }}
-                              className="inline-block origin-center text-sm font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap"
+                              className="inline-block text-xs xl:text-sm font-semibold hover:text-amber-300 hover:scale-105 transition-all duration-150 whitespace-nowrap"
                             >
                               {entry.label}
                             </Link>
                           )}
                         </div>
-                      </SwiperSlide>
-                    );
+                      );
+                    }
                     const { category } = entry;
                     const isHovered = hoveredCategory?._id === category._id;
                     return (
-                      <SwiperSlide key={entry.key} className="!w-auto">
-                        <div ref={(el) => (slideRefs.current[category._id] = el)} onMouseEnter={() => handleMouseEnter(category._id, category)} onMouseLeave={() => startHide(120)} className="px-2 py-2 flex flex-col items-center text-center" >
-                          <Link
-                            href={resolveCategoryNavHref([category.category_slug], category._id, 0)}
-                            onClick={(e) => {
-                              // Ensure latest availability is used even if Swiper cached the slide href.
-                              e.preventDefault();
-                              if (hideTimeout.current) {
-                                clearTimeout(hideTimeout.current);
-                                hideTimeout.current = null;
-                              }
-                              setHoveredCategory(null);
-                              setActiveSubCategory(null);
-                              handleCategoryClick(
-                                category.category_slug,
-                                category.category_name,
-                                category._id
-                              );
-                            }}
-                            style={{ color: navbarTextColorStyle }}
-                            className={`inline-block origin-center text-sm font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap ${isHovered ? "!scale-105 text-amber-300" : ""}`}
-                          >
-                            {entry.label}
-                          </Link>
-
-                        </div>
-                      </SwiperSlide>
+                      <div
+                        key={entry.key}
+                        ref={(el) => (slideRefs.current[category._id] = el)}
+                        onMouseEnter={() => handleMouseEnter(category._id, category)}
+                        onMouseLeave={() => startHide(120)}
+                        className="flex flex-col items-center shrink-0"
+                      >
+                        <Link
+                          href={resolveCategoryNavHref([category.category_slug], category._id, 0)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (hideTimeout.current) {
+                              clearTimeout(hideTimeout.current);
+                              hideTimeout.current = null;
+                            }
+                            setHoveredCategory(null);
+                            setActiveSubCategory(null);
+                            handleCategoryClick(
+                              category.category_slug,
+                              category.category_name,
+                              category._id
+                            );
+                          }}
+                          style={{ color: navbarTextColorStyle }}
+                          className={`inline-block text-xs xl:text-sm font-semibold hover:text-amber-300 hover:scale-105 transition-all duration-150 whitespace-nowrap ${
+                            isHovered ? "!scale-105 text-amber-300 font-bold" : ""
+                          }`}
+                        >
+                          {entry.label}
+                        </Link>
+                      </div>
                     );
                   })}
-                </Swiper>
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Classic Category Bar with Swiper */
+              <div className="relative min-w-0 flex-1 px-2">
+                <div className="relative">
+                  <div className="flex justify-center overflow-x-auto scrollbar-hide">
+                    <Swiper
+                      modules={[Navigation]}
+                      navigation={{ prevEl: ".custom-swiper-prev", nextEl: ".custom-swiper-next" }}
+                      spaceBetween={20}
+                      slidesPerView="auto"
+                      watchOverflow={true}
+                      observer={true}
+                      observeParents={true}
+                      className="[&_.swiper-slide:last-child]:!mr-0"
+                    >
+                      {redBarEntries.map((entry) => {
+                        if (entry.kind === "custom") return (
+                          <SwiperSlide key={`custom-${entry.key}`} className="!w-auto">
+                            <div
+                              onMouseEnter={() => { cancelHide(); setHoveredCategory(null); }}
+                              className="px-2 py-2 flex flex-col items-center text-center"
+                            >
+                              {/^https?:\/\//i.test(entry.href) ? (
+                                <a
+                                  href={entry.href}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ color: navbarTextColorStyle }}
+                                  className="inline-block origin-center text-sm font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap"
+                                >
+                                  {entry.label}
+                                </a>
+                              ) : (
+                                <Link
+                                  href={entry.href}
+                                  style={{ color: navbarTextColorStyle }}
+                                  className="inline-block origin-center text-sm font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap"
+                                >
+                                  {entry.label}
+                                </Link>
+                              )}
+                            </div>
+                          </SwiperSlide>
+                        );
+                        const { category } = entry;
+                        const isHovered = hoveredCategory?._id === category._id;
+                        return (
+                          <SwiperSlide key={entry.key} className="!w-auto">
+                            <div ref={(el) => (slideRefs.current[category._id] = el)} onMouseEnter={() => handleMouseEnter(category._id, category)} onMouseLeave={() => startHide(120)} className="px-2 py-2 flex flex-col items-center text-center" >
+                              <Link
+                                href={resolveCategoryNavHref([category.category_slug], category._id, 0)}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  if (hideTimeout.current) {
+                                    clearTimeout(hideTimeout.current);
+                                    hideTimeout.current = null;
+                                  }
+                                  setHoveredCategory(null);
+                                  setActiveSubCategory(null);
+                                  handleCategoryClick(
+                                    category.category_slug,
+                                    category.category_name,
+                                    category._id
+                                  );
+                                }}
+                                style={{ color: navbarTextColorStyle }}
+                                className={`inline-block origin-center text-sm font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap ${isHovered ? "!scale-105 text-amber-300" : ""}`}
+                              >
+                                {entry.label}
+                              </Link>
+                            </div>
+                          </SwiperSlide>
+                        );
+                      })}
+                    </Swiper>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Right: Zero Downpayment Highlight Offer (Modern mode) */}
+            {isModern && (
+              <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-amber-400 shrink-0 ml-auto pl-4">
+                <HiOutlineShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="tracking-wider uppercase text-[11px] font-extrabold whitespace-nowrap">
+                  {navbarSettings?.zeroDownpaymentText || "ZERO DOWNPAYMENT AVAILABLE"}
+                </span>
+              </div>
+            )}
           </div>
-          {/* Right: Zero Downpayment Highlight Offer (Modern mode) */}
-          {isModern && (
-            <div className="hidden xl:flex items-center gap-2 pr-2 text-xs font-bold text-amber-400 shrink-0 ml-auto pl-4">
-              <HiOutlineShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
-              <span className="tracking-wider uppercase text-[11px] font-extrabold whitespace-nowrap">
-                {navbarSettings?.zeroDownpaymentText || "ZERO DOWNPAYMENT AVAILABLE"}
-              </span>
-            </div>
-          )}
         </div>
 
         {hoveredCategory && hoveredCategory.subcategories?.length > 0 && (() => {
