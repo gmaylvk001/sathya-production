@@ -5,6 +5,7 @@ import { Icon } from "@iconify/react";
 import { getDiscountInfo } from "@/lib/discountHelper";
 import { useRegion } from "@/context/RegionContext";
 import { useFilteredStores } from "@/hooks/useFilteredStores";
+import AvailableInStoreNotice from "@/components/product/AvailableInStoreNotice";
 
 export default function ProductDetailClient({ product }) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -151,11 +152,7 @@ export default function ProductDetailClient({ product }) {
         </button>
       );
     }
-    return (
-      <button className="w-full bg-slate-200 text-slate-500 py-4 rounded-xl font-bold text-lg cursor-not-allowed">
-        Out of Stock
-      </button>
-    );
+    return <AvailableInStoreNotice variant="panel" />;
   };
 
   return (

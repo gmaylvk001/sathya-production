@@ -12,6 +12,7 @@ import { isUniletProduct, isKarnatakaPincode } from "@/lib/regionHelper";
 import { isMovementAllowed as checkMovementAllowed } from "@/lib/addCartConfig";
 import { getAllEmiPlans, getStartingEmi } from "@/lib/emiCalculator";
 import ProductAddtoCart from "@/components/ProductAddtoCart";
+import AvailableInStoreNotice from "@/components/product/AvailableInStoreNotice";
 import LowStockEnquiryPopup, {
   ENQUIRY_VARIANT_NORMAL,
   ENQUIRY_VARIANT_CUSORDER,
@@ -638,6 +639,10 @@ export default function DealOfTheDaySection({ config }) {
             </div>
 
             {/* CTAs */}
+            {!isInStock ? (
+              <AvailableInStoreNotice variant="panel" className="mt-4" />
+            ) : (
+              <>
             <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:items-stretch">
               <button
                 type="button"
@@ -673,6 +678,8 @@ export default function DealOfTheDaySection({ config }) {
                 Sold out online — available in store.
               </p>
             ) : null}
+              </>
+            )}
           </div>
         </div>
       </div>

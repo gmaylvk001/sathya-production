@@ -15,6 +15,7 @@ import CardOfferCategorySection from "@/components/cardOffers/CardOfferCategoryS
 import SuperOfferContactSection from "@/components/superOffers/SuperOfferContactSection";
 import { getDiscountInfo } from "@/lib/discountHelper";
 import PriceBlock from "@/components/product/PriceBlock";
+import AvailableInStoreNotice, { isProductOutOfStock } from "@/components/product/AvailableInStoreNotice";
 
 const STATE_ALIASES = {
   kerala: ["kerala", "kl"],
@@ -217,8 +218,7 @@ function SuperOfferProductCard({ product, brandMap }) {
       <PriceBlock price={displayPrice} mrp={price} priceClass="text-base sm:text-lg" />
 
       <div className="text-[11px] font-medium mb-3">
-        {product.stock_status === "In Stock" ||
-          (product.quantity && product.quantity > 0) ? (
+        {!isProductOutOfStock(product, { requireExplicitInStock: true }) ? (
           <span className="text-green-600 font-semibold">In Stock</span>
         ) : (
           <span className="text-red-500 font-semibold">Out of Stock</span>
@@ -226,15 +226,19 @@ function SuperOfferProductCard({ product, brandMap }) {
       </div>
 
       <div className="mt-auto pt-2 border-t border-gray-100 flex items-center">
-        <Addtocart
-          productId={product._id}
-          stockQuantity={product.quantity || 1}
-          special_price={product.special_price}
-          movement={product.movement}
-          productName={product.name}
-          productSlug={product.slug}
-          className="w-full text-xs sm:text-sm py-2 rounded-lg"
-        />
+        {isProductOutOfStock(product, { requireExplicitInStock: true }) ? (
+          <AvailableInStoreNotice variant="card" />
+        ) : (
+          <Addtocart
+            productId={product._id}
+            stockQuantity={product.quantity ?? 1}
+            special_price={product.special_price}
+            movement={product.movement}
+            productName={product.name}
+            productSlug={product.slug}
+            className="w-full text-xs sm:text-sm py-2 rounded-lg"
+          />
+        )}
       </div>
     </div>
   );

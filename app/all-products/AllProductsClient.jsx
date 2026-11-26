@@ -29,6 +29,7 @@ import { toast } from "react-toastify";
 import { v4 as uuidv4 } from "uuid";
 import { useRegion } from "@/context/RegionContext";
 import { readStoredSession } from "@/lib/clientAuthSession";
+import AvailableInStoreNotice from "@/components/product/AvailableInStoreNotice";
 
 // Preset price ranges
 const PRICE_PRESETS = [
@@ -1427,31 +1428,32 @@ export default function AllProductsClient() {
                         {/* + ADD TO COMPARE Button */}
                         <ProductCompareButton product={product} />
 
-                        {/* Red BUY NOW Button with Cart Icon */}
-                        <button
-                          onClick={() => handleBuyNow(product)}
-                          disabled={!product.inStock || isAdding}
-                          className={`w-full font-bold py-2.5 px-5 rounded shadow-sm text-xs sm:text-sm uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 ${!product.inStock
-                            ? "bg-gray-300 text-gray-500 cursor-not-allowed"
-                            : isAdding
-                              ? "bg-red-700 text-white opacity-80 cursor-wait"
-                              : "bg-[#d72828] hover:bg-red-700 active:scale-95 text-white"
+                        {/* Red BUY NOW Button with Cart Icon / Available in Store */}
+                        {product.inStock ? (
+                          <button
+                            onClick={() => handleBuyNow(product)}
+                            disabled={isAdding}
+                            className={`w-full font-bold py-2.5 px-5 rounded shadow-sm text-xs sm:text-sm uppercase tracking-wider transition-all duration-200 flex items-center justify-center gap-2 ${
+                              isAdding
+                                ? "bg-red-700 text-white opacity-80 cursor-wait"
+                                : "bg-[#d72828] hover:bg-red-700 active:scale-95 text-white"
                             }`}
-                        >
-                          {isAdding ? (
-                            <>
-                              <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              <span>BUYING...</span>
-                            </>
-                          ) : !product.inStock ? (
-                            <span>OUT OF STOCK</span>
-                          ) : (
-                            <>
-                              <FaShoppingCart className="text-white text-sm shrink-0" />
-                              <span>BUY NOW</span>
-                            </>
-                          )}
-                        </button>
+                          >
+                            {isAdding ? (
+                              <>
+                                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                <span>BUYING...</span>
+                              </>
+                            ) : (
+                              <>
+                                <FaShoppingCart className="text-white text-sm shrink-0" />
+                                <span>BUY NOW</span>
+                              </>
+                            )}
+                          </button>
+                        ) : (
+                          <AvailableInStoreNotice variant="compact" />
+                        )}
                       </div>
                     </div>
                   );

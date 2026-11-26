@@ -14,6 +14,7 @@ import { useHeaderdetails } from "@/context/HeaderContext";
 import { trackAddToCart, ga4AddToCart } from "@/utils/nextjs-event-tracking";
 import { ADD_CART_ALLOWED_MOVEMENTS, isMovementAllowed } from "@/lib/addCartConfig";
 import OpenBoxPopup from "@/components/OpenBoxPopup";
+import AvailableInStoreNotice from "@/components/product/AvailableInStoreNotice";
 
 import { v4 as uuidv4 } from "uuid";
 import { useRegion } from "@/context/RegionContext";
@@ -278,6 +279,10 @@ const AddToCartButton = ({
     }
   };
   const sizeClass = className || "w-full min-[1400px]:w-[185px]";
+
+  if (isOutOfStock) {
+    return <AvailableInStoreNotice variant="card" />;
+  }
 
   return (
     <>

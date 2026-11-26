@@ -14,6 +14,7 @@ import LowestPriceBadge from "@/components/product/LowestPriceBadge";
 import { getBestPriceData } from "@/lib/offers/bestPriceUtils";
 import { BankOffersModal } from "@/components/ProductOffersSection";
 import { isMovementAllowed as checkMovementAllowed } from "@/lib/addCartConfig";
+import AvailableInStoreNotice from "@/components/product/AvailableInStoreNotice";
 
 export default function ProductCard({
   product,
@@ -249,7 +250,9 @@ export default function ProductCard({
           className={`mt-auto ${compactMobile ? "pt-1.5 sm:pt-2 gap-1.5 sm:gap-2" : "pt-2 gap-2"
             } border-t border-gray-100 flex flex-col`}
         >
-          {isStoreOnly ? (
+          {isOutOfStock ? (
+            <AvailableInStoreNotice variant="card" />
+          ) : isStoreOnly ? (
             <button
               type="button"
               disabled

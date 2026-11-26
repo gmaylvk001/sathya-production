@@ -20,6 +20,7 @@ import {
 } from "@/lib/filterGroupDefaults";
 import { getDiscountInfo } from "@/lib/discountHelper";
 import PriceBlock from "@/components/product/PriceBlock";
+import AvailableInStoreNotice, { isProductOutOfStock } from "@/components/product/AvailableInStoreNotice";
 
 const OPEN_BOX_FEATURES = [
   {
@@ -744,15 +745,19 @@ export default function OpenBoxPage() {
 
                 {/* Buttons */}
                 <div className="mt-auto flex items-center justify-between gap-2">
-                  <Addtocart
-                    productId={product._id}
-                    stockQuantity={product.quantity}
-                    special_price={product.special_price}
-                    className="w-full text-xs sm:text-sm py-1.5"
-                    movement={product.movement}
-                    productName={product.name}
-                    productSlug={product.slug}
-                  />
+                  {isProductOutOfStock(product) ? (
+                    <AvailableInStoreNotice variant="card" />
+                  ) : (
+                    <Addtocart
+                      productId={product._id}
+                      stockQuantity={product.quantity}
+                      special_price={product.special_price}
+                      className="w-full text-xs sm:text-sm py-1.5"
+                      movement={product.movement}
+                      productName={product.name}
+                      productSlug={product.slug}
+                    />
+                  )}
                   {/* <button
                     type="button"
                     onClick={() => handleShare(product)}
@@ -1674,15 +1679,19 @@ export default function OpenBoxPage() {
                       </div>
                       {/* Buttons */}
                       <div className="mt-auto flex items-center justify-between gap-2">
-                        <Addtocart
-                          productId={product._id}
-                          stockQuantity={product.quantity}
-                          special_price={product.special_price}
-                          className="w-full text-xs sm:text-sm py-1.5"
-                          movement={product.movement}
-                          productName={product.name}
-                          productSlug={product.slug}
-                        />
+                        {isProductOutOfStock(product) ? (
+                          <AvailableInStoreNotice variant="card" />
+                        ) : (
+                          <Addtocart
+                            productId={product._id}
+                            stockQuantity={product.quantity}
+                            special_price={product.special_price}
+                            className="w-full text-xs sm:text-sm py-1.5"
+                            movement={product.movement}
+                            productName={product.name}
+                            productSlug={product.slug}
+                          />
+                        )}
                         {/* <button
                           type="button"
                           onClick={() => handleShare(product)}

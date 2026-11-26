@@ -25,7 +25,8 @@ import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { FaStore, FaPhoneAlt } from "react-icons/fa";
 import { FaShield } from "react-icons/fa6";
-import { FaShoppingCart, FaHeart, FaShareAlt, FaRupeeSign, FaCartPlus, FaBell } from "react-icons/fa";
+import { FaShoppingCart, FaHeart, FaShareAlt, FaRupeeSign, FaCartPlus } from "react-icons/fa";
+import AvailableInStoreNotice from "@/components/product/AvailableInStoreNotice";
 import { isOpenBoxEligible, CLEARANCE_PHONE } from "@/lib/openBoxHelper";
 import { FiShoppingCart } from "react-icons/fi";
 import { TbTruckDelivery } from "react-icons/tb";
@@ -361,7 +362,6 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
   const [selectedWarrantyAmount, setSelectedWarrantyAmount] = useState(0);
   const [showNoWarrantyModal, setShowNoWarrantyModal] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [notifyMeSuccess, setNotifyMeSuccess] = useState(false);
   const [faqs, setFaqs] = useState([]);
   const [recentlyViewedProducts, setRecentlyViewedProducts] = useState([]);
   const [isDesktop, setIsDesktop] = useState(false);
@@ -1786,10 +1786,6 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
 
   const isOpenBox = isOpenBoxEligible(product);
 
-  const handleNotifyMe = (e) => {
-    if (e && typeof e.preventDefault === "function") e.preventDefault();
-    setNotifyMeSuccess(true);
-  };
 
   const scrollToRelatedProducts = (e) => {
     if (e && typeof e.preventDefault === "function") e.preventDefault();
@@ -2070,24 +2066,7 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
 
               {!isInStock && (
                 <div className="flex flex-col gap-2">
-                  <div className="w-full bg-gray-200 text-gray-700 font-bold py-2.5 rounded-lg flex items-center justify-center text-xs uppercase tracking-wider cursor-not-allowed border border-gray-300 select-none">
-                    Currently Out of Stock
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleNotifyMe}
-                      disabled={notifyMeSuccess}
-                      className={`w-full font-bold py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 text-xs uppercase tracking-wider transition-all cursor-pointer ${
-                        notifyMeSuccess
-                          ? "bg-emerald-600 text-white cursor-default"
-                          : "bg-[#f59e0b] hover:bg-[#d97706] text-white shadow-sm active:scale-95"
-                      }`}
-                    >
-                      <FaBell className="w-3.5 h-3.5" />
-                      {notifyMeSuccess ? "Notified ✓" : "Notify Me"}
-                    </button>
-                  </div>
+                  <AvailableInStoreNotice variant="panel" />
                   <button
                     type="button"
                     onClick={scrollToRelatedProducts}
@@ -2377,7 +2356,7 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
           )}
 
           {/* 8. Add Selected to Cart */}
-          {(selectedRelatedProducts.length > 0 || selectedFrequentProducts.length > 0) && (
+          {isInStock && (selectedRelatedProducts.length > 0 || selectedFrequentProducts.length > 0) && (
             <div className="mt-4 sticky bottom-0 bg-white border-t border-gray-200 pt-3 pb-3 z-10">
               {(selectedRelatedProducts.length > 0 || selectedFrequentProducts.length > 0) && (
                 <div className="w-full bg-[#d72828] text-white font-semibold py-2 rounded-md flex items-center justify-between px-4 mb-2">
@@ -2956,27 +2935,9 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
                           )}
                         </>
                     ) : (
-                      /* Out of Stock CTAs (Modern Croma/Flipkart e-commerce pattern) */
+                      /* Out of Stock Notice */
                       <div className="flex flex-col gap-2 pt-0.5">
-                        {/* Currently Out of Stock grey badge */}
-                        <div className="w-full bg-gray-200 text-gray-700 font-extrabold py-3 rounded-lg flex items-center justify-center gap-2 text-xs uppercase tracking-wider cursor-not-allowed select-none border border-gray-300">
-                          Currently Out of Stock
-                        </div>
-
-                        {/* 🔔 Notify Me When Available Button */}
-                        <button
-                          type="button"
-                          onClick={handleNotifyMe}
-                          disabled={notifyMeSuccess}
-                          className={`w-full font-bold py-2.5 px-3 rounded-lg flex items-center justify-center gap-2 text-xs uppercase tracking-wider transition-all cursor-pointer ${
-                            notifyMeSuccess
-                              ? "bg-emerald-600 text-white cursor-default"
-                              : "bg-[#f59e0b] hover:bg-[#d97706] text-white shadow-sm active:scale-95"
-                          }`}
-                        >
-                          <FaBell className="w-3.5 h-3.5" />
-                          {notifyMeSuccess ? "Notification Registered ✓" : "Notify Me When Available"}
-                        </button>
+                        <AvailableInStoreNotice variant="panel" />
 
                         {/* View Similar Products Smooth Scroll Button */}
                         <button
