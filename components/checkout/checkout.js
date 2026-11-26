@@ -561,7 +561,6 @@ const StorePickupSelector = ({
 // ─── Delivery Type Component ─────────────────────────────────────────────────
 const DeliveryOptions = ({
   formData, handleChange,
-  isDeliverySaved, setIsDeliverySaved,
   stores, nearestStores, setNearestStores,
   selectedPickupStore, setSelectedPickupStore,
   cartItems,
@@ -705,69 +704,24 @@ const DeliveryOptions = ({
           stores={stores}
           selectedStore={formData.selectedStore}
           onChange={handleChange}
-          disabled={isDeliverySaved}
         />
       )}
 
-      {/* Save and Continue */}
-      {!isDeliverySaved && (
-        <>
-          <button
-            type="button"
-            onClick={() => {
-              if (uniletDeliveryBlocked) {
-                setPincodeError(UNILET_RESTRICTION_MESSAGE);
-                toast.error(UNILET_RESTRICTION_MESSAGE);
-                return;
-              }
-              if (formData.deliveryType === 'store' && !formData.selectedStore) {
-                toast.error('Please select a pickup store');
-                return;
-              }
-              if (hasPincodeMismatch) {
-                setPincodeError(
-                  `Delivery pincode (${normDeliveryPin}) does not match your selected location pincode (${normHeaderPin}). Please change the shipping address or update the location pincode at the top.`
-                );
-                return;
-              }
-              setPincodeError('');
-              toast.success('Delivery method saved');
-              setIsDeliverySaved(true);
-              if (typeof window !== 'undefined') {
-                setTimeout(() => {
-                  const el = document.getElementById('payment-method-section');
-                  if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                  }
-                }, 100);
-              }
-            }}
-            className="mt-4 bg-red-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-red-700 transition cursor-pointer"
-          >
-            Save and continue
-          </button>
-          {uniletDeliveryBlocked && (
-            <div role="alert" className="mt-3 p-3.5 rounded-lg border border-red-300 bg-red-50 text-sm text-red-700 font-medium flex items-start gap-2 shadow-xs">
-              <span className="text-red-600 font-bold text-base leading-none">⚠️</span>
-              <span>{UNILET_RESTRICTION_MESSAGE}</span>
-            </div>
-          )}
-          {pincodeError && !uniletDeliveryBlocked && (
-            <div role="alert" className="mt-3 p-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-700">
-              {pincodeError}
-            </div>
-          )}
-        </>
+      {uniletDeliveryBlocked && (
+        <div role="alert" className="mt-3 p-3.5 rounded-lg border border-red-300 bg-red-50 text-sm text-red-700 font-medium flex items-start gap-2 shadow-xs">
+          <span className="text-red-600 font-bold text-base leading-none">⚠️</span>
+          <span>{UNILET_RESTRICTION_MESSAGE}</span>
+        </div>
       )}
-
-      {isDeliverySaved && (
-        <button
-          type="button"
-          onClick={() => setIsDeliverySaved(false)}
-          className="mt-3 text-sm text-red-600 underline hover:text-red-700"
-        >
-          Change delivery method
-        </button>
+      {pincodeError && !uniletDeliveryBlocked && (
+        <div role="alert" className="mt-3 p-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-700">
+          {pincodeError}
+        </div>
+      )}
+      {hasPincodeMismatch && !pincodeError && !uniletDeliveryBlocked && (
+        <div role="alert" className="mt-3 p-3 rounded-lg border border-red-200 bg-red-50 text-sm text-red-700">
+          {`Delivery pincode (${normDeliveryPin}) does not match your selected location pincode (${normHeaderPin}). Please change the shipping address or update the location pincode at the top.`}
+        </div>
       )}
     </div>
   );
@@ -1203,7 +1157,6 @@ export default function CheckoutPage() {
     needGstInvoice: false, gst_number: '',
   });
 
-  const [isDeliverySaved, setIsDeliverySaved] = useState(false);
   const [useraddress, setUseraddress] = useState([]);
   const [selectedAddress, setSelectedAddress] = useState(null);
   const [useSavedAddress, setUseSavedAddress] = useState(false);
@@ -1468,11 +1421,9 @@ export default function CheckoutPage() {
     normDeliveryPin !== normHeaderPin
   );
 
-  useEffect(() => {
-    if ((hasPincodeMismatch || uniletDeliveryBlocked) && isDeliverySaved) {
-      setIsDeliverySaved(false);
-    }
-  }, [hasPincodeMismatch, uniletDeliveryBlocked, isDeliverySaved]);
+  const isDeliveryReady =
+    Boolean(shippingAddressId) &&
+    (formData.deliveryType !== 'store' || Boolean(formData.selectedStore));
 
   const resolveCartProductId = (item) => {
     const raw =
@@ -2056,12 +2007,21 @@ export default function CheckoutPage() {
         return;
       }
 
+      if (formData.deliveryType === 'store' && !formData.selectedStore) {
+        toast.error('Please select a pickup store before continuing to payment.');
+        return;
+      }
+
       if (!shippingAddress) {
-        toast.error('Please select a shipping address.');
+        toast.error(
+          formData.deliveryType === 'store'
+            ? 'Please select or add an address before continuing to payment.'
+            : 'Please select a shipping address before continuing to payment.'
+        );
         return;
       }
       if (!billingAddress) {
-        toast.error('Please select a billing address.');
+        toast.error('Please select a billing address before continuing to payment.');
         return;
       }
 
@@ -2072,15 +2032,9 @@ export default function CheckoutPage() {
         return;
       }
 
-      if (formData.deliveryType === 'store') {
-        if (!formData.selectedStore) {
-          toast.error('Please select a store.');
-          return;
-        }
-        if (!formData.phonenumber) {
-          toast.error('Please provide your phone number.');
-          return;
-        }
+      if (formData.deliveryType === 'store' && !formData.phonenumber && !shippingAddress?.phonenumber) {
+        toast.error('Please provide your phone number.');
+        return;
       }
 
       if (formData.needGstInvoice && !formData.gst_number?.trim()) {
@@ -2471,8 +2425,8 @@ export default function CheckoutPage() {
               Contact & Delivery
             </span>
             <span className="text-gray-300">→</span>
-            <span className={isDeliverySaved ? "text-[#d72828] flex items-center gap-1.5" : "flex items-center gap-1.5"}>
-              <span className={`w-5 h-5 rounded-full ${isDeliverySaved ? 'bg-[#d72828] text-white' : 'bg-gray-200 text-gray-600'} flex items-center justify-center text-[10px]`}>2</span>
+            <span className={isDeliveryReady ? "text-[#d72828] flex items-center gap-1.5" : "flex items-center gap-1.5"}>
+              <span className={`w-5 h-5 rounded-full ${isDeliveryReady ? 'bg-[#d72828] text-white' : 'bg-gray-200 text-gray-600'} flex items-center justify-center text-[10px]`}>2</span>
               Method
             </span>
             <span className="text-gray-300">→</span>
@@ -2525,8 +2479,6 @@ export default function CheckoutPage() {
               <DeliveryOptions
                 formData={formData}
                 handleChange={handleChange}
-                isDeliverySaved={isDeliverySaved}
-                setIsDeliverySaved={setIsDeliverySaved}
                 stores={pickupStores}
                 nearestStores={nearestStores}
                 setNearestStores={setNearestStores}
@@ -2648,49 +2600,33 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {/* Mobile-only Action Container right below Address Box when saved */}
-              {isDeliverySaved && (
-                <div className="lg:hidden mt-4 p-4 rounded-xl border border-green-200 bg-gradient-to-r from-green-50/90 to-emerald-50/90 shadow-xs flex flex-col gap-2.5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-green-800 text-xs sm:text-sm font-bold">
-                      <span className="w-5 h-5 rounded-full bg-green-600 text-white flex items-center justify-center text-xs">✓</span>
-                      <span>Delivery details confirmed</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsDeliverySaved(false)}
-                      className="text-xs text-gray-500 hover:text-red-600 underline font-medium cursor-pointer"
-                    >
-                      Change
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleSubmit}
-                    disabled={isSubmitting || loading || cartItems.length === 0 || !isDeliverySaved || checkoutOrderBlocked || hasPincodeMismatch || uniletDeliveryBlocked}
-                    className={`w-full h-11 rounded-lg text-sm font-extrabold flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98] cursor-pointer ${
-                      isSubmitting || loading || cartItems.length === 0 || !isDeliverySaved || checkoutOrderBlocked || hasPincodeMismatch || uniletDeliveryBlocked
-                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
-                        : 'bg-[#d72828] text-white hover:bg-red-700'
-                    }`}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        <span>Processing…</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>Proceed to Payment (₹{finalTotal.toLocaleString('en-IN')})</span>
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                        </svg>
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
-
+              {/* Mobile-only quick payment CTA under address */}
+              <div className="lg:hidden mt-4">
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting || loading || cartItems.length === 0 || checkoutOrderBlocked || hasPincodeMismatch || uniletDeliveryBlocked}
+                  className={`w-full h-11 rounded-lg text-sm font-extrabold flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98] cursor-pointer ${
+                    isSubmitting || loading || cartItems.length === 0 || checkoutOrderBlocked || hasPincodeMismatch || uniletDeliveryBlocked
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
+                      : 'bg-[#d72828] text-white hover:bg-red-700'
+                  }`}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Processing…</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Continue to payment (₹{finalTotal.toLocaleString('en-IN')})</span>
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </>
+                  )}
+                </button>
+              </div>
 
               {/* GST invoice (optional) — after delivery address inputs */}
               <div className="mt-4">
@@ -3200,9 +3136,9 @@ export default function CheckoutPage() {
                 )}
                 <button
                   onClick={handleSubmit}
-                  disabled={isSubmitting || loading || cartItems.length === 0 || !isDeliverySaved || hasPincodeMismatch || checkoutOrderBlocked || uniletDeliveryBlocked}
+                  disabled={isSubmitting || loading || cartItems.length === 0 || hasPincodeMismatch || checkoutOrderBlocked || uniletDeliveryBlocked}
                   className={`w-full h-12 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all
-                    ${isSubmitting || loading || cartItems.length === 0 || !isDeliverySaved || hasPincodeMismatch || checkoutOrderBlocked || uniletDeliveryBlocked
+                    ${isSubmitting || loading || cartItems.length === 0 || hasPincodeMismatch || checkoutOrderBlocked || uniletDeliveryBlocked
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-red-600 text-white hover:bg-red-700 active:scale-[0.98]'}`}
                 >
@@ -3301,48 +3237,30 @@ export default function CheckoutPage() {
             </p>
           </div>
 
-          {!isDeliverySaved ? (
-            <button
-              type="button"
-              onClick={() => {
-                const el = document.getElementById('delivery-options-section');
-                if (el) {
-                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-              }}
-              className="flex-1 max-w-[220px] h-11 rounded-xl text-xs sm:text-sm font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-md flex items-center justify-center gap-1.5 transition-all active:scale-[0.98] cursor-pointer"
-            >
-              <span>Save Address to Pay</span>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={isSubmitting || loading || cartItems.length === 0 || checkoutOrderBlocked || hasPincodeMismatch || uniletDeliveryBlocked}
-              className={`flex-1 max-w-[240px] h-11 rounded-xl text-sm font-extrabold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] cursor-pointer ${
-                isSubmitting || loading || cartItems.length === 0 || checkoutOrderBlocked || hasPincodeMismatch || uniletDeliveryBlocked
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
-                  : 'bg-[#d72828] text-white hover:bg-red-700 shadow-red-500/25'
-              }`}
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Processing…</span>
-                </>
-              ) : (
-                <>
-                  <span>Proceed to Payment</span>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </>
-              )}
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={isSubmitting || loading || cartItems.length === 0 || checkoutOrderBlocked || hasPincodeMismatch || uniletDeliveryBlocked}
+            className={`flex-1 max-w-[240px] h-11 rounded-xl text-sm font-extrabold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] cursor-pointer ${
+              isSubmitting || loading || cartItems.length === 0 || checkoutOrderBlocked || hasPincodeMismatch || uniletDeliveryBlocked
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
+                : 'bg-[#d72828] text-white hover:bg-red-700 shadow-red-500/25'
+            }`}
+          >
+            {isSubmitting ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Processing…</span>
+              </>
+            ) : (
+              <>
+                <span>Continue to payment</span>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+              </>
+            )}
+          </button>
         </div>
       </div>
 
