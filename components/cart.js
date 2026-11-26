@@ -12,6 +12,7 @@ import { MdSecurity, MdLoop, MdVerified, MdCardMembership, MdLocalShipping, MdLo
 import { useWishlist } from '@/context/WishlistContext';
 import ProductAddtoCart from "@/components/ProductAddtoCart";
 import CartItemRow, { getItemId } from "@/components/cart/CartItemRow";
+import CartRecommendations from "@/components/cart/CartRecommendations";
 import { getDiscountInfo } from "@/lib/discountHelper";
 
 
@@ -446,7 +447,7 @@ export default function CartComponent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const { cartCount, updateCartCount } = useCart();
-  const { region, isInitialized } = useRegion();
+  const { region, isInitialized, pincode, userLocation } = useRegion();
   const { updateWishlist } = useWishlist();
 
   // Modal states
@@ -1795,7 +1796,7 @@ return (
       {/* Main Grid: Left Cart List + Right Price Details */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] xl:grid-cols-[1fr_400px] gap-6 items-start">
         {/* LEFT COLUMN: Cart items & Coupons */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 min-w-0">
           {/* Cart Item Cards Header */}
           <div className="flex items-center justify-between bg-white px-5 py-4 rounded-xl border border-gray-200/80 shadow-2xs">
             <h1 className="text-lg sm:text-xl font-bold text-gray-900 flex items-center gap-2">
@@ -1857,6 +1858,19 @@ return (
               );
             })}
           </div>
+
+          {/* Cart-based Recommended Products */}
+          <CartRecommendations
+            cartItems={cartData.items}
+            region={region}
+            pincode={pincode}
+            userLocation={userLocation}
+            onAddedToCart={() => fetchCartData({ silent: true })}
+            onError={(msg) => {
+              setErrorMessage(msg);
+              setShowErrorModal(true);
+            }}
+          />
 
           {/* Active Offers & Coupons Banner (Hidden/Commented Out) */}
           {/*
