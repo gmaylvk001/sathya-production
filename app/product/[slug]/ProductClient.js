@@ -27,6 +27,11 @@ import { FaStore, FaPhoneAlt } from "react-icons/fa";
 import { FaShield } from "react-icons/fa6";
 import { FaShoppingCart, FaHeart, FaShareAlt, FaRupeeSign, FaCartPlus } from "react-icons/fa";
 import AvailableInStoreNotice from "@/components/product/AvailableInStoreNotice";
+import {
+  ThumbnailStrip,
+  PdpLightboxModal,
+  filterValidProductImages,
+} from "@/components/product/PdpGalleryWidgets";
 import { isOpenBoxEligible, CLEARANCE_PHONE } from "@/lib/openBoxHelper";
 import { FiShoppingCart } from "react-icons/fi";
 import { TbTruckDelivery } from "react-icons/tb";
@@ -128,100 +133,6 @@ function FlixMinisiteSlot() {
         __html: '<div id="flix-minisite" class="flix-minisite-container w-full"></div>',
       }}
     />
-  );
-}
-
-function ThumbnailStrip({ images, selectedImageIndex, onSelect, resolveImagePath, onError }) {
-  const stripRef = useRef(null);
-  const [scroll, setScroll] = useState({ left: false, right: false });
-
-  const updateScroll = useCallback(() => {
-    const el = stripRef.current;
-    if (!el) return;
-    // Hidden layout (mobile/desktop twin) has no width — don't measure or scroll it.
-    if (el.clientWidth === 0) {
-      setScroll({ left: false, right: false });
-      return;
-    }
-    setScroll({
-      left: el.scrollLeft > 2,
-      right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2,
-    });
-  }, []);
-
-  useEffect(() => {
-    updateScroll();
-    window.addEventListener("resize", updateScroll);
-    return () => window.removeEventListener("resize", updateScroll);
-  }, [images, updateScroll]);
-
-  useEffect(() => {
-    const el = stripRef.current;
-    const thumb = el?.children?.[selectedImageIndex];
-    if (!el || !thumb || el.clientWidth === 0) return;
-    const thumbLeft = thumb.offsetLeft;
-    if (thumbLeft < el.scrollLeft) {
-      el.scrollTo({ left: thumbLeft - 4, behavior: "smooth" });
-    } else if (thumbLeft + thumb.offsetWidth > el.scrollLeft + el.clientWidth) {
-      el.scrollTo({ left: thumbLeft + thumb.offsetWidth - el.clientWidth + 4, behavior: "smooth" });
-    }
-  }, [selectedImageIndex]);
-
-  const scrollBy = (direction) => {
-    const el = stripRef.current;
-    if (el) el.scrollBy({ left: direction * el.clientWidth * 0.8, behavior: "smooth" });
-  };
-
-  const validImages = (images || []).filter(
-    (img) => img && typeof img === "string" && img.trim() !== ""
-  );
-  if (!validImages.length) return null;
-
-  const arrowClass =
-    "flex-shrink-0 w-6 h-14 sm:w-7 sm:h-16 flex items-center justify-center rounded-md border border-gray-300 bg-white text-gray-600 shadow-sm hover:border-[#d72828] hover:text-[#d72828] transition-colors";
-
-  return (
-    <div className="relative flex items-center gap-1 w-full min-w-0 mt-3 lg:mt-0">
-      {scroll.left && (
-        <button type="button" aria-label="Previous images" onClick={() => scrollBy(-1)} className={arrowClass}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-      )}
-      <div
-        ref={stripRef}
-        onScroll={updateScroll}
-        className="relative flex flex-1 min-w-0 gap-2 overflow-x-auto p-1 scrollbar-hide scroll-smooth"
-      >
-        {validImages.map((image, index) => (
-          <button
-            type="button"
-            key={index}
-            onClick={() => onSelect(index)}
-            aria-label={`Show image ${index + 1}`}
-            className={`flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 rounded-lg bg-white p-1 border-2 transition-all duration-200 ${selectedImageIndex === index
-              ? "border-[#d72828] shadow-md"
-              : "border-gray-200 opacity-75 hover:opacity-100 hover:border-gray-400"
-              }`}
-          >
-            <img
-              src={resolveImagePath(image)}
-              alt={`Thumbnail ${index + 1}`}
-              className="w-full h-full object-contain"
-              onError={(e) => onError(e, image)}
-            />
-          </button>
-        ))}
-      </div>
-      {scroll.right && (
-        <button type="button" aria-label="Next images" onClick={() => scrollBy(1)} className={arrowClass}>
-          <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-      )}
-    </div>
   );
 }
 
@@ -1365,8 +1276,15 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
     if (!isInitialized) return;
     fetchFeaturedProducts();
   }, [product?._id, product?.category, product?.brand, globalRegion, isInitialized]);
-  // derived main image
-  const mainImage = (product?.images && product.images.length > 0 && product.images[selectedImageIndex]) ? product.images[selectedImageIndex] : "/uploads/products/placeholder.jpg";
+  // derived valid image list and active main image
+  const validProductImages = useMemo(
+    () => filterValidProductImages(product?.images),
+    [product?.images]
+  );
+  const mainImage =
+    validProductImages[selectedImageIndex] ||
+    validProductImages[0] ||
+    "/uploads/products/placeholder.jpg";
   const matchedBrandForManufacturer = (() => {
     if (!product?.brand || !Array.isArray(brand)) return null;
     const brandId =
@@ -1412,21 +1330,30 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
   );
 
   useEffect(() => {
+    setSelectedImageIndex(0);
+    setLightboxIndex(0);
+    setShowZoomLens(false);
+    lastPointerRef.current = null;
     if (product?.images?.[0]) {
-      // setSelectedImage(`/uploads/products/${product.images[0]}`);
       setSelectedImage(product.images[0]);
     }
   }, [product?._id]);
   const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0, visible: false });
   const imgRef = useRef(null);
+  const desktopImgRef = useRef(null);
   const [isZoomed, setIsZoomed] = useState(false);
   const zoomContainerRef = useRef(null);
+  const desktopZoomContainerRef = useRef(null);
+  const desktopGalleryWrapperRef = useRef(null);
+  const [zoomPanelHeight, setZoomPanelHeight] = useState(460);
+  const lastPointerRef = useRef(null);
   const [errorMessage, setErrorMessage] = useState("");     // <-- declare this
   const [showGoHome, setShowGoHome] = useState(false);
   const [showZoomLens, setShowZoomLens] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const zoomLensRef = useRef(null);
   const zoomResultRef = useRef(null);
+  const zoomImgRef = useRef(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [showReplacementModal, setShowReplacementModal] = useState(false);
   const [showWarrantyModal, setshowWarrantyModal] = useState(false);
@@ -1678,73 +1605,139 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
     }
   };
 
-  // Handle mouse movement for zoom lens
+  const updateZoomTransform = useCallback((clientX, clientY) => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) return;
+    const containerEl = desktopZoomContainerRef.current;
+    const imgEl = desktopImgRef.current;
+    const lensEl = zoomLensRef.current;
+    const resultEl = zoomResultRef.current;
+    const zoomImgEl = zoomImgRef.current;
+    if (!containerEl || !imgEl || !lensEl || !resultEl || !zoomImgEl) return;
+
+    const containerRect = containerEl.getBoundingClientRect();
+    const imgRect = imgEl.getBoundingClientRect();
+    const resultRect = resultEl.getBoundingClientRect();
+    if (!imgRect.width || !imgRect.height || !resultRect.width || !resultRect.height) return;
+
+    const natW = imgEl.naturalWidth || imgRect.width;
+    const natH = imgEl.naturalHeight || imgRect.height;
+    const natRatio = natW / natH;
+    const boxRatio = imgRect.width / imgRect.height;
+
+    let imgW = imgRect.width;
+    let imgH = imgRect.height;
+    if (natRatio > boxRatio) {
+      imgH = imgRect.width / natRatio;
+    } else {
+      imgW = imgRect.height * natRatio;
+    }
+
+    const imgLeft = (imgRect.left - containerRect.left) + (imgRect.width - imgW) / 2;
+    const imgTop = (imgRect.top - containerRect.top) + (imgRect.height - imgH) / 2;
+
+    const minFillScale = Math.max(resultRect.width / imgW, resultRect.height / imgH);
+    const scale = Math.max(
+      minFillScale,
+      Math.min(5, Math.max(3.6, minFillScale * 2.0))
+    );
+    const zoomImgW = imgW * scale;
+    const zoomImgH = imgH * scale;
+
+    const lensW = Math.max(80, Math.min(imgW, (resultRect.width / zoomImgW) * imgW));
+    const lensH = Math.max(60, Math.min(imgH, (resultRect.height / zoomImgH) * imgH));
+
+    const cursorRelX = clientX - containerRect.left - imgLeft;
+    const cursorRelY = clientY - containerRect.top - imgTop;
+    const maxLensX = Math.max(0, imgW - lensW);
+    const maxLensY = Math.max(0, imgH - lensH);
+    const clampedX = Math.max(0, Math.min(maxLensX, cursorRelX - lensW / 2));
+    const clampedY = Math.max(0, Math.min(maxLensY, cursorRelY - lensH / 2));
+
+    lensEl.style.width = `${lensW}px`;
+    lensEl.style.height = `${lensH}px`;
+    lensEl.style.transform = `translate3d(${imgLeft + clampedX}px, ${imgTop + clampedY}px, 0)`;
+
+    const panX =
+      maxLensX > 0
+        ? (clampedX / maxLensX) * Math.max(0, zoomImgW - resultRect.width)
+        : Math.max(0, zoomImgW - resultRect.width) / 2;
+    const panY =
+      maxLensY > 0
+        ? (clampedY / maxLensY) * Math.max(0, zoomImgH - resultRect.height)
+        : Math.max(0, zoomImgH - resultRect.height) / 2;
+
+    zoomImgEl.style.width = `${zoomImgW}px`;
+    zoomImgEl.style.height = `${zoomImgH}px`;
+    zoomImgEl.style.transform = `translate3d(${-panX}px, ${-panY}px, 0)`;
+  }, []);
+
+  useEffect(() => {
+    if (!showZoomLens || !lastPointerRef.current) return;
+    const rafId = requestAnimationFrame(() => {
+      if (lastPointerRef.current) {
+        updateZoomTransform(lastPointerRef.current.x, lastPointerRef.current.y);
+      }
+    });
+    return () => cancelAnimationFrame(rafId);
+  }, [showZoomLens, selectedImageIndex, zoomPanelHeight, updateZoomTransform]);
+
+  // Handle mouse movement for zoom lens (desktop lg+ only)
   const handleMouseMove = (e) => {
-    if (!imgRef.current || !zoomLensRef.current || !zoomResultRef.current) return;
-
-    const { left, top, width, height } = imgRef.current.getBoundingClientRect();
-    if (!width || !height) return;
-    const x = ((e.clientX - left) / width) * 100;
-    const y = ((e.clientY - top) / height) * 100;
-
-    // Keep position within bounds
-    const boundedX = Math.max(0, Math.min(100, x));
-    const boundedY = Math.max(0, Math.min(100, y));
-
-    // Direct DOM updates for silky smooth 60fps tracking without triggering React component re-renders
-    zoomLensRef.current.style.left = `calc(${boundedX}% - 75px)`;
-    zoomLensRef.current.style.top = `calc(${boundedY}% - 75px)`;
-    zoomResultRef.current.style.backgroundPosition = `${boundedX}% ${boundedY}%`;
+    if (typeof window !== "undefined" && window.innerWidth < 1024) return;
+    if (e.target && typeof e.target.closest === "function" && e.target.closest("button")) {
+      return;
+    }
+    lastPointerRef.current = { x: e.clientX, y: e.clientY };
+    if (!showZoomLens) {
+      setShowZoomLens(true);
+      return;
+    }
+    updateZoomTransform(e.clientX, e.clientY);
   };
 
-  const handleMouseEnter = () => {
+  const handleMouseEnter = (e) => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) return;
+    if (desktopGalleryWrapperRef.current) {
+      const rect = desktopGalleryWrapperRef.current.getBoundingClientRect();
+      const maxAllowed = Math.max(400, window.innerHeight - 135);
+      setZoomPanelHeight(Math.round(Math.min(Math.max(rect.height, 430), maxAllowed)));
+    }
+    if (e && typeof e.clientX === "number") {
+      lastPointerRef.current = { x: e.clientX, y: e.clientY };
+    }
     setShowZoomLens(true);
   };
 
   const handleMouseLeave = () => {
+    lastPointerRef.current = null;
     setShowZoomLens(false);
   };
 
-  const openLightbox = (index = 0) => {
-    if (product?.images && product.images.length > 0) {
-      setLightboxIndex(index);
-      setLightboxOpen(true);
-      setSelectedImage(product.images[index]);
-    }
+  const navigateMainImage = (direction, e) => {
+    if (e && typeof e.stopPropagation === "function") e.stopPropagation();
+    if (validProductImages.length <= 1) return;
+    const nextIndex =
+      direction === "prev"
+        ? (selectedImageIndex - 1 + validProductImages.length) % validProductImages.length
+        : (selectedImageIndex + 1) % validProductImages.length;
+    setSelectedImageIndex(nextIndex);
+    setLightboxIndex(nextIndex);
   };
 
+  const openLightbox = (index = selectedImageIndex) => {
+    if (validProductImages.length > 0) {
+      const safeIdx = Math.max(0, Math.min(index, validProductImages.length - 1));
+      setShowZoomLens(false);
+      setSelectedImageIndex(safeIdx);
+      setLightboxIndex(safeIdx);
+      setLightboxOpen(true);
+      setSelectedImage(validProductImages[safeIdx]);
+    }
+  };
 
   const closeLightbox = () => {
     setLightboxOpen(false);
   };
-
-  const navigateLightbox = (direction) => {
-    if (!product?.images || product.images.length === 0) return;
-
-    let newIndex;
-    if (direction === "prev") {
-      newIndex =
-        (selectedImageIndex - 1 + product.images.length) % product.images.length;
-    } else {
-      newIndex = (selectedImageIndex + 1) % product.images.length;
-    }
-
-    setSelectedImageIndex(newIndex);
-  };
-
-  // Handle keyboard events for lightbox
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (lightboxOpen) {
-        if (e.key === 'Escape') closeLightbox();
-        if (e.key === 'ArrowLeft') navigateLightbox('prev');
-        if (e.key === 'ArrowRight') navigateLightbox('next');
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [lightboxOpen, lightboxIndex]);
 
   if (loading) {
     return <ProductSkeleton />;
@@ -1836,10 +1829,34 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
               />
 
               <div
-                className="relative aspect-square w-full px-4"
-                onClick={() => openLightbox(0)}
+                className="relative aspect-square w-full px-4 cursor-pointer"
+                onClick={() => openLightbox(selectedImageIndex)}
                 ref={zoomContainerRef}
               >
+                {validProductImages.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="Previous image"
+                      onClick={(e) => navigateMainImage("prev", e)}
+                      className="absolute left-1.5 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/90 border border-gray-200 shadow flex items-center justify-center text-gray-700 hover:border-[#d72828] hover:text-[#d72828]"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Next image"
+                      onClick={(e) => navigateMainImage("next", e)}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 z-10 w-8 h-8 rounded-full bg-white/90 border border-gray-200 shadow flex items-center justify-center text-gray-700 hover:border-[#d72828] hover:text-[#d72828]"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </>
+                )}
                 <img
                   src={resolveImagePath(mainImage)}
                   alt={product?.name || "Product"}
@@ -1852,11 +1869,12 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
 
             {/* Thumbnails */}
             <ThumbnailStrip
-              images={product.images}
+              images={validProductImages}
               selectedImageIndex={selectedImageIndex}
               onSelect={setSelectedImageIndex}
               resolveImagePath={resolveImagePath}
               onError={handleImageErrorFallback}
+              className="mt-3"
             />
 
 
@@ -2410,8 +2428,11 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
         <div className="hidden lg:grid lg:grid-cols-12 lg:gap-6 items-stretch mt-2 w-full relative">
 
           {/* ==================== COLUMN 1: PRODUCT GALLERY (4 cols / ~33% width) ==================== */}
-          <div className="lg:col-span-4 min-w-0 self-stretch">
-            <div className="flex flex-col gap-3 sticky top-[118px] z-10">
+          <div className={`lg:col-span-4 min-w-0 self-stretch ${showZoomLens ? "relative z-40" : ""}`}>
+            <div
+              ref={desktopGalleryWrapperRef}
+              className={`flex flex-col gap-3 sticky top-[118px] ${showZoomLens ? "z-40" : "z-10"}`}
+            >
               {/* Main Image Container with Zoom */}
               <div className="border border-gray-300 rounded-lg p-2 bg-white relative">
                 <OfferRibbonBadge
@@ -2421,80 +2442,112 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
                 />
 
                 <div
-                  className="relative aspect-square w-full px-4 flex items-center justify-center cursor-pointer"
+                  className="relative aspect-square w-full px-4 flex items-center justify-center cursor-zoom-in"
                   onMouseMove={handleMouseMove}
                   onMouseEnter={handleMouseEnter}
                   onMouseLeave={handleMouseLeave}
-                  onClick={() => openLightbox(0)}
-                  ref={zoomContainerRef}
+                  onClick={() => openLightbox(selectedImageIndex)}
+                  ref={desktopZoomContainerRef}
                 >
+                  {validProductImages.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        aria-label="Previous image"
+                        onMouseEnter={() => setShowZoomLens(false)}
+                        onClick={(e) => navigateMainImage("prev", e)}
+                        className="absolute left-1.5 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-white/95 border border-gray-200 shadow-sm flex items-center justify-center text-gray-700 hover:border-[#d72828] hover:text-[#d72828] transition-all cursor-pointer"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label="Next image"
+                        onMouseEnter={() => setShowZoomLens(false)}
+                        onClick={(e) => navigateMainImage("next", e)}
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 z-30 w-8 h-8 rounded-full bg-white/95 border border-gray-200 shadow-sm flex items-center justify-center text-gray-700 hover:border-[#d72828] hover:text-[#d72828] transition-all cursor-pointer"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </>
+                  )}
                   <img
                     src={resolveImagePath(mainImage)}
                     alt={product?.name || "Product"}
-                    className="w-full h-full object-contain rounded-lg"
-                    ref={imgRef}
+                    className="w-full h-full object-contain rounded-lg select-none"
+                    ref={desktopImgRef}
                     onError={(e) => handleImageErrorFallback(e, mainImage)}
                   />
                   {showZoomLens && (
                     <div
-                      className="absolute border-2 border-white bg-white bg-opacity-30 pointer-events-none"
-                      style={{ width: '150px', height: '150px', left: 0, top: 0, borderRadius: '50%', transform: 'translateZ(0)', zIndex: 10 }}
+                      aria-hidden="true"
+                      className="hidden lg:block absolute top-0 left-0 pointer-events-none rounded-sm border border-sky-500/60 bg-sky-400/15 shadow-xs z-20"
+                      style={{
+                        width: "180px",
+                        height: "110px",
+                        transform: "translate3d(-9999px, -9999px, 0)",
+                        backgroundImage:
+                          "radial-gradient(rgba(14, 165, 233, 0.25) 1px, transparent 1px)",
+                        backgroundSize: "6px 6px",
+                        willChange: "transform",
+                      }}
                       ref={zoomLensRef}
                     />
                   )}
                 </div>
-                {showZoomLens && (
-                  <div
-                    className="absolute hidden md:block left-full ml-4 top-0 bg-no-repeat bg-white border rounded-lg overflow-hidden shadow-2xl"
-                    style={{
-                      backgroundImage: `url(${resolveImagePath(product?.images?.[selectedImageIndex])})`,
-                      backgroundSize: '200%',
-                      backgroundPosition: '50% 50%',
-                      zIndex: 30, height: '400px', width: '525px'
-                    }}
-                    ref={zoomResultRef}
-                  />
-                )}
               </div>
+
+              {/* Full Right-Layout Zoom Flyout Panel (covers Column 2 + Column 3 up to container right edge) */}
+              {showZoomLens && (
+                <div
+                  aria-hidden="true"
+                  className="hidden lg:block absolute top-0 left-[calc(100%+1.5rem)] w-[calc(200%+1.5rem)] bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden pointer-events-none z-50"
+                  style={{ height: `${zoomPanelHeight}px` }}
+                  ref={zoomResultRef}
+                >
+                  <img
+                    ref={zoomImgRef}
+                    src={resolveImagePath(mainImage)}
+                    alt=""
+                    className="max-w-none select-none pointer-events-none will-change-transform"
+                    onLoad={() => {
+                      if (lastPointerRef.current) {
+                        updateZoomTransform(lastPointerRef.current.x, lastPointerRef.current.y);
+                      }
+                    }}
+                    onError={(e) => handleImageErrorFallback(e, mainImage)}
+                  />
+                </div>
+              )}
 
               {/* Thumbnails Strip */}
               <ThumbnailStrip
-                images={product.images}
+                images={validProductImages}
                 selectedImageIndex={selectedImageIndex}
                 onSelect={setSelectedImageIndex}
                 resolveImagePath={resolveImagePath}
                 onError={handleImageErrorFallback}
               />
 
-
-
-              {/* Lightbox Modal */}
-              {lightboxOpen && (
-                <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-6 overflow-y-auto" onClick={closeLightbox}>
-                  <div className="relative bg-white rounded-lg shadow-2xl w-full max-w-md sm:max-w-2xl mx-auto flex flex-col items-center max-h-[80vh] sm:max-h-[70vh] p-3 sm:p-6 mt-[10rem] sm:mt-32" onClick={(e) => e.stopPropagation()}>
-                    <button className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 z-50" onClick={closeLightbox}>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                    <div className="relative w-full flex items-center justify-center">
-                      <img src={resolveImagePath(product?.images?.[selectedImageIndex])} alt={product?.name || "Product"} className="object-contain max-h-[60vh] sm:max-h-[50vh] w-full rounded-md" onError={(e) => handleImageErrorFallback(e, product?.images?.[selectedImageIndex])} />
-                    </div>
-                    <div className="w-full border-t border-gray-300 my-3"></div>
-                    {product.images && product.images.filter(img => img && typeof img === "string" && img.trim() !== '' && img.trim().toLowerCase() !== 'null').length > 0 && (
-                      <div className="flex justify-center flex-wrap gap-2 sm:gap-3">
-                        {product.images.filter(img => img && typeof img === "string" && img.trim() !== '' && img.trim().toLowerCase() !== 'null').map((image, index) => (
-                          <img key={index} src={resolveImagePath(image)} alt={`Thumbnail ${index + 1}`}
-                            className={`object-cover w-14 h-14 sm:w-16 sm:h-16 rounded-sm cursor-pointer hover:scale-105 ${selectedImageIndex === index ? 'ring-2 ring-red-500' : ''}`}
-                            onClick={() => setSelectedImageIndex(index)}
-                            onError={(e) => handleImageErrorFallback(e, image)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              {/* Viewport-Safe Lightbox Modal */}
+              <PdpLightboxModal
+                isOpen={lightboxOpen}
+                onClose={closeLightbox}
+                images={validProductImages}
+                selectedImageIndex={selectedImageIndex}
+                onSelect={(idx) => {
+                  setSelectedImageIndex(idx);
+                  setLightboxIndex(idx);
+                  if (validProductImages[idx]) setSelectedImage(validProductImages[idx]);
+                }}
+                productName={product?.name}
+                resolveImagePath={resolveImagePath}
+                onError={handleImageErrorFallback}
+              />
             </div>
           </div>
 
