@@ -57,6 +57,7 @@ export default function AddProductPage({ mode = "add", productData = null, produ
     meta_title: "",
     meta_description: "",
     overviewdescription: "",
+    returnPolicy: "",
     overviewImage: [null],
     overviewImageFile: [null],
     featured_products: [],
@@ -392,6 +393,7 @@ export default function AddProductPage({ mode = "add", productData = null, produ
         size: productData.size || "",
         movement: productData.movement || "",
         model_number: productData.model_number || "",
+        returnPolicy: productData.returnPolicy || "",
         chk_display_store_stock:
           Number(productData.chk_display_store_stock) === 1 ? 1 : 0,
         // FIX: Use overview_image from database
@@ -424,6 +426,7 @@ export default function AddProductPage({ mode = "add", productData = null, produ
       setProduct({
         ...initialProductData,
         brand_code: initialProductData.brand_code || "", // ensure brand_code defaults to empty string
+        returnPolicy: initialProductData.returnPolicy || "",
         // Ensure product_highlights is an array, even if it's null/undefined from backend
         product_highlights: initialProductData.product_highlights || [],
         // Ensure featured_products is an array or object, depending on your schema
@@ -1446,6 +1449,10 @@ export default function AddProductPage({ mode = "add", productData = null, produ
         add_ons: product.add_ons || [],
         category: product.category || "",
         product_highlights: product.product_highlights || [],
+        returnPolicy:
+          typeof product.returnPolicy === "string"
+            ? product.returnPolicy.trim()
+            : "",
         chk_display_store_stock:
           Number(product.chk_display_store_stock) === 1 ? 1 : 0,
         // Product images
@@ -1611,6 +1618,7 @@ export default function AddProductPage({ mode = "add", productData = null, produ
       files: [],
       meta_description: "",
       overviewdescription: "",
+      returnPolicy: "",
       overviewImage: [null],
       overviewImageFile: [null],
       featured_products: [],
@@ -2604,6 +2612,26 @@ export default function AddProductPage({ mode = "add", productData = null, produ
               </select>
               <p className="text-xs text-gray-500 mt-1">
                 Yes (1): run warehouse/showroom least-stock check for PDP enquiry. No (0): skip.
+              </p>
+            </div>
+            <div>
+              <label
+                htmlFor="custom-return-policy"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Custom Return Policy (Optional)
+              </label>
+              <textarea
+                id="custom-return-policy"
+                name="returnPolicy"
+                value={product.returnPolicy || ""}
+                onChange={handleChange}
+                rows="4"
+                placeholder="e.g. Covered under 7-day brand service-center replacement only..."
+                className="w-full border p-2 rounded"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Leave empty to use the default Sathya 3-Day Replacement &amp; Return Policy.
               </p>
             </div>
           </div>

@@ -256,6 +256,9 @@ const updatePayload = {
       model_number: productData.model_number || "",
       movement: productData.movement || "",
       size: productData.size || "",
+      ...(Object.prototype.hasOwnProperty.call(productData, "returnPolicy")
+        ? { returnPolicy: String(productData.returnPolicy ?? "").trim() }
+        : {}),
       chk_display_store_stock:
         Number(productData.chk_display_store_stock) === 1 ? 1 : 0,
     //  category: chain.root_id, Parent category

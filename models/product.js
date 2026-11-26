@@ -66,6 +66,7 @@ const ProductSchema = new mongoose.Schema({
     default: [],
   },
   overviewdescription: String,
+  returnPolicy: { type: String, default: "", trim: true },
   product_highlights: { type: [String], default: [], },
   meta_title: { type: String, default: "" }, // Add meta_title field
   meta_description: { type: String, default: "" },

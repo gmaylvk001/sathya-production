@@ -106,6 +106,12 @@ export async function POST(req) {
       productData.size = "";
     }
 
+    if (Object.prototype.hasOwnProperty.call(productData, "returnPolicy")) {
+      productData.returnPolicy = String(productData.returnPolicy ?? "").trim();
+    } else {
+      productData.returnPolicy = "";
+    }
+
 
     const imageFiles = formData.getAll("images");
     // const category   = formData.get("category");

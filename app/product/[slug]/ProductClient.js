@@ -1472,6 +1472,7 @@ export default function ProductClient({ initialProduct = null, lspPdpEnabled = f
           resolvedRegion: data.resolvedRegion,
           bestPriceDetails: data.bestPriceDetails,
           best_price: data.best_price,
+          returnPolicy: data.returnPolicy !== undefined ? data.returnPolicy : current.returnPolicy,
           variantGroup: data.variantGroup || current.variantGroup,
         });
         return;

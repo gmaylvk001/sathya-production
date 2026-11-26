@@ -1,7 +1,15 @@
 'use client';
 import { useState, useEffect, useRef, useMemo } from "react";
 import { TbBrandAppgallery } from "react-icons/tb";
-import { FiBox, FiHash } from "react-icons/fi";
+import {
+  FiBox,
+  FiCheckCircle,
+  FiFileText,
+  FiHash,
+  FiPhoneCall,
+  FiRefreshCw,
+  FiShield,
+} from "react-icons/fi";
 import Image from "next/image";
 import { FaShoppingCart, FaStar } from "react-icons/fa";
 import Link from "next/link";
@@ -10,6 +18,7 @@ import { useHeaderdetails } from '@/context/HeaderContext';
 import { toast } from 'react-toastify';
 import { getDiscountInfo } from "@/lib/discountHelper";
 import { parseKeyFeatureLines } from "@/utils/compareHelpers";
+import { resolveProductReturnPolicy } from "@/lib/constants/returnPolicy";
 
 function StarRating({ value, onChange }) {
   return (
@@ -149,6 +158,186 @@ function parseProductHighlights(highlights) {
 function parseKeyFeatures(keySpecs) {
   // DB may store HTML (<ul><li>...), Word junk (<o:p>), or literal \n — never show raw tags.
   return parseKeyFeatureLines(keySpecs);
+}
+
+const POLICY_SECTION_ICONS = {
+  "replacement-guarantee": FiShield,
+  "eligibility-transit": FiCheckCircle,
+  "refunds-cancellations": FiRefreshCw,
+};
+
+function renderPolicySegments(segments) {
+  return segments.map((part, idx) => {
+    if (part.href) {
+      const isInternal = part.href.startsWith("/");
+      const linkClass =
+        "text-[#d32f2f] hover:underline font-semibold break-words";
+      if (isInternal) {
+        return (
+          <Link key={idx} href={part.href} className={linkClass}>
+            {part.text}
+          </Link>
+        );
+      }
+      return (
+        <a key={idx} href={part.href} className={linkClass}>
+          {part.text}
+        </a>
+      );
+    }
+    if (part.strong) {
+      return (
+        <strong key={idx} className="font-semibold text-gray-900">
+          {part.text}
+        </strong>
+      );
+    }
+    return <span key={idx}>{part.text}</span>;
+  });
+}
+
+function ReturnPolicySupportFooter({ support }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-gray-50 p-3.5 sm:p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex items-start sm:items-center gap-2.5 min-w-0">
+        <span className="w-8 h-8 rounded-lg bg-red-50 text-[#d32f2f] flex items-center justify-center shrink-0 border border-red-100">
+          <FiPhoneCall className="w-4 h-4" />
+        </span>
+        <div className="text-xs sm:text-sm text-gray-700 leading-relaxed min-w-0 break-words">
+          <span className="font-semibold text-gray-900">Need help?</span>{" "}
+          Call Sathya Customer Care at{" "}
+          <a
+            href={support.phoneHref}
+            className="font-semibold text-[#d32f2f] hover:underline whitespace-nowrap"
+          >
+            {support.phoneDisplay}
+          </a>{" "}
+          <span className="text-gray-500">({support.supportHours})</span>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm shrink-0">
+        <Link
+          href={support.contactHref}
+          className="font-semibold text-gray-700 hover:text-[#d32f2f] hover:underline"
+        >
+          {support.contactLabel}
+        </Link>
+        <span className="text-gray-300" aria-hidden="true">
+          |
+        </span>
+        <Link
+          href={support.fullPolicyHref}
+          className="font-semibold text-[#d32f2f] hover:underline"
+        >
+          {support.fullPolicyLabel} →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function ReturnPolicyTabContent({ product }) {
+  const { isCustom, customPolicy, defaultPolicy } = resolveProductReturnPolicy(product);
+  const { support } = defaultPolicy;
+
+  if (isCustom) {
+    return (
+      <div className="w-full text-left max-w-4xl py-2 space-y-3.5">
+        <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 sm:p-5 space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <FiShield className="w-4 h-4 text-[#d32f2f] shrink-0" />
+              <h3 className="text-sm sm:text-base font-bold text-gray-900">
+                Product Return &amp; Replacement Policy
+              </h3>
+            </div>
+            <span className="inline-flex items-center rounded-full bg-red-50 border border-red-100 px-2.5 py-0.5 text-[11px] font-semibold text-[#d32f2f]">
+              Product-Specific Terms
+            </span>
+          </div>
+          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line break-words">
+            {customPolicy}
+          </p>
+        </div>
+
+        <ReturnPolicySupportFooter support={support} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full text-left max-w-4xl py-2 space-y-4">
+      <div className="rounded-xl border border-red-100 bg-red-50/60 p-3.5 sm:p-4 flex items-start gap-3">
+        <span className="w-8 h-8 rounded-lg bg-[#d32f2f] text-white flex items-center justify-center shrink-0 mt-0.5">
+          <FiShield className="w-4 h-4" />
+        </span>
+        <div className="min-w-0">
+          <h3 className="text-sm sm:text-base font-bold text-gray-900">
+            {defaultPolicy.heading}
+          </h3>
+          <p className="text-xs sm:text-sm text-gray-600 mt-0.5 leading-relaxed">
+            {defaultPolicy.subheading}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
+        {defaultPolicy.sections.map((section) => {
+          const SectionIcon = POLICY_SECTION_ICONS[section.id] || FiShield;
+          return (
+            <div
+              key={section.id}
+              className="rounded-xl border border-gray-200 bg-white p-4 space-y-2.5 shadow-sm"
+            >
+              <div className="flex items-center gap-2">
+                <SectionIcon className="w-4 h-4 text-[#d32f2f] shrink-0" />
+                <h4 className="text-sm font-bold text-gray-900">{section.title}</h4>
+              </div>
+              <ul className="space-y-1.5 text-xs sm:text-sm text-gray-700 leading-relaxed">
+                {section.points.map((segments, idx) => (
+                  <li key={idx} className="flex items-start gap-2">
+                    <span
+                      className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#d32f2f] shrink-0"
+                      aria-hidden="true"
+                    />
+                    <span className="min-w-0 break-words">
+                      {renderPolicySegments(segments)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+
+        <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-2.5 shadow-sm">
+          <div className="flex items-center gap-2">
+            <FiFileText className="w-4 h-4 text-[#d32f2f] shrink-0" />
+            <h4 className="text-sm font-bold text-gray-900">
+              {defaultPolicy.bankRefundDetails.title}
+            </h4>
+          </div>
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs sm:text-sm text-gray-700">
+            {defaultPolicy.bankRefundDetails.fields.map((field) => (
+              <li
+                key={field}
+                className="flex items-center gap-2 rounded-md bg-gray-50 border border-gray-100 px-2.5 py-1.5"
+              >
+                <span
+                  className="w-1.5 h-1.5 rounded-full bg-gray-400 shrink-0"
+                  aria-hidden="true"
+                />
+                <span className="font-medium text-gray-800 break-words">{field}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <ReturnPolicySupportFooter support={support} />
+    </div>
+  );
 }
 
 export default function ProductDetailsSection({
@@ -831,16 +1020,9 @@ export default function ProductDetailsSection({
   );
 
   // TAB 5: RETURN POLICY
-  const returnPolicyContent = (
-    <div className="w-full text-left max-w-3xl py-2">
-      <p className="text-sm text-gray-700 leading-relaxed">
-        See our{" "}
-        <Link href="/cancellation-policy" className="text-blue-600 hover:underline font-medium">
-          Return Policy
-        </Link>{" "}
-        to find specific return information for this product and steps on how to return in-store or by mail.
-      </p>
-    </div>
+  const returnPolicyContent = useMemo(
+    () => <ReturnPolicyTabContent product={product} />,
+    [product]
   );
 
   // BUILD TABS IN EXACT SPECIFIED 6 ORDER WITH UPPERCASE LABELS
