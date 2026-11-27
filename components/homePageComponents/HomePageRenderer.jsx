@@ -20,6 +20,7 @@ import CategorySuperCategories from "@/components/categoryPageComponents/Categor
 import CategoryWhyBuyReasons from "@/components/categoryPageComponents/CategoryWhyBuyReasons";
 import TrendingVideoSection from "@/components/TrendingVideoSection";
 import DealOfTheDaySection from "@/components/homePageComponents/DealOfTheDaySection";
+import { filterHomeInStockProducts } from "@/components/product/AvailableInStoreNotice";
 
 // In-memory cache to prevent layout shift and avoid re-fetching on client navigation
 const homeRenderCache = new Map();
@@ -124,10 +125,13 @@ export default function HomePageRenderer({ onHasDesign }) {
           );
         }
         if (item.type === COMPONENT_TYPES.PRODUCT_CAROUSEL) {
+          const inStockProducts = filterHomeInStockProducts(item.config?.products);
+          if (!inStockProducts.length) return null;
           return (
             <CategoryProductCarousel
               key={item.instanceId || idx}
-              config={item.config}
+              config={{ ...item.config, products: inStockProducts }}
+              hideOutOfStock
             />
           );
         }
@@ -135,7 +139,11 @@ export default function HomePageRenderer({ onHasDesign }) {
           return (
             <CategoryBannerSideProducts
               key={item.instanceId || idx}
-              config={item.config}
+              config={{
+                ...item.config,
+                products: filterHomeInStockProducts(item.config?.products),
+              }}
+              hideOutOfStock
             />
           );
         }
@@ -143,7 +151,11 @@ export default function HomePageRenderer({ onHasDesign }) {
           return (
             <CategoryBannerFourProducts
               key={item.instanceId || idx}
-              config={item.config}
+              config={{
+                ...item.config,
+                products: filterHomeInStockProducts(item.config?.products),
+              }}
+              hideOutOfStock
             />
           );
         }
@@ -151,7 +163,11 @@ export default function HomePageRenderer({ onHasDesign }) {
           return (
             <CategoryBannerGrid
               key={item.instanceId || idx}
-              config={item.config}
+              config={{
+                ...item.config,
+                products: filterHomeInStockProducts(item.config?.products),
+              }}
+              hideOutOfStock
             />
           );
         }
@@ -164,10 +180,13 @@ export default function HomePageRenderer({ onHasDesign }) {
           );
         }
         if (item.type === COMPONENT_TYPES.SINGLE_BANNER_PRODUCTS) {
+          const inStockProducts = filterHomeInStockProducts(item.config?.products);
+          if (!inStockProducts.length) return null;
           return (
             <CategorySingleBannerProducts
               key={item.instanceId || idx}
-              config={item.config}
+              config={{ ...item.config, products: inStockProducts }}
+              hideOutOfStock
             />
           );
         }

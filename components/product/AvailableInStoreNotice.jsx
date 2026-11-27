@@ -47,6 +47,49 @@ export function isProductOutOfStock(
   return false;
 }
 
+/**
+ * Check whether a product is active and in stock for Home Page storefront display.
+ */
+export function isHomeProductInStock(product) {
+  if (!product || typeof product !== "object") return false;
+
+  if (
+    product.status !== undefined &&
+    product.status !== null &&
+    String(product.status).trim() !== "" &&
+    String(product.status).trim().toLowerCase() !== "active"
+  ) {
+    return false;
+  }
+
+  if (isProductOutOfStock(product)) {
+    return false;
+  }
+
+  if (
+    product.hasVariants === true &&
+    Array.isArray(product.variants) &&
+    product.variants.length > 0
+  ) {
+    return product.variants.some((variant) => {
+      if (!variant || typeof variant !== "object") return false;
+      const vStatus = String(variant.status ?? "Active").trim().toLowerCase();
+      if (vStatus && vStatus !== "active") return false;
+      return !isProductOutOfStock(variant);
+    });
+  }
+
+  return true;
+}
+
+/**
+ * Filter a list of products down to active in-stock items for Home Page rows.
+ */
+export function filterHomeInStockProducts(products) {
+  if (!Array.isArray(products)) return [];
+  return products.filter(isHomeProductInStock);
+}
+
 const VARIANT_CLASSES = {
   panel: {
     container:

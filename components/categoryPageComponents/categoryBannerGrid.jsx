@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import CategoryProductCarousel from "./categoryProductCarousel";
+import { filterHomeInStockProducts } from "@/components/product/AvailableInStoreNotice";
 
 /** Storefront max box — images larger than this shrink to fit, never crop */
 const MAX_DISPLAY = 450;
@@ -100,12 +101,15 @@ function BannerTile({ banner, className = "" }) {
  * Admin may upload up to 600×600.
  * Display: actual size if ≤ 450×450; otherwise shrink to fit 450×450 (no crop).
  */
-export default function CategoryBannerGrid({ config }) {
+export default function CategoryBannerGrid({ config, hideOutOfStock = false }) {
   const name = config?.name || "";
   const productName = config?.productName || "";
-  const products = (config?.products || []).filter(
+  const rawProducts = (config?.products || []).filter(
     (product) => product?._id || product?.slug
   );
+  const products = hideOutOfStock
+    ? filterHomeInStockProducts(rawProducts)
+    : rawProducts;
   const showGap = Boolean(config?.showGap);
   const banners = (config?.banners || []).filter((b) => b?.image);
   const count = banners.length;
@@ -166,6 +170,7 @@ export default function CategoryBannerGrid({ config }) {
                 config?.seeAllHref ||
                 (config?.seeAllLink ? resolveHref(config.seeAllLink) : ""),
             }}
+            hideOutOfStock={hideOutOfStock}
           />
         ) : null}
       </div>

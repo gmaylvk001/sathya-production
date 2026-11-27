@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import SharedProductCard from "@/components/product/ProductCard";
 import { normalizeProduct } from "@/lib/normalizeProduct";
+import { filterHomeInStockProducts } from "@/components/product/AvailableInStoreNotice";
 
 function usePerPage() {
   const [perPage, setPerPage] = useState(6);
@@ -290,11 +291,17 @@ function ProductRow({ products, seeAllHref, name }) {
  * Storefront: single banner + product carousel.
  * See All uses the same URL as the banner.
  */
-export default function CategorySingleBannerProducts({ config }) {
+export default function CategorySingleBannerProducts({
+  config,
+  hideOutOfStock = false,
+}) {
   const bannerDesktop = config?.bannerDesktop || "";
   const bannerMobile = config?.bannerMobile || bannerDesktop;
   const bannerHref = resolveHref(config?.bannerHref || config?.bannerUrl || "");
-  const products = (config?.products || []).filter((p) => p?._id || p?.slug);
+  const rawProducts = (config?.products || []).filter((p) => p?._id || p?.slug);
+  const products = hideOutOfStock
+    ? filterHomeInStockProducts(rawProducts)
+    : rawProducts;
   const name = config?.name || "";
 
   if (!bannerDesktop || products.length < 6) return null;

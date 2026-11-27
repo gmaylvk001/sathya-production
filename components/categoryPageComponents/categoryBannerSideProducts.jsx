@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import SharedProductCard from "@/components/product/ProductCard";
 import { normalizeProduct } from "@/lib/normalizeProduct";
+import { filterHomeInStockProducts } from "@/components/product/AvailableInStoreNotice";
 
 function usePerPage() {
   const [perPage, setPerPage] = useState(4);
@@ -280,8 +281,14 @@ function ProductRow({ products, seeAllHref, name }) {
  * Storefront: main banner + side banner (left/right) + product row.
  * See All uses mainBannerHref from config.
  */
-export default function CategoryBannerSideProducts({ config }) {
-  const products = (config?.products || []).filter((p) => p?._id || p?.slug);
+export default function CategoryBannerSideProducts({
+  config,
+  hideOutOfStock = false,
+}) {
+  const rawProducts = (config?.products || []).filter((p) => p?._id || p?.slug);
+  const products = hideOutOfStock
+    ? filterHomeInStockProducts(rawProducts)
+    : rawProducts;
   const name = config?.name || "";
   const mainDesktop = config?.mainBannerDesktop || "";
   const mainMobile = config?.mainBannerMobile || mainDesktop;
