@@ -54,6 +54,7 @@ const menuItems = [
       { icon: 'mdi:credit-card-outline', label: 'Payments', id: 'exist-sales-payments', link: 'sathya-exist-payments', permission: 'sathya-exist-payments', dotColor: 'bg-yellow-500' },
       { icon: 'mdi:cancel', label: 'Cancel Orders', id: 'exist-sales-cancel-orders', link: 'sathya-exist-cancel-orders', permission: 'sathya-exist-cancel-orders', dotColor: 'bg-yellow-500' },
       { icon: 'mdi:history', label: 'Order History', id: 'exist-sales-order-history', link: 'sathya-exist-order-history', permission: 'sathya-exist-order-history', dotColor: 'bg-yellow-500' },
+      { icon: 'mdi:cash-refund', label: 'Payment Refund', id: 'exist-sales-payment-refund', link: 'sathya-exist-payment-refund', permission: 'sathya-exist-payment-refund', dotColor: 'bg-yellow-500' },
     ],
   },
   {
