@@ -29,6 +29,11 @@ import {
 } from "@/lib/storePickupHelper";
 import { useStorePickupFilter } from "@/hooks/useStorePickupFilter";
 import { applyDiscountToItems as sharedApplyDiscountToItems } from "@/lib/cart/couponMath";
+import {
+  computeItemDeliveryEstimate,
+  isHeavyInstallationProduct,
+  isValidDeliveryPincode,
+} from "@/lib/cart/deliveryEstimate";
 
 const loadRazorpay = () => {
   return new Promise((resolve) => {
@@ -1177,6 +1182,14 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [touched, setTouched] = useState({});
   const [shippingMethod, setShippingMethod] = useState('standard');
+  const [pincodeSla, setPincodeSla] = useState({
+    loading: false,
+    serviceable: true,
+    baseDays: null,
+    expressEligible: false,
+    message: null,
+    pincode: '',
+  });
   const [deliveryValidation, setDeliveryValidation] = useState({
     loading: false,
     isValid: true,
@@ -1438,6 +1451,109 @@ export default function CheckoutPage() {
   const isDeliveryReady =
     Boolean(shippingAddressId) &&
     (formData.deliveryType !== 'store' || Boolean(formData.selectedStore));
+
+  const hasHeavyApplianceInCart = useMemo(() => {
+    return cartItems.some((item) => {
+      return isHeavyInstallationProduct(item) || isHeavyInstallationProduct(item?.productId);
+    });
+  }, [cartItems]);
+
+  const activeDeliveryPin =
+    formData.deliveryType === 'store'
+      ? ''
+      : (isValidDeliveryPincode(normDeliveryPin) ? normDeliveryPin : normHeaderPin);
+
+  useEffect(() => {
+    if (formData.deliveryType === 'store') {
+      setPincodeSla({
+        loading: false,
+        serviceable: true,
+        baseDays: 1,
+        expressEligible: false,
+        message: null,
+        pincode: '',
+      });
+      return;
+    }
+
+    if (!isValidDeliveryPincode(activeDeliveryPin)) {
+      setPincodeSla({
+        loading: false,
+        serviceable: true,
+        baseDays: null,
+        expressEligible: false,
+        message: null,
+        pincode: '',
+      });
+      return;
+    }
+
+    let cancelled = false;
+    setPincodeSla((prev) => ({ ...prev, loading: true, pincode: activeDeliveryPin }));
+
+    fetch(`/api/pincode/check-delivery?pincode=${encodeURIComponent(activeDeliveryPin)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        if (!data) {
+          setPincodeSla({
+            loading: false,
+            serviceable: true,
+            baseDays: null,
+            expressEligible: false,
+            message: null,
+            pincode: activeDeliveryPin,
+          });
+          return;
+        }
+        const isServiceable = data?.serviceable !== false && data?.deliveryAvailable !== false;
+        const baseDays = Number(data?.deliveryDays || data?.delivery_days || 0) || null;
+        const expressEligible = Boolean(isServiceable && baseDays && baseDays <= 2);
+        setPincodeSla({
+          loading: false,
+          serviceable: isServiceable,
+          baseDays,
+          expressEligible,
+          message: isServiceable ? null : (data?.message || `Delivery is currently unavailable for pincode ${activeDeliveryPin}.`),
+          pincode: activeDeliveryPin,
+        });
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setPincodeSla({
+          loading: false,
+          serviceable: true,
+          baseDays: null,
+          expressEligible: false,
+          message: null,
+          pincode: activeDeliveryPin,
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeDeliveryPin, formData.deliveryType]);
+
+  const isExpressEligible =
+    formData.deliveryType === 'home' &&
+    pincodeSla.serviceable &&
+    pincodeSla.expressEligible &&
+    !hasHeavyApplianceInCart;
+
+  const isPincodeUndeliverable =
+    formData.deliveryType === 'home' &&
+    isValidDeliveryPincode(activeDeliveryPin) &&
+    !pincodeSla.loading &&
+    pincodeSla.serviceable === false;
+
+  useEffect(() => {
+    if (formData.deliveryType === 'store' && shippingMethod !== 'standard') {
+      setShippingMethod('standard');
+    } else if (shippingMethod === 'express' && !isExpressEligible) {
+      setShippingMethod('standard');
+    }
+  }, [formData.deliveryType, isExpressEligible, shippingMethod]);
 
   const resolveCartProductId = (item) => {
     const raw =
@@ -1709,6 +1825,11 @@ export default function CheckoutPage() {
             const defaultBill = matchedPin || matchedRegion || addresses.find(a => a.is_default_billing) || addresses[0];
             if (!contactPhone) {
               contactPhone = toCheckoutPhone(defaultShip.phonenumber);
+            }
+            const autoPin = String(defaultShip?.pincode || '').replace(/\D/g, '').trim();
+            if (isValidDeliveryPincode(autoPin) && autoPin !== normHeader && typeof setPincode === 'function') {
+              headerPinOnLoad.current = autoPin;
+              setPincode(autoPin);
             }
             setShippingAddressId(defaultShip._id);
             if (defaultShip._id !== defaultBill._id) {
@@ -2451,7 +2572,10 @@ export default function CheckoutPage() {
 
   // ─── Price summary helpers ─────────────────────────────────────────────────
   const productPrice = orderSummary.subtotal + orderSummary.discount;
-  const shippingCost = shippingMethod === 'express' ? 299 : 0;
+  const shippingCost =
+    formData.deliveryType === 'store'
+      ? 0
+      : (shippingMethod === 'express' && isExpressEligible ? 299 : 0);
   // orderSummary.total / cart totalPrice already net of exchange when present
   const finalTotal = Math.max(0, orderSummary.total + shippingCost);
 
@@ -2751,37 +2875,66 @@ export default function CheckoutPage() {
                 <span className="w-6 h-6 rounded-full bg-red-600 text-white text-xs flex items-center justify-center font-bold">3</span>
                 Shipping method
               </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  { value: 'standard', label: 'Standard delivery', sub: '3–5 working days', price: 'FREE', free: true },
-                  { value: 'express', label: 'Express delivery', sub: '1–2 working days', price: '₹299', free: false, disabled: true },
-                ].map(opt => (
-                  <label key={opt.value}
-                    className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all
-    ${opt.disabled ? 'cursor-not-allowed opacity-50 border-gray-200 bg-gray-50' : shippingMethod === opt.value ? 'cursor-pointer border-red-600 bg-red-50' : 'cursor-pointer border-gray-200 bg-white hover:border-gray-300'}`}
-                  >
-                    <input type="radio" name="shippingMethod" value={opt.value}
-                      checked={shippingMethod === opt.value}
-                      onChange={() => !opt.disabled && setShippingMethod(opt.value)}
-                      disabled={opt.disabled}
-                      className="sr-only" />
-                    <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center
-                      ${shippingMethod === opt.value ? 'border-red-600' : 'border-gray-300'}`}>
-                      {shippingMethod === opt.value && <div className="w-2 h-2 rounded-full bg-red-600" />}
+              {formData.deliveryType === 'store' ? (
+                <div className="p-3.5 rounded-xl border-2 border-red-600 bg-red-50 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-gray-800">Store pickup</span>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700">FREE</span>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-800">{opt.label}</span>
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full
-                          ${opt.free ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
-                          {opt.price}
-                        </span>
+                    <p className="text-xs text-gray-500 mt-0.5">Ready for pickup at your selected Sathya / Unilet store</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[
+                    {
+                      value: 'standard',
+                      label: hasHeavyApplianceInCart ? 'Scheduled delivery' : 'Standard delivery',
+                      sub: hasHeavyApplianceInCart
+                        ? 'Scheduled heavy-appliance delivery'
+                        : (pincodeSla.baseDays ? `${pincodeSla.baseDays}–${pincodeSla.baseDays + 1} working days` : '3–5 working days'),
+                      price: 'FREE',
+                      free: true,
+                    },
+                    {
+                      value: 'express',
+                      label: 'Express delivery',
+                      sub: isExpressEligible
+                        ? '1–2 working days'
+                        : (hasHeavyApplianceInCart ? 'Not available for heavy appliances' : 'Not available at this pincode'),
+                      price: '₹299',
+                      free: false,
+                      disabled: !isExpressEligible,
+                    },
+                  ].map(opt => (
+                    <label key={opt.value}
+                      className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all
+      ${opt.disabled ? 'cursor-not-allowed opacity-50 border-gray-200 bg-gray-50' : shippingMethod === opt.value ? 'cursor-pointer border-red-600 bg-red-50' : 'cursor-pointer border-gray-200 bg-white hover:border-gray-300'}`}
+                    >
+                      <input type="radio" name="shippingMethod" value={opt.value}
+                        checked={shippingMethod === opt.value}
+                        onChange={() => !opt.disabled && setShippingMethod(opt.value)}
+                        disabled={opt.disabled}
+                        className="sr-only" />
+                      <div className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center
+                        ${shippingMethod === opt.value ? 'border-red-600' : 'border-gray-300'}`}>
+                        {shippingMethod === opt.value && <div className="w-2 h-2 rounded-full bg-red-600" />}
                       </div>
-                      <p className="text-xs text-gray-500 mt-0.5">{opt.sub}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-gray-800">{opt.label}</span>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full
+                            ${opt.free ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {opt.price}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">{opt.sub}</p>
+                      </div>
+                    </label>
+                  ))}
+                </div>
+              )}
             </section>
 
             {/* 4. Payment Method */}
@@ -2998,6 +3151,33 @@ export default function CheckoutPage() {
                             {itemValidation?.errorReason || "Not available for delivery at this location. Remove this item to continue."}
                           </p>
                         )}
+
+                        {!unavailableItem && (() => {
+                          const itemEst = formData.deliveryType === 'store'
+                            ? { available: true, label: 'Ready for Store Pickup', isHeavyAppliance: false }
+                            : computeItemDeliveryEstimate({
+                                item: { ...item, ...(typeof item.productId === 'object' && item.productId ? item.productId : {}) },
+                                pincode: activeDeliveryPin,
+                                region: headerRegion,
+                                baseDays: shippingMethod === 'express' && isExpressEligible ? 1 : pincodeSla.baseDays,
+                                isDeliverable: !isPincodeUndeliverable,
+                              });
+                          return (
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold ${itemEst.available ? 'text-emerald-700' : 'text-red-600'}`}>
+                                <svg className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span>{itemEst.label}</span>
+                              </span>
+                              {itemEst.isHeavyAppliance && (
+                                <span className="text-[9px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded">
+                                  Scheduled Delivery
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
 
                         {itemWarranty && (
                           <div className="mt-1 inline-flex items-center gap-1.5 bg-amber-50/90 border border-amber-200 text-amber-900 rounded-lg px-2 py-0.5 text-[10px] w-fit">
@@ -3223,11 +3403,16 @@ export default function CheckoutPage() {
                     ⚠️ {UNILET_RESTRICTION_MESSAGE}
                   </p>
                 )}
+                {isPincodeUndeliverable && (
+                  <p className="mb-2 text-xs font-semibold text-red-600 leading-relaxed bg-red-50 p-2.5 rounded-lg border border-red-200">
+                    ⚠️ {pincodeSla.message || `Delivery is currently unavailable for pincode ${activeDeliveryPin}. Please choose another address or Store pickup.`}
+                  </p>
+                )}
                 <button
                   onClick={handleSubmit}
-                  disabled={isSubmitting || loading || cartItems.length === 0 || hasPincodeMismatch || checkoutOrderBlocked || uniletDeliveryBlocked}
+                  disabled={isSubmitting || loading || cartItems.length === 0 || hasPincodeMismatch || checkoutOrderBlocked || uniletDeliveryBlocked || isPincodeUndeliverable}
                   className={`w-full h-12 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all
-                    ${isSubmitting || loading || cartItems.length === 0 || hasPincodeMismatch || checkoutOrderBlocked || uniletDeliveryBlocked
+                    ${isSubmitting || loading || cartItems.length === 0 || hasPincodeMismatch || checkoutOrderBlocked || uniletDeliveryBlocked || isPincodeUndeliverable
                       ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                       : 'bg-red-600 text-white hover:bg-red-700 active:scale-[0.98]'}`}
                 >
