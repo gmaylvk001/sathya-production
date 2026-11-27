@@ -4,6 +4,7 @@ import OrderNew from "@/models/orders_new";
 import OrderDetailsNew from "@/models/order_details_new";
 import { getAuthUserId } from "@/lib/authRequest";
 import { getAdminUserId } from "@/lib/adminRequest";
+import { syncExistRefundsToPaymentRefund } from "@/lib/orderRefund";
 
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
@@ -52,9 +53,15 @@ export async function GET(request) {
       ],
     }).lean();
 
+    const refundByOrder = await syncExistRefundsToPaymentRefund(order);
+
     return NextResponse.json({
       success: true,
-      order: { ...order, order_details },
+      order: {
+        ...order,
+        order_details,
+        payment_refund: refundByOrder.get(String(order.order_number || "").trim()) || null,
+      },
     });
   } catch (error) {
     console.error("get-single order error:", error);

@@ -53,6 +53,7 @@ import ShipmentTrackingInvenzo from "@/models/shipment_tracking_invenzo";
 import { isInvenzoServiceEnabled } from "@/lib/invenzo";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
+import { syncExistRefundsToPaymentRefund } from "@/lib/orderRefund";
 
 export async function GET(req) {
   await dbConnect();
@@ -273,6 +274,8 @@ export async function GET(req) {
       }
     }
 
+    const refundByOrder = await syncExistRefundsToPaymentRefund(orders);
+
     const updatedOrders = [];
     for (let order of orders) {
       const itemsWithSlug = [];
@@ -430,6 +433,7 @@ export async function GET(req) {
         createdAt: orderObj.created_at || orderObj.createdAt,
         updatedAt: orderObj.updated_at || orderObj.updatedAt,
         cancel_exists: Boolean(cancel_exists),
+        payment_refund: refundByOrder.get(String(order.order_number || "").trim()) || null,
         invenso_service_on: invensoServiceOn,
         invenzo_shipment,
         invenzo_tracking,
