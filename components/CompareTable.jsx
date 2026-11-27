@@ -37,6 +37,7 @@ import { useCart } from '@/context/CartContext';
 import { normalizeAttributes, parseNumericValue, formatBrandName, checkProductAvailability, stripHtml } from '@/utils/compareHelpers';
 import { toast } from 'react-toastify';
 import { getDiscountInfo } from "@/lib/discountHelper";
+import AvailableInStoreNotice, { UNAVAILABLE_ONLINE_MESSAGE } from "@/components/product/AvailableInStoreNotice";
 
 const BRAND_RED = '#d72828';
 
@@ -397,10 +398,12 @@ function ProductHeaderCard({
                 <ShoppingCart size={13} />
                 <span>{isAddingToCart ? 'Adding...' : 'Add to Cart'}</span>
               </button>
-            ) : (
+            ) : avail.label === 'Sold Out Online' ? (
               <div className="w-full text-center text-xs font-semibold py-2.5 rounded-xl bg-gray-100 text-gray-500 border border-gray-200">
                 {avail.label}
               </div>
+            ) : (
+              <AvailableInStoreNotice variant="card" />
             )}
           </div>
         </>
@@ -634,8 +637,11 @@ function DesktopTable({ products, rows }) {
                   <span>Add</span>
                 </button>
               ) : (
-                <span className="px-2 py-1 text-[10px] font-bold bg-gray-100 text-gray-500 rounded-lg shrink-0 border border-gray-200">
-                  {avail.label === 'Sold Out Online' ? 'Sold Out' : 'Out of Stock'}
+                <span
+                  title={avail.label === 'Sold Out Online' ? 'Sold Out Online' : UNAVAILABLE_ONLINE_MESSAGE}
+                  className="px-2 py-1 text-[10px] font-bold bg-amber-50 text-amber-800 rounded-lg shrink-0 border border-amber-200"
+                >
+                  {avail.label === 'Sold Out Online' ? 'Sold Out' : 'Available in Store'}
                 </span>
               )}
             </div>
@@ -880,10 +886,12 @@ function DesktopTable({ products, rows }) {
                       <ShoppingCart size={13} />
                       <span>{addingId === (p._id || item.productId) ? 'Adding...' : 'Add to Cart'}</span>
                     </button>
-                  ) : (
+                  ) : avail.label === 'Sold Out Online' ? (
                     <div className="w-full text-center text-xs font-semibold py-2.5 rounded-xl bg-gray-200 text-gray-600 border border-gray-300">
                       {avail.label}
                     </div>
+                  ) : (
+                    <AvailableInStoreNotice variant="card" />
                   )}
 
                   <Link

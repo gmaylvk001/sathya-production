@@ -13,6 +13,7 @@ import CategoryProductSlider from "@/components/deals-offer/CategoryProductSlide
 import { getCardOfferCategoryHref, isExternalUrl } from "@/lib/cardOffers/cardOfferNavigationHelper";
 import { getDiscountInfo } from "@/lib/discountHelper";
 import PriceBlock from "@/components/product/PriceBlock";
+import AvailableInStoreNotice, { isProductOutOfStock } from "@/components/product/AvailableInStoreNotice";
 
 // Helper to determine destination URL for any card offer
 export function getCardOfferHref(card) {
@@ -241,8 +242,7 @@ function DealProductCard({ product, brandMap }) {
 
       {/* Stock Status */}
       <div className="text-[11px] font-medium mb-3">
-        {product.stock_status === "In Stock" ||
-        (product.quantity && product.quantity > 0) ? (
+        {!isProductOutOfStock(product, { requireExplicitInStock: true }) ? (
           <span className="text-green-600 font-semibold">In Stock</span>
         ) : (
           <span className="text-red-500 font-semibold">Out of Stock</span>
@@ -251,15 +251,19 @@ function DealProductCard({ product, brandMap }) {
 
       {/* Add to Cart Button */}
       <div className="mt-auto pt-2 border-t border-gray-100 flex items-center">
-        <Addtocart
-          productId={product._id}
-          stockQuantity={product.quantity || 1}
-          special_price={product.special_price}
-          movement={product.movement}
-          productName={product.name}
-          productSlug={product.slug}
-          className="w-full text-xs sm:text-sm py-2 rounded-lg"
-        />
+        {isProductOutOfStock(product, { requireExplicitInStock: true }) ? (
+          <AvailableInStoreNotice variant="card" />
+        ) : (
+          <Addtocart
+            productId={product._id}
+            stockQuantity={product.quantity ?? 1}
+            special_price={product.special_price}
+            movement={product.movement}
+            productName={product.name}
+            productSlug={product.slug}
+            className="w-full text-xs sm:text-sm py-2 rounded-lg"
+          />
+        )}
       </div>
     </div>
   );

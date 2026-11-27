@@ -115,6 +115,7 @@ const cartSchema = new mongoose.Schema({
       default: undefined,
     },
   items: [cartItemSchema],
+  savedItems: { type: [cartItemSchema], default: [] },
   totalItems: { type: Number, default: 0 },
   totalPrice: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now },

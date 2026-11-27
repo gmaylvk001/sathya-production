@@ -28,6 +28,9 @@ import { useRegion } from "@/context/RegionContext";
 import HeaderOfferTimer from "@/components/HeaderOfferTimer";
 import HeaderMenuSidebar from "@/components/HeaderMenuSidebar";
 import DealsPdfButton from "@/components/deals-offer/DealsPdfButton";
+import HeaderModern from "@/components/header/HeaderModern";
+import HeaderClassic from "@/components/header/HeaderClassic";
+import { DEFAULT_HEADER_SETTINGS, mergeHeaderSettings, buildHeaderCssVars } from "@/lib/headerSettings";
 import { filterAndRankProducts } from '@/lib/searchMatch';
 import { uniqueById } from '@/lib/uniqueById';
 import { PAGE_TYPES } from '@/lib/categoryPageComponents/registry';
@@ -131,7 +134,7 @@ const HEADER_ACTION_BADGE_SM_CLASS =
 
 
 
-const Header = ({ headerStyle: propHeaderStyle } = {}) => {
+const Header = ({ headerStyle: propHeaderStyle, previewSettings = null } = {}) => {
   const router = useRouter();
   const [category, setCategory] = useState('All Category');
   const [activeSubCategory, setActiveSubCategory] = useState(null);
@@ -924,7 +927,56 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
     return () => { mounted = false; };
   }, []);
 
-  // Dynamic Navbar & Header Top Bar Styling
+  // Structured Header Builder v2 Settings (cached to prevent FOUC)
+  const [headerConfig, setHeaderConfig] = useState(DEFAULT_HEADER_SETTINGS);
+
+  useEffect(() => {
+    if (previewSettings) return;
+    let mounted = true;
+    const cacheKeyV2 = "sathya_header_settings_v2";
+    try {
+      const cached = JSON.parse(localStorage.getItem(cacheKeyV2) || "null");
+      if (cached && typeof cached === "object") {
+        setHeaderConfig(mergeHeaderSettings(cached));
+      }
+    } catch { }
+
+    fetch("/api/header-settings", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (!mounted || !json?.data) return;
+        const merged = mergeHeaderSettings(json.data);
+        setHeaderConfig(merged);
+        try { localStorage.setItem(cacheKeyV2, JSON.stringify(merged)); } catch { }
+      })
+      .catch(() => { });
+
+    const onSettingsUpdated = () => {
+      try {
+        const cached = JSON.parse(localStorage.getItem(cacheKeyV2) || "null");
+        if (cached && typeof cached === "object") {
+          setHeaderConfig(mergeHeaderSettings(cached));
+        }
+      } catch { }
+    };
+    window.addEventListener("sathya_header_settings_updated", onSettingsUpdated);
+    return () => {
+      mounted = false;
+      window.removeEventListener("sathya_header_settings_updated", onSettingsUpdated);
+    };
+  }, [previewSettings]);
+
+  const effectiveHeaderConfig = useMemo(() => {
+    const base = previewSettings ? mergeHeaderSettings(previewSettings) : headerConfig;
+    if (!previewSettings && propHeaderStyle) {
+      return { ...base, design: propHeaderStyle === "classic" ? "classic" : "modern" };
+    }
+    return base;
+  }, [previewSettings, headerConfig, propHeaderStyle]);
+
+  const headerCssVars = useMemo(() => buildHeaderCssVars(effectiveHeaderConfig), [effectiveHeaderConfig]);
+
+  // Dynamic Navbar & Header Top Bar Styling (legacy state kept for compatibility)
   const [navbarSettings, setNavbarSettings] = useState({
     headerStyle: propHeaderStyle || "classic",
     flashSaleBadge: "FLASH SALE",
@@ -1005,9 +1057,14 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
     };
   }, []);
 
-  const isModern = (propHeaderStyle || navbarSettings?.headerStyle) === "modern";
+  const isModern = effectiveHeaderConfig.design === "modern";
 
-  const navbarBackgroundStyle = "radial-gradient(circle, rgba(63, 94, 251, 1) 0%, rgba(252, 70, 107, 1) 100%)";
+  const navbarBackgroundStyle =
+    navbarSettings.bgType === "gradient"
+      ? (navbarSettings.gradientDirection === "radial"
+        ? `radial-gradient(circle, ${navbarSettings.gradientStart || "#3F5EFB"} 0%, ${navbarSettings.gradientEnd || "#FC466B"} 100%)`
+        : `linear-gradient(${navbarSettings.gradientDirection || "to right"}, ${navbarSettings.gradientStart || "#ED1C24"}, ${navbarSettings.gradientEnd || "#990000"})`)
+      : (navbarSettings.bgColor || (isModern ? "#3F5EFB" : "#ED1C24"));
 
   const navbarBorderTopStyle = isModern
     ? "none"
@@ -1015,9 +1072,7 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
       ? `4px solid ${navbarSettings.topBorderColor || "#FFF200"}`
       : "none");
 
-  const navbarTextColorStyle = isModern
-    ? "#FFFFFF"
-    : (navbarSettings.textColor || "#FFFFFF");
+  const navbarTextColorStyle = navbarSettings.textColor || "#FFFFFF";
 
   const searchBtnBackgroundStyle =
     navbarSettings.searchBtnBgType === "gradient"
@@ -2520,124 +2575,157 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
     </div>
   );
 
-  return (
-    <>
-      <header className="sticky top-0 z-50 w-full bg-white shadow-xs select-none">
-        {/* Modern Header Row 1: Top Announcement Bar */}
-        {isModern && (
-          <div
-            className="w-full text-white border-b border-white/10 select-none"
-            style={{
-              backgroundColor: "#020024",
-              background: topBarBgStyle,
-            }}
-          >
-            <div className="max-w-[1320px] mx-auto px-6 w-full flex items-center justify-between text-xs py-2 box-border">
-              {/* Left: Flash Sale Announcement */}
-              <div className="flex items-center gap-2 overflow-hidden shrink-0">
-                <span className="text-amber-400 text-sm font-bold animate-pulse shrink-0">
-                  ⚡
-                </span>
-                <span className="bg-[#d72828] text-white text-[10px] sm:text-[11px] font-extrabold px-2 py-0.5 rounded uppercase tracking-wider shrink-0 shadow-xs">
-                  {navbarSettings?.flashSaleBadge || "FLASH SALE"}
-                </span>
-                <span className="text-white text-[11px] sm:text-xs truncate font-medium">
-                  {navbarSettings?.flashSaleText || "Smart TVs & Inverter ACs up to 55% Off + Extra Instant Bank Cashback"}
-                </span>
-              </div>
+  const resolvedMenuItems = useMemo(() => {
+    const configItems = effectiveHeaderConfig?.menu?.items;
+    if (Array.isArray(configItems) && configItems.length > 0) {
+      return configItems
+        .slice()
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+        .map((item, idx) => {
+          const link = item.link || "/";
+          const slugMatch = link.match(/^\/category\/([^/?#]+)/i);
+          const matchedCat = slugMatch
+            ? categories.find((c) => c.category_slug === slugMatch[1])
+            : null;
+          if (matchedCat) {
+            return {
+              kind: "category",
+              key: `cfg-cat-${matchedCat._id}-${idx}`,
+              label: item.label || matchedCat.category_name,
+              link,
+              visible: item.visible !== false,
+              category: matchedCat,
+            };
+          }
+          return {
+            kind: "custom",
+            key: `cfg-item-${idx}`,
+            label: item.label,
+            link,
+            visible: item.visible !== false,
+          };
+        });
+    }
+    return redBarEntries.map((entry, idx) => ({
+      ...entry,
+      link: entry.href || "/",
+      visible: true,
+      order: idx,
+    }));
+  }, [effectiveHeaderConfig?.menu?.items, categories, redBarEntries]);
 
-              {/* Right: Deals, Stores, 24/7 Helpline & Sign In */}
-              <div className="hidden md:flex items-center gap-6 shrink-0 text-white text-[11px] sm:text-xs font-medium">
-                {/* Deals Button (Moved to top announcement bar) */}
-                {showDealsButton && (
-                  <Link
-                    href="/deals-offer"
-                    aria-label="View Deals & Special Offers"
-                    className="inline-flex items-center justify-center px-3 py-1 rounded-full text-black font-bold text-xs leading-none transition-all duration-200 shadow-xs hover:shadow hover:opacity-95 active:scale-95 shrink-0"
-                    style={{
-                      background: "linear-gradient(135deg, #00b4db 0%, #f44336 55%, #ffc107 100%)",
-                    }}
-                    title="View Deals & Special Offers"
-                  >
-                    🔥 Deals
-                  </Link>
-                )}
-
-                <span className="h-3 w-px bg-white/30" />
-
-                <a
-                  href="https://sathya.adtarbo.com/stores"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1.5 text-white hover:opacity-85 transition-opacity"
-                >
-                  <HiOutlineBuildingStorefront className="w-4 h-4 text-white" />
-                  <span className="text-white">{navbarSettings?.storeCountText || "180+ Stores in South India"}</span>
-                </a>
-
-                <span className="h-3 w-px bg-white/30" />
-
-                <a
-                  href={`tel:${(navbarSettings?.helplineText || "+91 88805 98985").replace(/[^0-9+]/g, "")}`}
-                  className="flex items-center gap-1.5 text-white hover:opacity-85 transition-opacity"
-                >
-                  <HiOutlinePhone className="w-3.5 h-3.5 text-white" />
-                  <span className="text-white">24/7 Helpline:</span>
-                  <span className="text-white font-bold tracking-tight">
-                    {navbarSettings?.helplineText || "+91 88805 98985"}
-                  </span>
-                </a>
-
-                <span className="h-3 w-px bg-white/30" />
-
-                {/* Sign In / My Account */}
-                <div
-                  className="relative"
-                  ref={isModern ? accountMenuRef : null}
-                  onMouseEnter={handleMenuMouseEnter}
-                  onMouseLeave={handleMenuMouseLeave}
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (isAuthenticated) {
-                        setIsAccountMenuOpen((prev) => !prev);
-                      } else {
-                        setShowAuthModal(true);
-                      }
-                    }}
-                    className="flex items-center gap-1.5 text-white hover:opacity-85 transition-opacity cursor-pointer"
-                    aria-label={isAuthenticated ? "Account Menu" : "Login"}
-                    aria-expanded={isAccountMenuOpen}
-                    aria-haspopup="true"
-                    title={isAuthenticated ? (userData?.name || userData?.mobile || "Account") : "Login / Sign In"}
-                  >
-                    <FiUser className="w-3.5 h-3.5 text-white" />
-                    <span className="font-semibold text-white">
-                      {isAuthenticated ? (userDisplayName || "Account") : "Sign In"}
-                    </span>
-                    <FiChevronDown className="w-3 h-3 text-white" />
-                  </button>
-
-                  {isModern && isAccountMenuOpen && renderAccountDropdown()}
-                </div>
-              </div>
-            </div>
+  const renderDesktopSearch = () => (
+    <div
+      className="header-search relative hidden sm:flex flex-1 max-w-[620px] mx-auto h-[44px] bg-white border border-[#e5e7eb] rounded-full overflow-hidden focus-within:border-[#ED1C24] transition-all items-center"
+      role="search"
+    >
+      <div className="header-search-select-wrap">
+        <select
+          value={selectedCategory}
+          onChange={(e) => {
+            const newCat = e.target.value;
+            setSelectedCategory(newCat);
+            if (searchQuery.trim().length >= 2) {
+              fetchSuggestions(searchQuery, newCat, 1, false);
+            }
+          }}
+          className="header-search-select"
+          aria-label="Search category"
+          title={selectedCategory}
+        >
+          <option value="All Category">All Category</option>
+          {categories.map((cat) => (
+            <option key={String(cat._id)} value={cat.category_name}>
+              {cat.category_name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="header-search-field">
+        <input
+          type="search"
+          name="q"
+          id="q"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          ref={searchInputRef}
+          onFocus={() => {
+            setSearchContext("desktop");
+            if (searchInputRef.current) {
+              const rect = searchInputRef.current.getBoundingClientRect();
+              setSearchDropdownLeft(rect.left);
+              setSearchDropdownTop(rect.bottom + 4);
+              setSearchDropdownWidth(rect.width);
+            }
+            if (searchQuery.trim().length >= 2) fetchSuggestions(searchQuery, selectedCategory);
+            if (searchQuery.trim().length >= 2) setSearchDropdownVisible(true);
+          }}
+          onKeyDown={handleDesktopKeyDown}
+          className={`header-search-input ${searchQuery.trim() !== "" ? "pr-7" : ""}`}
+          placeholder=" "
+          aria-label="Search query"
+        />
+        {searchQuery.trim() === "" && (
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none z-10">
+            <span className="text-gray-400 text-sm">
+              {effectiveHeaderConfig?.main?.search_placeholder || "Search for"}
+            </span>
+            <span className="text-gray-900 text-sm font-medium">&ldquo;{typedPreview}&rdquo;</span>
           </div>
         )}
+        {searchQuery.trim() !== "" && (
+          <button
+            type="button"
+            onClick={clearSearch}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
+            aria-label="Clear search"
+          >
+            <FiX size={15} />
+          </button>
+        )}
+      </div>
+      <button
+        type="button"
+        className="header-search-btn"
+        onClick={handleSearch}
+        aria-label="Search"
+      >
+        <FaSearch size={15} />
+      </button>
+    </div>
+  );
+
+  return (
+    <>
+      <header
+        className={`${previewSettings ? "relative" : "sticky top-0"} z-50 w-full bg-white select-none`}
+        style={headerCssVars}
+      >
         <style jsx global>{`
               :root{
-                --search-h:42px;
+                --search-h:44px;
                 --search-radius:999px;
                 --accent:#ED1C24;
                 --search-border:#e5e7eb;
                 --muted:#6b7280;
               }
+              .hdr-menu-bar{
+                border-top: none;
+                border-bottom: none;
+                box-shadow: none;
+              }
+              .hdr-menu-link{
+                color: var(--hdr-menu-text, #ffffff);
+              }
+              .hdr-menu-link:hover,
+              .hdr-menu-link-active{
+                color: var(--hdr-menu-hover, #ffe600);
+              }
               .header-search{
                 display:flex;
                 align-items:center;
                 width:100%;
-                max-width:530px;
+                max-width:620px;
                 margin:0 auto;
                 height:var(--search-h);
                 background:#fff;
@@ -2717,7 +2805,7 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
                 min-width:48px;
                 padding:0 16px;
                 border:0;
-                background:var(--accent);
+                background:var(--hdr-search-btn, var(--accent));
                 color:#fff;
                 display:flex;
                 align-items:center;
@@ -2743,7 +2831,7 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
         <div className={`${isMobileMenuOpen
           ? "fixed inset-0 mt-0 pt-0 z-50 overflow-y-auto overflow-x-hidden"
           : `${currentBannerUrl ? "bg-cover bg-center" : "bg-white"
-          } px-3 sm:px-6 md:px-6 py-1 relative z-40 transition-all duration-300`
+          } px-3 sm:px-0 py-1 relative z-40 transition-all duration-300`
           }`}
           style={
             !isMobileMenuOpen && currentBannerUrl
@@ -3019,317 +3107,6 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
               </div>
             </div>
           )}
-          {/* DESKTOP ROW — 1320px Common Container, 72px height, 20px gap */}
-          <div className="hidden sm:flex items-center gap-3 lg:gap-5 h-[72px] w-full max-w-[1320px] mx-auto px-6 box-border">
-            {/* Tablet/Mobile Nav Menu Toggle (< 1024px) */}
-            <button
-              type="button"
-              onClick={toggleMobileMenu}
-              className="lg:hidden flex items-center justify-center p-1.5 -ml-2 rounded-lg text-gray-700 hover:text-[#d72828] hover:bg-gray-100 transition-colors shrink-0"
-              aria-label="Open menu"
-            >
-              <FiMenu size={24} />
-            </button>
-
-            {/* Logo */}
-            <div className={`flex items-center shrink-0 ${currentBannerUrl ? "bg-transparent" : "bg-white"}`}>
-              <Link href="/" aria-label="SATHYA Store Homepage" className="flex items-center shrink-0">
-                <img src="/uploads/sathya-header-logo.webp" alt="SATHYA Store Logo" className="h-[48px] w-auto object-contain shrink-0" width={110} height={48} />
-              </Link>
-            </div>
-
-            {/* Deliver To Selector Pill (Modern Header, visible on >= 1024px) */}
-            {isModern && (
-              <button
-                type="button"
-                onClick={openRegionModal}
-                aria-label={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'}`}
-                className="hidden lg:flex items-center gap-2 bg-[#f8f9fa] hover:bg-gray-100 border border-gray-200/90 hover:border-red-300 rounded-xl px-3 py-1.5 h-[44px] w-[170px] shrink-0 text-left transition-all shadow-2xs group"
-                title={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'} (${selectedRegion?.name || 'Tamil Nadu'}). Click to change.`}
-                suppressHydrationWarning
-              >
-                <div className="w-7 h-7 rounded-lg bg-red-50 text-[#d72828] flex items-center justify-center shrink-0">
-                  <FiMapPin className="w-4 h-4 text-[#d72828]" />
-                </div>
-                <div className="flex flex-col leading-none min-w-0 pr-1">
-                  <span className="text-[10px] text-gray-500 font-medium">Deliver to</span>
-                  <div className="flex items-center gap-1 mt-0.5 min-w-0">
-                    <span className="text-xs font-bold text-gray-900 truncate" suppressHydrationWarning>
-                      {pincode ? `${pincode} ` : ""}{district || city || "Chennai"}
-                    </span>
-                    <FiChevronDown className="w-3 h-3 text-gray-400 group-hover:text-gray-700 transition-colors shrink-0" />
-                  </div>
-                </div>
-              </button>
-            )}
-
-            {/* Search Bar */}
-            <div className="header-search relative hidden sm:flex flex-1 max-w-[560px] h-[44px] bg-white border border-[#e5e7eb] rounded-full overflow-hidden shadow-xs focus-within:border-[#ED1C24] transition-all items-center" role="search">
-              <div className="header-search-select-wrap">
-                <select
-                  value={selectedCategory}
-                  onChange={(e) => {
-                    const newCat = e.target.value;
-                    setSelectedCategory(newCat);
-                    if (searchQuery.trim().length >= 2) {
-                      fetchSuggestions(searchQuery, newCat, 1, false);
-                    }
-                  }}
-                  className="header-search-select"
-                  aria-label="Search category"
-                  title={selectedCategory}
-                >
-                  <option value="All Category">All Category</option>
-                  {categories.map((cat) => (
-                    <option key={String(cat._id)} value={cat.category_name}>
-                      {cat.category_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="header-search-field">
-                <input
-                  type="search"
-                  name="q"
-                  id="q"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  ref={searchInputRef}
-                  onFocus={() => {
-                    setSearchContext('desktop');
-                    if (searchInputRef.current) {
-                      const rect = searchInputRef.current.getBoundingClientRect();
-                      setSearchDropdownLeft(rect.left);
-                      setSearchDropdownTop(rect.bottom + 4);
-                      setSearchDropdownWidth(rect.width);
-                    }
-                    if (searchQuery.trim().length >= 2) fetchSuggestions(searchQuery, selectedCategory);
-                    if (searchQuery.trim().length >= 2) setSearchDropdownVisible(true);
-                  }}
-                  onKeyDown={handleDesktopKeyDown}
-                  className={`header-search-input ${searchQuery.trim() !== '' ? 'pr-7' : ''}`}
-                  placeholder=" "
-                  aria-label="Search query"
-                />
-                {searchQuery.trim() === "" && (
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none z-10">
-                    <span className="text-gray-400 text-sm">Search for</span>
-                    <span className="text-gray-900 text-sm font-medium">"{typedPreview}"</span>
-                  </div>
-                )}
-                {searchQuery.trim() !== "" && (
-                  <button
-                    type="button"
-                    onClick={clearSearch}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 transition-colors focus:outline-none"
-                    aria-label="Clear search"
-                  >
-                    <FiX size={15} />
-                  </button>
-                )}
-              </div>
-              <button
-                type="button"
-                className="header-search-btn"
-                onClick={handleSearch}
-                aria-label="Search"
-              >
-                <FaSearch size={15} />
-              </button>
-            </div>
-            {/* Active / Upcoming Offer Countdown Widget (Matches Screenshot Image 1) */}
-            {!isModern && effectiveOfferTimer && (
-              <HeaderOfferTimer timer={effectiveOfferTimer} />
-            )}
-
-            {/* Icons Group */}
-            <div className="flex items-center gap-1.5 md:gap-2 lg:gap-2.5 xl:gap-3 flex-shrink-0 mt-0.5 ml-auto">
-              {/* Mobile Search Button (Hidden on desktop) */}
-              <button onClick={toggleMobileMenu} aria-label="Open search" className="sm:hidden text-brandRed">
-                <FiSearch size={20} />
-              </button>
-
-              {isModern ? (
-                /* Modern Header Action Group: Store / Wishlist / Cart with equal 24px gap */
-                <div className="hidden sm:flex items-center gap-4 lg:gap-6 shrink-0">
-                  {/* Store */}
-                  <a
-                    href="https://sathya.adtarbo.com/stores"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="Store Locations"
-                    className="flex flex-col items-center justify-center min-w-[54px] text-gray-700 hover:text-[#d72828] transition-colors group cursor-pointer"
-                    title="Store Locations"
-                  >
-                    <div className="relative flex items-center justify-center w-7 h-7">
-                      <HiOutlineBuildingStorefront className="w-6 h-6 text-gray-700 group-hover:text-[#d72828] transition-colors" />
-                    </div>
-                    <span className="text-[11px] font-medium text-gray-700 group-hover:text-[#d72828] mt-1 transition-colors leading-none">
-                      Store
-                    </span>
-                  </a>
-
-                  {/* Wishlist */}
-                  <Link
-                    href="/wishlist"
-                    aria-label={`Wishlist (${wishlistCount || 0} items)`}
-                    className="flex flex-col items-center justify-center min-w-[54px] text-gray-700 hover:text-[#d72828] transition-colors group cursor-pointer"
-                    title="Wishlist"
-                  >
-                    <div className="relative flex items-center justify-center w-7 h-7">
-                      <HiOutlineHeart className="w-6 h-6 text-gray-700 group-hover:text-[#d72828] transition-colors" />
-                      <span
-                        className="absolute -top-1 -right-2 bg-[#d72828] text-white text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center leading-none"
-                        suppressHydrationWarning
-                      >
-                        {wishlistCount}
-                      </span>
-                    </div>
-                    <span className="text-[11px] font-medium text-gray-700 group-hover:text-[#d72828] mt-1 transition-colors leading-none">
-                      Wishlist
-                    </span>
-                  </Link>
-
-                  {/* Cart */}
-                  <Link
-                    href="/cart"
-                    aria-label={`Cart (${cartCount || 0} items)`}
-                    className="flex flex-col items-center justify-center min-w-[54px] text-gray-700 hover:text-[#d72828] transition-colors group cursor-pointer"
-                    title="Shopping Cart"
-                  >
-                    <div className="relative flex items-center justify-center w-7 h-7">
-                      <HiOutlineShoppingBag className="w-6 h-6 text-gray-700 group-hover:text-[#d72828] transition-colors" />
-                      <span
-                        className="absolute -top-1 -right-2 bg-[#d72828] text-white text-[10px] font-bold min-w-[16px] h-4 px-1 rounded-full flex items-center justify-center leading-none"
-                        suppressHydrationWarning
-                      >
-                        {cartCount}
-                      </span>
-                    </div>
-                    <span className="text-[11px] font-medium text-gray-700 group-hover:text-[#d72828] mt-1 transition-colors leading-none">
-                      Cart
-                    </span>
-                  </Link>
-                </div>
-              ) : (
-                /* Classic Header Action Group: Original 7 options intact */
-                <>
-                  {/* Deals Button — hidden when offer timer is active for this state */}
-                  {showDealsButton && (
-                    <Link
-                      href="/deals-offer"
-                      aria-label="View Deals & Special Offers"
-                      className="hidden sm:inline-flex items-center justify-center px-3.5 py-1.5 rounded-md text-[#000000] font-bold text-[13px] leading-tight transition-all duration-200 shadow-xs hover:shadow hover:opacity-95 active:scale-95 shrink-0 self-center"
-                      style={{
-                        background: "linear-gradient(135deg, #00b4db 0%, #f44336 55%, #ffc107 100%)",
-                      }}
-                      title="View Deals & Special Offers"
-                    >
-                      Deals
-                    </Link>
-                  )}
-
-                  {/* State / Region Selector Button (Classic only) */}
-                  <button
-                    type="button"
-                    onClick={openRegionModal}
-                    aria-label={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'}`}
-                    className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[50px] md:min-w-[54px] cursor-pointer`}
-                    title={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'} (${selectedRegion?.name || 'Tamil Nadu'}). Click to change.`}
-                    suppressHydrationWarning
-                  >
-                    <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
-                      <FiMapPin size={18} strokeWidth={1.75} />
-                    </div>
-                    <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS} max-w-[62px] truncate`} suppressHydrationWarning>
-                      {pincode ? pincode : (selectedRegion?.code || 'Region')} ▾
-                    </span>
-                  </button>
-
-                  {/* Contact Button (Classic only) */}
-                  <Link
-                    href="/contact"
-                    aria-label="Contact Us"
-                    className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[48px] md:min-w-[52px]`}
-                    title="Contact Us"
-                  >
-                    <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
-                      <HiOutlinePhone size={18} strokeWidth={1.75} />
-                    </div>
-                    <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Contact</span>
-                  </Link>
-
-                  <a
-                    href="https://sathya.adtarbo.com/stores"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="Store Locations"
-                    className={`${HEADER_ACTION_LINK_CLASS} hidden sm:flex min-w-[52px]`}
-                  >
-                    <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
-                      <HiOutlineBuildingStorefront size={18} strokeWidth={1.75} />
-                    </div>
-                    <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Store</span>
-                  </a>
-
-                  <Link href="/wishlist" aria-label={`Wishlist (${wishlistCount || 0} items)`} className={`${HEADER_ACTION_LINK_CLASS} flex min-w-[52px] relative`}>
-                    <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
-                      <HiOutlineHeart size={18} strokeWidth={1.75} />
-                      <span className={HEADER_ACTION_BADGE_CLASS} suppressHydrationWarning>
-                        {wishlistCount}
-                      </span>
-                    </div>
-                    <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Wishlist</span>
-                  </Link>
-
-                  <Link href="/cart" aria-label={`Cart (${cartCount || 0} items)`} className={`${HEADER_ACTION_LINK_CLASS} flex min-w-[52px] relative`}>
-                    <div className={HEADER_ACTION_ICON_WRAP_CLASS}>
-                      <HiOutlineShoppingBag size={18} strokeWidth={1.75} />
-                      <span className={HEADER_ACTION_BADGE_CLASS} suppressHydrationWarning>
-                        {cartCount}
-                      </span>
-                    </div>
-                    <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS}`}>Cart</span>
-                  </Link>
-
-                  {/* Deals Offer PDF Export Icon - Visible ONLY for Authenticated Users */}
-                  {Boolean(isLoggedIn && userData) && (
-                    <DealsPdfButton />
-                  )}
-
-                  {/* Classic User Account / Login Dropdown */}
-                  <div
-                    className="relative hidden sm:block"
-                    ref={!isModern ? accountMenuRef : null}
-                    onMouseEnter={handleMenuMouseEnter}
-                    onMouseLeave={handleMenuMouseLeave}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setIsAccountMenuOpen((prev) => !prev)}
-                      className={`${HEADER_ACTION_LINK_CLASS} min-w-[48px] md:min-w-[52px] focus:outline-none cursor-pointer`}
-                      aria-label={isAuthenticated ? "Account Menu" : "Login"}
-                      aria-expanded={isAccountMenuOpen}
-                      aria-haspopup="true"
-                      title={isAuthenticated ? (userData?.name || userData?.mobile || "Account") : "Login / Sign In"}
-                    >
-                      <div
-                        className={`${HEADER_ACTION_ICON_WRAP_CLASS} ${isAccountMenuOpen ? "!border-[#ED1C24] !bg-[#FFF200] !text-[#C4161D] shadow-[0_4px_10px_rgba(215,40,40,0.18)]" : ""
-                          }`}
-                      >
-                        <FiUser size={18} strokeWidth={1.75} />
-                      </div>
-                      <span className={`text-[10px] ${HEADER_ACTION_LABEL_CLASS} max-w-[62px] truncate`} suppressHydrationWarning>
-                        {isAuthenticated ? userDisplayName : 'Login'}
-                      </span>
-                    </button>
-
-                    {!isModern && isAccountMenuOpen && renderAccountDropdown()}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
           {/* Mobile Menu (Hidden on desktop) */}
           {isMobileMenuOpen && (
             <div className="sm:hidden bg-white fixed inset-0 z-50 p-4 pt-3 rounded-lg shadow-lg overflow-y-auto transition-all duration-300"
@@ -3798,224 +3575,88 @@ const Header = ({ headerStyle: propHeaderStyle } = {}) => {
             </div>
           )}
         </div>
-        {/* Category listing bar — red bar with yellow line on top (Sathya brand) OR gradient modern bar */}
-        <div
-          className={`hidden lg:flex relative w-full items-center shadow transition-all duration-200 select-none z-30`}
-          style={{
-            backgroundColor: "#3F5EFB",
-            background: navbarBackgroundStyle,
-            borderTop: isModern ? "none" : navbarBorderTopStyle,
-          }}
-        >
-          {/* COMMON CONTAINER: max-width 1320px, margin: 0 auto, padding: 0 24px */}
-          <div className="max-w-[1320px] mx-auto px-6 w-full flex items-center h-[52px] box-border relative">
-            {/* Menu (when enabled) and the categories form one centred group. */}
-            {(isModern || menuButtonEnabled) && (
-              <div
-                className={`relative flex-shrink-0 h-full ${isModern ? "w-[180px]" : "-ml-4 pl-4"}`}
-                data-sathya-menu-toggle
-                onMouseEnter={() => {
-                  if (menuHoverLeaveTimer.current) {
-                    clearTimeout(menuHoverLeaveTimer.current);
-                    menuHoverLeaveTimer.current = null;
-                  }
-                  setShowMenu(true);
-                  cancelHide();
-                  setHoveredCategory(null);
-                  setActiveSubCategory(null);
-                }}
-                onMouseLeave={() => {
-                  if (menuHoverLeaveTimer.current) clearTimeout(menuHoverLeaveTimer.current);
-                  menuHoverLeaveTimer.current = setTimeout(() => {
-                    setShowMenu(false);
-                    menuHoverLeaveTimer.current = null;
-                  }, 200);
-                }}
-              >
-                <button
-                  type="button"
-                  className={
-                    isModern
-                      ? "w-full h-full px-3 flex items-center justify-center gap-2 font-bold text-xs sm:text-sm bg-[#ED1C24] hover:bg-[#C4161D] text-white whitespace-nowrap transition-colors cursor-pointer shadow-xs"
-                      : "h-full self-stretch pl-2 pr-6 flex items-center gap-2.5 font-bold text-base bg-transparent hover:bg-transparent focus:bg-transparent active:bg-transparent whitespace-nowrap"
-                  }
-                  style={!isModern ? { color: navbarTextColorStyle } : undefined}
-                  aria-label="Open menu"
-                  aria-expanded={showMenu}
-                  onClick={() => {
-                    // Touch / keyboard: toggle. Desktop opens on hover.
-                    setShowMenu((prev) => !prev);
-                    cancelHide();
-                    setHoveredCategory(null);
-                    setActiveSubCategory(null);
-                  }}
-                >
-                  <FiMenu size={18} strokeWidth={2.5} className="shrink-0" />
-                  <span className="whitespace-nowrap">{isModern ? "All Categories" : "Menu"}</span>
-                  {isModern && <FiChevronDown size={14} className="opacity-80 shrink-0" />}
-                </button>
-                <HeaderMenuSidebar
-                  open={showMenu}
-                  onClose={() => setShowMenu(false)}
-                  categories={categories}
-                  resolveCategoryHref={resolveCategoryNavHref}
-                  showDealsButton={showDealsButton}
-                />
-              </div>
-            )}
-            {isModern ? (
-              /* Modern Nav links in the middle: gap: 28px, white-space: nowrap, no overflow clipping. "Blogs" fully visible */
-              <div className="relative min-w-0 flex-1 px-4 xl:px-6 overflow-hidden">
-                <div className="flex items-center gap-3.5 xl:gap-[28px] whitespace-nowrap overflow-x-auto scrollbar-hide py-1">
-                  {redBarEntries.map((entry) => {
-                    if (entry.kind === "custom") {
-                      return (
-                        <div
-                          key={`custom-${entry.key}`}
-                          onMouseEnter={() => { cancelHide(); setHoveredCategory(null); }}
-                          className="flex flex-col items-center shrink-0"
-                        >
-                          {/^https?:\/\//i.test(entry.href) ? (
-                            <a
-                              href={entry.href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ color: navbarTextColorStyle }}
-                              className="inline-block text-xs xl:text-sm font-semibold hover:text-amber-300 hover:scale-105 transition-all duration-150 whitespace-nowrap"
-                            >
-                              {entry.label}
-                            </a>
-                          ) : (
-                            <Link
-                              href={entry.href}
-                              style={{ color: navbarTextColorStyle }}
-                              className="inline-block text-xs xl:text-sm font-semibold hover:text-amber-300 hover:scale-105 transition-all duration-150 whitespace-nowrap"
-                            >
-                              {entry.label}
-                            </Link>
-                          )}
-                        </div>
-                      );
-                    }
-                    const { category } = entry;
-                    const isHovered = hoveredCategory?._id === category._id;
-                    return (
-                      <div
-                        key={entry.key}
-                        ref={(el) => (slideRefs.current[category._id] = el)}
-                        onMouseEnter={() => handleMouseEnter(category._id, category)}
-                        onMouseLeave={() => startHide(120)}
-                        className="flex flex-col items-center shrink-0"
-                      >
-                        <Link
-                          href={resolveCategoryNavHref([category.category_slug], category._id, 0)}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            if (hideTimeout.current) {
-                              clearTimeout(hideTimeout.current);
-                              hideTimeout.current = null;
-                            }
-                            setHoveredCategory(null);
-                            setActiveSubCategory(null);
-                            handleCategoryClick(
-                              category.category_slug,
-                              category.category_name,
-                              category._id
-                            );
-                          }}
-                          style={{ color: navbarTextColorStyle }}
-                          className={`inline-block text-xs xl:text-sm font-semibold hover:text-amber-300 hover:scale-105 transition-all duration-150 whitespace-nowrap ${
-                            isHovered ? "!scale-105 text-amber-300 font-bold" : ""
-                          }`}
-                        >
-                          {entry.label}
-                        </Link>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              /* Classic Category Bar with Swiper */
-              <div className="relative min-w-0 flex-1 px-2">
-                <div className="relative">
-                  <div className="flex justify-center overflow-x-auto scrollbar-hide">
-                    <Swiper
-                      modules={[Navigation]}
-                      navigation={{ prevEl: ".custom-swiper-prev", nextEl: ".custom-swiper-next" }}
-                      spaceBetween={20}
-                      slidesPerView="auto"
-                      watchOverflow={true}
-                      observer={true}
-                      observeParents={true}
-                      className="[&_.swiper-slide:last-child]:!mr-0"
-                    >
-                      {redBarEntries.map((entry) => {
-                        if (entry.kind === "custom") return (
-                          <SwiperSlide key={`custom-${entry.key}`} className="!w-auto">
-                            <div
-                              onMouseEnter={() => { cancelHide(); setHoveredCategory(null); }}
-                              className="px-2 py-2 flex flex-col items-center text-center"
-                            >
-                              {/^https?:\/\//i.test(entry.href) ? (
-                                <a
-                                  href={entry.href}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  style={{ color: navbarTextColorStyle }}
-                                  className="inline-block origin-center text-sm font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap"
-                                >
-                                  {entry.label}
-                                </a>
-                              ) : (
-                                <Link
-                                  href={entry.href}
-                                  style={{ color: navbarTextColorStyle }}
-                                  className="inline-block origin-center text-sm font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap"
-                                >
-                                  {entry.label}
-                                </Link>
-                              )}
-                            </div>
-                          </SwiperSlide>
-                        );
-                        const { category } = entry;
-                        const isHovered = hoveredCategory?._id === category._id;
-                        return (
-                          <SwiperSlide key={entry.key} className="!w-auto">
-                            <div ref={(el) => (slideRefs.current[category._id] = el)} onMouseEnter={() => handleMouseEnter(category._id, category)} onMouseLeave={() => startHide(120)} className="px-2 py-2 flex flex-col items-center text-center" >
-                              <Link
-                                href={resolveCategoryNavHref([category.category_slug], category._id, 0)}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  if (hideTimeout.current) {
-                                    clearTimeout(hideTimeout.current);
-                                    hideTimeout.current = null;
-                                  }
-                                  setHoveredCategory(null);
-                                  setActiveSubCategory(null);
-                                  handleCategoryClick(
-                                    category.category_slug,
-                                    category.category_name,
-                                    category._id
-                                  );
-                                }}
-                                style={{ color: navbarTextColorStyle }}
-                                className={`inline-block origin-center text-sm font-bold hover:scale-105 transition-transform duration-150 whitespace-nowrap ${isHovered ? "!scale-105 text-amber-300" : ""}`}
-                              >
-                                {entry.label}
-                              </Link>
-                            </div>
-                          </SwiperSlide>
-                        );
-                      })}
-                    </Swiper>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Dynamic Desktop Header Layout (HeaderModern vs HeaderClassic) */}
+        {isModern ? (
+          <HeaderModern
+            settings={effectiveHeaderConfig}
+            categories={categories}
+            menuItems={resolvedMenuItems}
+            renderDesktopSearch={renderDesktopSearch}
+            openRegionModal={openRegionModal}
+            city={city}
+            district={district}
+            pincode={pincode}
+            selectedRegion={selectedRegion}
+            isAuthenticated={isAuthenticated}
+            userData={userData}
+            userDisplayName={userDisplayName}
+            isAccountMenuOpen={isAccountMenuOpen}
+            setIsAccountMenuOpen={setIsAccountMenuOpen}
+            accountMenuRef={accountMenuRef}
+            handleMenuMouseEnter={handleMenuMouseEnter}
+            handleMenuMouseLeave={handleMenuMouseLeave}
+            renderAccountDropdown={renderAccountDropdown}
+            setShowAuthModal={setShowAuthModal}
+            wishlistCount={wishlistCount}
+            cartCount={cartCount}
+            menuButtonEnabled={menuButtonEnabled}
+            showMenu={showMenu}
+            setShowMenu={setShowMenu}
+            menuHoverLeaveTimer={menuHoverLeaveTimer}
+            cancelHide={cancelHide}
+            setHoveredCategory={setHoveredCategory}
+            setActiveSubCategory={setActiveSubCategory}
+            resolveCategoryNavHref={resolveCategoryNavHref}
+            showDealsButton={showDealsButton}
+            toggleMobileMenu={toggleMobileMenu}
+            hoveredCategory={hoveredCategory}
+            slideRefs={slideRefs}
+            handleMouseEnter={handleMouseEnter}
+            startHide={startHide}
+            hideTimeout={hideTimeout}
+            handleCategoryClick={handleCategoryClick}
+          />
+        ) : (
+          <HeaderClassic
+            settings={effectiveHeaderConfig}
+            categories={categories}
+            menuItems={resolvedMenuItems}
+            renderDesktopSearch={renderDesktopSearch}
+            effectiveOfferTimer={effectiveOfferTimer}
+            openRegionModal={openRegionModal}
+            city={city}
+            pincode={pincode}
+            selectedRegion={selectedRegion}
+            isAuthenticated={isAuthenticated}
+            isLoggedIn={isLoggedIn}
+            userData={userData}
+            userDisplayName={userDisplayName}
+            isAccountMenuOpen={isAccountMenuOpen}
+            setIsAccountMenuOpen={setIsAccountMenuOpen}
+            accountMenuRef={accountMenuRef}
+            handleMenuMouseEnter={handleMenuMouseEnter}
+            handleMenuMouseLeave={handleMenuMouseLeave}
+            renderAccountDropdown={renderAccountDropdown}
+            wishlistCount={wishlistCount}
+            cartCount={cartCount}
+            menuButtonEnabled={menuButtonEnabled}
+            showMenu={showMenu}
+            setShowMenu={setShowMenu}
+            menuHoverLeaveTimer={menuHoverLeaveTimer}
+            cancelHide={cancelHide}
+            setHoveredCategory={setHoveredCategory}
+            setActiveSubCategory={setActiveSubCategory}
+            resolveCategoryNavHref={resolveCategoryNavHref}
+            showDealsButton={showDealsButton}
+            toggleMobileMenu={toggleMobileMenu}
+            hoveredCategory={hoveredCategory}
+            slideRefs={slideRefs}
+            handleMouseEnter={handleMouseEnter}
+            startHide={startHide}
+            hideTimeout={hideTimeout}
+            handleCategoryClick={handleCategoryClick}
+          />
+        )}
 
         {hoveredCategory && hoveredCategory.subcategories?.length > 0 && (() => {
           const isSingleSub = (hoveredCategory.subcategories || []).length <= 1;

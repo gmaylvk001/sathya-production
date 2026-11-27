@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import SharedProductCard from "@/components/product/ProductCard";
 import { normalizeProduct } from "@/lib/normalizeProduct";
+import { filterHomeInStockProducts } from "@/components/product/AvailableInStoreNotice";
 
 function usePerPage() {
   const [perPage, setPerPage] = useState(6);
@@ -64,8 +65,14 @@ function getPageStarts(total, perPage) {
  * Storefront Product Carousel — Recently Viewed style cards,
  * auto-play + L/R + See All. White background.
  */
-export default function CategoryProductCarousel({ config }) {
-  const products = (config?.products || []).filter((p) => p?._id || p?.slug);
+export default function CategoryProductCarousel({
+  config,
+  hideOutOfStock = false,
+}) {
+  const rawProducts = (config?.products || []).filter((p) => p?._id || p?.slug);
+  const products = hideOutOfStock
+    ? filterHomeInStockProducts(rawProducts)
+    : rawProducts;
   const name = config?.name || "";
   const seeAllHref = config?.seeAllHref || "";
   const perPage = usePerPage();

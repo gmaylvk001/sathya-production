@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import SharedProductCard from "@/components/product/ProductCard";
 import { normalizeProduct } from "@/lib/normalizeProduct";
+import { filterHomeInStockProducts } from "@/components/product/AvailableInStoreNotice";
 
 function usePerPage() {
   const [perPage, setPerPage] = useState(5);
@@ -350,13 +351,19 @@ function ExactSizeImage({ src, alt = "", maxSide, className = "" }) {
   );
 }
 
-export default function CategoryBannerFourProducts({ config }) {
+export default function CategoryBannerFourProducts({
+  config,
+  hideOutOfStock = false,
+}) {
   const bannerDesktop = config?.bannerDesktop || "";
   const bannerMobile = config?.bannerMobile || bannerDesktop;
   const bannerHref = config?.bannerHref || "";
   const tilesBgColor = config?.tilesBgColor || "#0d9488";
   const tiles = (config?.tiles || []).filter((t) => t?.image);
-  const products = (config?.products || []).filter((p) => p?._id || p?.slug);
+  const rawProducts = (config?.products || []).filter((p) => p?._id || p?.slug);
+  const products = hideOutOfStock
+    ? filterHomeInStockProducts(rawProducts)
+    : rawProducts;
   const name = config?.name || "";
 
   if (!bannerDesktop || tiles.length < 3) return null;

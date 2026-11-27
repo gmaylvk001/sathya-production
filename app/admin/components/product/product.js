@@ -2133,6 +2133,7 @@ export default function CategoryComponent() {
               <th className="p-2 whitespace-nowrap">Unilet</th>
               <th className="p-2">Price</th>
               <th className="p-2 whitespace-nowrap">Spl Price</th>
+              <th className="p-2 whitespace-nowrap">LSP Price</th>
               <th className="p-2">Quantity</th>
               <th className="p-2">Status</th>
               <th className="p-2">Action</th>
@@ -2141,7 +2142,7 @@ export default function CategoryComponent() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan="9" className="text-center p-6">
+                <td colSpan="10" className="text-center p-6">
                   <div className="flex justify-center items-center gap-2">
                     <svg
                       className="animate-spin h-5 w-5 text-[#d72828]"
@@ -2248,6 +2249,9 @@ export default function CategoryComponent() {
                   {/* Special Price Column */}
                   <td className="p-2">{product.special_price}</td>
 
+                  {/* LSP Price Column */}
+                  <td className="p-2">{product.lsp ?? ""}</td>
+
                   {/* Quantity Column */}
                   <td className="p-2">{product.quantity}</td>
 
@@ -2287,7 +2291,7 @@ export default function CategoryComponent() {
               })
             ) : (
               <tr>
-                <td colSpan="9" className="text-center p-4 text-gray-500">
+                <td colSpan="10" className="text-center p-4 text-gray-500">
                   No Products found
                 </td>
               </tr>

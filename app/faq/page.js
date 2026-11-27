@@ -1,20 +1,11 @@
-"use client";
-import { useState, useEffect } from "react";
+import HelpCenterClient from "@/components/help/HelpCenterClient";
 
-import FeedbackComponent from "@/components/faq/feedback";
+export const metadata = {
+  title: "Help & FAQ | Sathya Store",
+  description:
+    "Sathya Store Help Center: Track orders, request a callback, chat on WhatsApp, and browse FAQs.",
+};
 
-
-export default function Dashboard() {
-  const [time, setTime] = useState(null);
-
-  useEffect(() => {
-    setTime(Date.now());
-  }, []);
-
-  return (
-    <div>
-
-      <FeedbackComponent /> {/* Use the Home component here */}
-    </div>
-  );
+export default function FaqPage() {
+  return <HelpCenterClient />;
 }

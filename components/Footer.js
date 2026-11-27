@@ -343,7 +343,7 @@ const Footer = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <Link href="/help" className="flex items-center gap-2 sm:gap-3 min-w-0 hover:opacity-85 transition-opacity">
                 <FaHeadset
                   className="text-2xl sm:text-3xl md:text-4xl shrink-0"
                   style={{ color: BRAND_RED }}
@@ -356,7 +356,7 @@ const Footer = () => {
                     24/7 Support
                   </p>
                 </div>
-              </div>
+              </Link>
             </div>
           </div>
         </div>

@@ -19,6 +19,7 @@ import LowStockEnquiryPopup, {
   isCusOrderMovement,
 } from "@/components/LowStockEnquiryPopup";
 import OpenBoxPopup from "@/components/OpenBoxPopup";
+import AvailableInStoreNotice from "@/components/product/AvailableInStoreNotice";
 import { isOpenBoxEligible } from "@/lib/openBoxHelper";
 
 function isEnquiryOnlyProduct(item) {
@@ -399,6 +400,7 @@ function WishlistProductCard({
       {/* Right Side Action Buttons */}
       <div className="flex items-center gap-2 flex-shrink-0 sm:ml-auto self-end sm:self-center mt-2 sm:mt-0">
         {/* Cart / Order Now / Enquire — same rules as product page */}
+        {inStock ? (
         <button
           onClick={handleCartClick}
           disabled={addingToCart || !inStock}
@@ -462,6 +464,12 @@ function WishlistProductCard({
             </>
           )}
         </button>
+        ) : (
+          <AvailableInStoreNotice
+            variant="compact"
+            className="max-w-[220px] sm:max-w-[260px]"
+          />
+        )}
 
         {/* Remove Button */}
         <button
