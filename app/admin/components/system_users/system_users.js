@@ -200,8 +200,8 @@ export default function SystemUsersComponent() {
     const alreadyFetched = Number(user.orders_fetched) === 1;
     const confirmed = window.confirm(
       alreadyFetched
-        ? "Fetch exist orders again into orders_new? Already-copied order numbers will be skipped. Missing live payments and history will be filled if needed."
-        : "Fetch exist orders into orders_new and order_details_new, insert payment_new_live, and link order_history_new?"
+        ? "Fetch exist orders again into orders_new? Already-copied order numbers will be skipped. Missing live payments, history and payment refunds will be filled if needed."
+        : "Fetch exist orders into orders_new and order_details_new, insert payment_new_live, link order_history_new, and copy payment refunds into payment_refund?"
     );
     if (!confirmed) return;
 
