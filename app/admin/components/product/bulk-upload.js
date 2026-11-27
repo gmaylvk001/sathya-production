@@ -42,12 +42,14 @@ export default function BulkUploadPage() {
   const product_nameRef = useRef(null);
   const product_descriptionRef = useRef(null);
   const product_metaRef = useRef(null);
+  const product_eanRef = useRef(null);
   const category_metaRef = useRef(null);
   const dynamic_filter_uploadRef = useRef(null);
   const [sap_features, setSap_features] = useState(null);
   const [product_name, setProduct_name] = useState(null);
   const [product_description, setProduct_description] = useState(null);
   const [product_meta, setProduct_meta] = useState(null);
+  const [product_ean, setProduct_ean] = useState(null);
   const [category_meta, setCategory_meta] = useState(null);
   const [dynamic_filter_upload, setDynamic_filter_upload] = useState(null);
   const [warrantyFile, setWarrantyFile] = useState(null);
@@ -86,6 +88,7 @@ export default function BulkUploadPage() {
     setProduct_name(null);
     setProduct_description(null);
     setProduct_meta(null);
+    setProduct_ean(null);
     setCategory_meta(null);
     setDynamic_filter_upload(null);
     setCategoryUpload(null);
@@ -1285,6 +1288,50 @@ export default function BulkUploadPage() {
         setIsLoading(false);
         setActiveUploadType(null);
       }
+    } else if (uploadType == "product_ean") {
+      if (!product_ean || !validateFile(product_ean, ['.xlsx', '.csv'])) {
+        showToast("error", "Please upload a valid Excel (.xlsx) or CSV (.csv) file.");
+
+        const fileInput = document.getElementById('product_ean');
+        if (fileInput) fileInput.value = "";
+
+        setProduct_ean(null);
+        return;
+      }
+
+      setIsLoading(true);
+      setActiveUploadType(uploadType);
+      setMessage(null);
+
+      const formData = new FormData();
+      formData.append("excel", product_ean);
+
+      try {
+        const response = await fetch('/api/product/bulk-upload/ean', {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await response.json();
+        resetUploadForm();
+
+        if (response.ok) {
+          showToast("success", data.message || "Product EAN data uploaded successfully ✅");
+        } else {
+          showToast("error", data.error || "Upload failed ❌");
+        }
+      } catch (error) {
+        console.error("Upload error:", error);
+        showToast("error", error?.message || "Upload failed ❌");
+      } finally {
+        const fileInput = document.getElementById('product_ean');
+        if (fileInput) fileInput.value = "";
+
+        setProduct_ean(null);
+        resetUploadForm();
+        setIsLoading(false);
+        setActiveUploadType(null);
+      }
     } else if (uploadType == "category_meta") {
       console.log('Processing category_meta upload...');
 
@@ -1601,6 +1648,18 @@ export default function BulkUploadPage() {
     XLSX.writeFile(wb, "item_code_meta_bulk_upload_sample.xlsx");
   };
 
+  const handleDownloadProduct_ean_File = () => {
+    const XLSX = require("xlsx");
+    const ws = XLSX.utils.aoa_to_sheet([
+      ["item_code", "ean", "indoor_ean", "outdoor_ean"],
+      ["SAMPLE001", "8901234567890", "", ""],
+      ["SAMPLE002", "", "8901234567891", "8901234567892"],
+    ]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Product EAN Template");
+    XLSX.writeFile(wb, "item_code_ean_bulk_upload_sample.xlsx");
+  };
+
   const handleDownloadCategory_meta_File = () => {
     const XLSX = require("xlsx");
     const ws = XLSX.utils.aoa_to_sheet([
@@ -1872,6 +1931,7 @@ export default function BulkUploadPage() {
     { id: "product_name", label: "Product name only", image: "/uploads/files/Product Name.png" },
     { id: "product_description", label: "Product Description", image: "/uploads/files/product_description.png" },
     { id: "product_meta", label: "Product Meta Data (Title, Description, Keywords)", image: "/uploads/files/Product Name.png" },
+    { id: "product_ean", label: "Product EAN Upload (EAN, Indoor EAN, Outdoor EAN)", image: "/uploads/files/Product Name.png" },
     { id: "category_meta", label: "Category Meta Data (Title, Description, Keywords)", image: "/uploads/files/Category_filter_upload_sixth_box_image.png" },
     { id: "dynamic_filter_upload", label: "Dynamic Filter Upload", image: "/uploads/files/dynamic_filter.png" },
     { id: "product-added-bulk-addons-frequentlybought-relatedproducts", label: "Add Frequently Addons and Related Products", image: "/uploads/files/bulk_upload_for_product_rightside_datas.png" },
@@ -3401,6 +3461,67 @@ export default function BulkUploadPage() {
                       </span>
                     ) : (
                       'Upload Product Meta Values'
+                    )}
+                  </button>
+                </div>
+              </form>
+            )}
+
+            {selectedSection === "product_ean" && (
+              <form id="product_ean" ref={product_eanRef} onSubmit={(e) => handleSubmit(e, "product_ean")} className="bg-white rounded-xl shadow-lg overflow-hidden p-6 space-y-8">
+                <div className="border border-gray-200 rounded-lg p-6 hover:border-[#d72828] transition-colors">
+                  <div className="mb-4">
+                    <h2 className="text-md font-semibold text-[#d72828] mb-6 border-b pb-2">Product EAN Bulk Upload</h2>
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      <svg className="w-5 h-5 text-[#d72828]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      Excel/CSV File
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Columns: <span className="font-mono text-gray-700 font-semibold">item_code, ean, indoor_ean, outdoor_ean</span>
+                    </p>
+                    <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-2.5 mt-2">
+                      💡 <strong>Update / Insert Rule:</strong> Products are matched by <span className="font-mono">item_code</span>. For <span className="font-mono">ean</span>, <span className="font-mono">indoor_ean</span>, and <span className="font-mono">outdoor_ean</span> — if a cell has a value, it will be inserted or updated; if a cell is empty, existing product data remains unchanged.
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    <input
+                      id="product_ean"
+                      type="file"
+                      accept=".xlsx,.csv"
+                      onChange={(e) => setProduct_ean(e.target.files?.[0] || null)}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-red-50 file:text-[#d72828] hover:file:bg-red-100"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleDownloadProduct_ean_File}
+                    className="inline-flex items-center pt-5 text-sm text-[#d72828] hover:text-[#d72828] transition-colors"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download Sample Format
+                  </button>
+                </div>
+                <div className="flex mt-5 justify-between">
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="bg-[#d72828] hover:bg-[#d72828] text-white px-3 py-2 rounded-md flex items-center gap-2"
+                  >
+                    {isLoading && activeUploadType == "product_ean" ? (
+                      <span className="flex items-center">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Uploading...
+                      </span>
+                    ) : (
+                      'Upload Product EAN Values'
                     )}
                   </button>
                 </div>
