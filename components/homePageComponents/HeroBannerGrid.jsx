@@ -137,14 +137,12 @@ function HeroBannerSlot({
       {/* Render overlay box strictly when heading, description, or button exists */}
       {hasOverlayContent && (
         <div
-          className={`absolute inset-0 z-[2] pointer-events-none flex ${alignStyles.container} ${styles.containerPad} ${
-            showGradient ? alignStyles.gradient : ""
-          }`}
+          className={`absolute inset-0 z-[2] pointer-events-none flex ${alignStyles.container} ${styles.containerPad} ${showGradient ? alignStyles.gradient : ""
+            }`}
         >
           <div
-            className={`${styles.innerWidth} ${
-              banner?.overlayAlign === "bottom-center" ? "mx-auto" : ""
-            }`}
+            className={`${styles.innerWidth} ${banner?.overlayAlign === "bottom-center" ? "mx-auto" : ""
+              }`}
             style={{ color: textColor }}
           >
             {heading && <HeadingTag className={styles.heading}>{heading}</HeadingTag>}
@@ -207,8 +205,8 @@ export default function HeroBannerGrid({ config, embedded = false }) {
     : "order-3 lg:order-none lg:col-start-2 lg:row-start-2";
 
   const containerClass = embedded
-    ? "w-full h-full bg-white px-2 sm:px-3 md:px-4"
-    : "w-full bg-white mb-6 px-2 sm:px-3 md:px-4 pt-2.5 sm:pt-3.5 md:pt-4";
+    ? "w-full h-full bg-white"
+    : "site-container bg-white mb-5 sm:mb-6";
 
   const gridHeightClass = embedded
     ? "lg:h-full"

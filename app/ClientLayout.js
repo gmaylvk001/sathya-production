@@ -11,10 +11,8 @@ import { HeaderProvider } from "@/context/HeaderContext";
 import { RegionProvider } from "@/context/RegionContext";
 import { CompareProvider } from "@/context/CompareContext";
 import AuthSessionSync from "@/components/AuthSessionSync";
+import CustomHeader from "@/components/Headernew";
 
-// Storefront chrome is heavy (Header ~icons/swiper). Keep it out of the admin
-// client graph by loading only on non-admin routes via dynamic chunks.
-const CustomHeader = dynamic(() => import("@/components/Headernew"), { ssr: true });
 const CustomFooter = dynamic(() => import("@/components/Footer"), { ssr: true });
 const GlobalModals = dynamic(() => import("@/components/GlobalModals"), { ssr: false });
 const CompareBar = dynamic(() => import("@/components/CompareBar"), { ssr: false });
@@ -42,7 +40,7 @@ function recoverFromChunkLoadError() {
   window.location.reload();
 }
 
-export default function ClientLayout({ children }) {
+export default function ClientLayout({ children, initialHeaderSettings = null }) {
   const pathname = usePathname();
 
   // Backup recovery if a later client navigation hits a stale/timeout chunk
@@ -97,7 +95,7 @@ export default function ClientLayout({ children }) {
                 <CompareProvider>
                   <AuthSessionSync />
                   <div className="flex flex-col min-h-screen">
-                    {!isAdmin && <CustomHeader />}
+                    {!isAdmin && <CustomHeader initialHeaderSettings={initialHeaderSettings} />}
                     <main className="relative flex-grow min-h-[calc(100vh-280px)]">{children}</main>
                     {!isAdmin && <CustomFooter />}
                     {!isAdmin && <GlobalModals />}

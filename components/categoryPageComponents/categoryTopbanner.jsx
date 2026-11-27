@@ -158,8 +158,8 @@ export default function CategoryTopBanner({
   };
 
   const stageClass = hasGridSlides
-    ? "relative w-full overflow-hidden rounded-lg mb-6 min-h-[150px] sm:min-h-[260px] md:min-h-[320px] lg:h-[360px] xl:h-[395px] 2xl:h-[420px] bg-white"
-    : "relative w-full overflow-hidden rounded-lg mb-6 min-h-[150px] sm:min-h-[260px] md:min-h-[320px] bg-gray-50";
+    ? "relative w-full overflow-hidden rounded-lg mb-5 sm:mb-6 min-h-[150px] sm:min-h-[260px] md:min-h-[320px] lg:h-[360px] xl:h-[395px] 2xl:h-[420px] bg-white"
+    : "relative w-full overflow-hidden rounded-lg mb-5 sm:mb-6 min-h-[150px] sm:min-h-[260px] md:min-h-[320px] bg-gray-50";
 
   return (
     <div
@@ -218,9 +218,8 @@ export default function CategoryTopBanner({
                   e.stopPropagation();
                   setIndex(i);
                 }}
-                className={`h-2 rounded-full transition-all ${
-                  i === safeIndex ? "w-5 bg-white" : "w-2 bg-white/55 hover:bg-white/85"
-                }`}
+                className={`h-2 rounded-full transition-all ${i === safeIndex ? "w-5 bg-white" : "w-2 bg-white/55 hover:bg-white/85"
+                  }`}
               />
             ))}
           </div>

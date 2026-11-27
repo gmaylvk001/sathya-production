@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/adminRequest";
 import { cloneDefaults } from "@/lib/headerSettings";
 import {
@@ -17,6 +18,7 @@ export async function POST(req) {
 
     const defaults = cloneDefaults();
     const saved = await saveHeaderSettingsDoc(defaults);
+    revalidateTag("header-settings");
 
     return NextResponse.json(
       {

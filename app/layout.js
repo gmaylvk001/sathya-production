@@ -3,6 +3,7 @@ import "./globals.css";
 import ClientLayout from "@/app/ClientLayout";
 import Script from "next/script";
 import VisitorTracker from "@/components/VisitorTracker";
+import { getCachedHeaderSettings } from "@/lib/headerSettingsServer";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -23,7 +24,8 @@ export const metadata = {
   },
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const initialHeaderSettings = await getCachedHeaderSettings();
   return (
     <html lang="en" className={poppins.variable} suppressHydrationWarning>
       <head>
@@ -66,7 +68,7 @@ export default function RootLayout({ children }) {
           ></iframe>
         </noscript>
 
-        <ClientLayout>{children}</ClientLayout>
+        <ClientLayout initialHeaderSettings={initialHeaderSettings}>{children}</ClientLayout>
         <VisitorTracker />
 
         {/* Unified Non-Blocking Analytics & Tracking Loader (GTM, Adtarbo, GA4) */}

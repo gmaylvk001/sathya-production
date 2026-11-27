@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import Link from "next/link";
 import { FiMenu, FiMapPin, FiUser } from "react-icons/fi";
 import {
@@ -19,6 +19,7 @@ import DealsPdfButton from "@/components/deals-offer/DealsPdfButton";
  */
 export default function HeaderClassic({
   settings,
+  previewViewport = null,
   categories,
   menuItems,
   renderDesktopSearch,
@@ -60,6 +61,7 @@ export default function HeaderClassic({
   hideTimeout,
   handleCategoryClick,
 }) {
+  const hoverOpenedAtRef = useRef(0);
   const { logo, topbar, main, menu } = settings;
   const show = main?.show || {};
   const visibleItems = (menuItems || []).filter((item) => item.visible !== false);
@@ -71,12 +73,12 @@ export default function HeaderClassic({
         className="w-full relative z-40"
         style={{ background: "var(--hdr-main-bg)" }}
       >
-        <div className="hidden sm:flex items-center gap-3 lg:gap-5 h-[72px] w-full max-w-[1320px] mx-auto px-6 lg:px-12 box-border">
-          {/* Tablet/Mobile Nav Menu Toggle (< 1024px) */}
+        <div className="hidden sm:flex site-container hdr-inner gap-3 lg:gap-5 h-[70px]">
+          {/* Tablet/Mobile Nav Menu Toggle (< 768px) */}
           <button
             type="button"
             onClick={toggleMobileMenu}
-            className="lg:hidden flex items-center justify-center p-1.5 -ml-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors shrink-0"
+            className={`${previewViewport === "tablet" ? "flex" : "md:hidden flex"} items-center justify-center p-1.5 -ml-2 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors shrink-0`}
             aria-label="Open menu"
           >
             <FiMenu size={24} />
@@ -101,7 +103,7 @@ export default function HeaderClassic({
           {effectiveOfferTimer && <HeaderOfferTimer timer={effectiveOfferTimer} />}
 
           {/* Right Icons Group */}
-          <div className="flex items-center gap-4 lg:gap-[28px] shrink-0">
+          <div className="flex items-center gap-4 lg:gap-[28px] shrink-0 ml-auto">
             {/* Deals Pill */}
             {show.deals !== false && showDealsButton && (
               <Link
@@ -248,9 +250,9 @@ export default function HeaderClassic({
       </div>
 
       {/* Optional Accent Line (default yellow, 3px) */}
-      {menu?.accent_line?.enabled !== false && (
+      {menu?.accent_line?.enabled !== false && previewViewport !== "tablet" && (
         <div
-          className="hidden lg:block w-full"
+          className="hidden md:block w-full"
           style={{
             height: "var(--hdr-accent-height)",
             background: "var(--hdr-accent-color)",
@@ -258,140 +260,149 @@ export default function HeaderClassic({
         />
       )}
 
-      {/* Row 2: Classic Menu Bar ("Menu" button on left, links centered) */}
-      <div
-        className="hidden lg:flex relative w-full items-center select-none z-30 hdr-menu-bar"
-        style={{ background: "var(--hdr-menu-bg)" }}
-      >
-        <div className="max-w-[1320px] mx-auto px-6 lg:px-12 w-full flex items-center h-[52px] box-border relative">
-          {(menuButtonEnabled !== false) && (
-            <div
-              className="relative flex-shrink-0 h-full"
-              data-sathya-menu-toggle
-              onMouseEnter={() => {
-                if (menuHoverLeaveTimer.current) {
-                  clearTimeout(menuHoverLeaveTimer.current);
-                  menuHoverLeaveTimer.current = null;
-                }
-                setShowMenu(true);
-                cancelHide();
-                setHoveredCategory(null);
-                setActiveSubCategory(null);
-              }}
-              onMouseLeave={() => {
-                if (menuHoverLeaveTimer.current) clearTimeout(menuHoverLeaveTimer.current);
-                menuHoverLeaveTimer.current = setTimeout(() => {
-                  setShowMenu(false);
-                  menuHoverLeaveTimer.current = null;
-                }, 200);
-              }}
-            >
-              <button
-                type="button"
-                className="h-full px-5 flex items-center gap-2 font-bold text-sm whitespace-nowrap transition-opacity hover:opacity-95 cursor-pointer"
-                style={{
-                  background: "var(--hdr-btn-bg)",
-                  color: "var(--hdr-btn-text)",
-                }}
-                aria-label="Open menu"
-                aria-expanded={showMenu}
-                onClick={() => {
-                  setShowMenu((prev) => !prev);
+      {/* Row 2: Classic Menu Bar ("Menu" plain text on left aligned with logo, links centered) */}
+      {previewViewport !== "tablet" && (
+        <div
+          className="hidden md:flex relative w-full items-center select-none z-30 hdr-menu-bar"
+          style={{ background: "var(--hdr-menu-bg)" }}
+        >
+          <div className="site-container hdr-inner h-[48px] relative">
+            {(menuButtonEnabled !== false) && (
+              <div
+                className="relative flex-shrink-0 h-full"
+                data-sathya-menu-toggle
+                onMouseEnter={() => {
+                  if (typeof window !== "undefined" && !window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+                    return;
+                  }
+                  if (menuHoverLeaveTimer.current) {
+                    clearTimeout(menuHoverLeaveTimer.current);
+                    menuHoverLeaveTimer.current = null;
+                  }
+                  hoverOpenedAtRef.current = Date.now();
+                  setShowMenu(true);
                   cancelHide();
                   setHoveredCategory(null);
                   setActiveSubCategory(null);
                 }}
+                onMouseLeave={() => {
+                  if (typeof window !== "undefined" && !window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+                    return;
+                  }
+                  if (menuHoverLeaveTimer.current) clearTimeout(menuHoverLeaveTimer.current);
+                  menuHoverLeaveTimer.current = setTimeout(() => {
+                    setShowMenu(false);
+                    menuHoverLeaveTimer.current = null;
+                  }, 200);
+                }}
               >
-                <FiMenu size={18} strokeWidth={2.5} className="shrink-0" />
-                <span className="whitespace-nowrap">Menu</span>
-              </button>
-              <HeaderMenuSidebar
-                open={showMenu}
-                onClose={() => setShowMenu(false)}
-                categories={categories}
-                resolveCategoryHref={resolveCategoryNavHref}
-                showDealsButton={showDealsButton}
-              />
-            </div>
-          )}
+                <button
+                  type="button"
+                  className="h-full pl-0 pr-4 flex items-center gap-2 font-bold text-sm whitespace-nowrap bg-transparent transition-opacity hover:opacity-80 cursor-pointer"
+                  style={{ color: "var(--hdr-menu-text)" }}
+                  aria-label="Open menu"
+                  aria-expanded={showMenu}
+                  onClick={() => {
+                    if (showMenu && Date.now() - hoverOpenedAtRef.current < 400) {
+                      setShowMenu(true);
+                    } else {
+                      setShowMenu((prev) => !prev);
+                    }
+                    cancelHide();
+                    setHoveredCategory(null);
+                    setActiveSubCategory(null);
+                  }}
+                >
+                  <FiMenu size={18} strokeWidth={2.5} className="shrink-0" />
+                  <span className="whitespace-nowrap">Menu</span>
+                </button>
+                <HeaderMenuSidebar
+                  open={showMenu}
+                  onClose={() => setShowMenu(false)}
+                  categories={categories}
+                  resolveCategoryHref={resolveCategoryNavHref}
+                  showDealsButton={showDealsButton}
+                />
+              </div>
+            )}
 
-          <div className="relative min-w-0 flex-1 pl-6 pr-4 overflow-hidden flex items-center justify-center h-full">
-            <div className="flex items-center justify-center gap-4 xl:gap-[28px] whitespace-nowrap overflow-x-auto scrollbar-hide">
-              {visibleItems.map((entry, idx) => {
-                if (entry.kind === "category" && entry.category) {
-                  const { category } = entry;
-                  const isHovered = hoveredCategory?._id === category._id;
+            <div className="relative min-w-0 flex-1 pl-6 pr-4 overflow-hidden flex items-center justify-center h-full">
+              <div className="flex items-center justify-center gap-4 xl:gap-[28px] whitespace-nowrap overflow-x-auto scrollbar-hide">
+                {visibleItems.map((entry, idx) => {
+                  if (entry.kind === "category" && entry.category) {
+                    const { category } = entry;
+                    const isHovered = hoveredCategory?._id === category._id;
+                    return (
+                      <div
+                        key={entry.key || category._id || idx}
+                        ref={(el) => {
+                          if (slideRefs?.current) slideRefs.current[category._id] = el;
+                        }}
+                        onMouseEnter={() => handleMouseEnter(category._id, category)}
+                        onMouseLeave={() => startHide(120)}
+                        className="flex items-center shrink-0"
+                      >
+                        <Link
+                          href={resolveCategoryNavHref([category.category_slug], category._id, 0)}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (hideTimeout.current) {
+                              clearTimeout(hideTimeout.current);
+                              hideTimeout.current = null;
+                            }
+                            setHoveredCategory(null);
+                            setActiveSubCategory(null);
+                            handleCategoryClick(
+                              category.category_slug,
+                              category.category_name,
+                              category._id
+                            );
+                          }}
+                          className={`hdr-menu-link inline-flex items-center text-sm font-bold transition-colors duration-150 whitespace-nowrap ${isHovered ? "hdr-menu-link-active" : ""
+                            }`}
+                        >
+                          {entry.label}
+                        </Link>
+                      </div>
+                    );
+                  }
+
+                  const href = entry.link || entry.href || "/";
+                  const isExternal = /^https?:\/\//i.test(href);
                   return (
                     <div
-                      key={entry.key || category._id || idx}
-                      ref={(el) => {
-                        if (slideRefs?.current) slideRefs.current[category._id] = el;
+                      key={entry.key || `${entry.label}-${idx}`}
+                      onMouseEnter={() => {
+                        cancelHide();
+                        setHoveredCategory(null);
                       }}
-                      onMouseEnter={() => handleMouseEnter(category._id, category)}
-                      onMouseLeave={() => startHide(120)}
                       className="flex items-center shrink-0"
                     >
-                      <Link
-                        href={resolveCategoryNavHref([category.category_slug], category._id, 0)}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          if (hideTimeout.current) {
-                            clearTimeout(hideTimeout.current);
-                            hideTimeout.current = null;
-                          }
-                          setHoveredCategory(null);
-                          setActiveSubCategory(null);
-                          handleCategoryClick(
-                            category.category_slug,
-                            category.category_name,
-                            category._id
-                          );
-                        }}
-                        className={`hdr-menu-link inline-flex items-center text-sm font-bold transition-colors duration-150 whitespace-nowrap ${
-                          isHovered ? "hdr-menu-link-active" : ""
-                        }`}
-                      >
-                        {entry.label}
-                      </Link>
+                      {isExternal ? (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hdr-menu-link inline-flex items-center text-sm font-bold transition-colors duration-150 whitespace-nowrap"
+                        >
+                          {entry.label}
+                        </a>
+                      ) : (
+                        <Link
+                          href={href}
+                          className="hdr-menu-link inline-flex items-center text-sm font-bold transition-colors duration-150 whitespace-nowrap"
+                        >
+                          {entry.label}
+                        </Link>
+                      )}
                     </div>
                   );
-                }
-
-                const href = entry.link || entry.href || "/";
-                const isExternal = /^https?:\/\//i.test(href);
-                return (
-                  <div
-                    key={entry.key || `${entry.label}-${idx}`}
-                    onMouseEnter={() => {
-                      cancelHide();
-                      setHoveredCategory(null);
-                    }}
-                    className="flex items-center shrink-0"
-                  >
-                    {isExternal ? (
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="hdr-menu-link inline-flex items-center text-sm font-bold transition-colors duration-150 whitespace-nowrap"
-                      >
-                        {entry.label}
-                      </a>
-                    ) : (
-                      <Link
-                        href={href}
-                        className="hdr-menu-link inline-flex items-center text-sm font-bold transition-colors duration-150 whitespace-nowrap"
-                      >
-                        {entry.label}
-                      </Link>
-                    )}
-                  </div>
-                );
-              })}
+                })}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </>
   );
 }

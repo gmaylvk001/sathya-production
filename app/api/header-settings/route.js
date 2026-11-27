@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { requireAdmin } from "@/lib/adminRequest";
 import { cloneDefaults, validateHeaderSettings } from "@/lib/headerSettings";
 import {
@@ -7,15 +8,18 @@ import {
   saveHeaderSettingsDoc,
 } from "@/lib/headerSettingsServer";
 
-export async function GET() {
+export async function GET(req) {
   try {
+    const fresh = req?.nextUrl?.searchParams?.get("fresh") === "1";
     const data = await getOrSeedHeaderSettings();
     return NextResponse.json(
       { success: true, data },
       {
         status: 200,
         headers: {
-          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120",
+          "Cache-Control": fresh
+            ? "no-store, max-age=0"
+            : "public, s-maxage=30, stale-while-revalidate=60",
         },
       }
     );
@@ -53,6 +57,7 @@ async function handleSave(req) {
     const current = await getOrSeedHeaderSettings();
     await pushHeaderVersionSnapshot(current, auth.userId, body._note || "Before update");
     const saved = await saveHeaderSettingsDoc(validation.data);
+    revalidateTag("header-settings");
 
     return NextResponse.json(
       {

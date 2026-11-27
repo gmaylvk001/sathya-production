@@ -84,9 +84,9 @@ export default function HomePageRenderer({ onHasDesign }) {
 
   if (!loaded) {
     return (
-      <div className="w-full bg-white pt-2.5 sm:pt-3.5 md:pt-4" suppressHydrationWarning>
+      <div className="site-container bg-white pt-5 sm:pt-6" suppressHydrationWarning>
         {/* Banner Skeleton with matching aspect ratio - prevents CLS completely */}
-        <div className="relative w-full overflow-hidden rounded-lg mb-6 min-h-[150px] sm:min-h-[260px] md:min-h-[320px] bg-gray-100 animate-pulse flex items-center justify-center">
+        <div className="relative w-full overflow-hidden rounded-lg mb-5 sm:mb-6 min-h-[150px] sm:min-h-[260px] md:min-h-[320px] bg-gray-100 animate-pulse flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#d72828]" />
         </div>
         {/* Category Carousel Skeleton placeholder */}
@@ -107,11 +107,11 @@ export default function HomePageRenderer({ onHasDesign }) {
   if (!components.length) return null;
 
   return (
-    <div className="home-page-builder w-full bg-white pt-2.5 sm:pt-3.5 md:pt-4" suppressHydrationWarning>
+    <div className="home-page-builder w-full bg-white pt-5 sm:pt-6 md:pt-7" suppressHydrationWarning>
       {components.map((item, idx) => {
         if (item.type === COMPONENT_TYPES.TOP_BANNER) {
           return (
-            <div key={item.instanceId || idx} className="w-full bg-white">
+            <div key={item.instanceId || idx} className="site-container bg-white">
               <CategoryTopBanner banners={item.config?.banners} />
             </div>
           );

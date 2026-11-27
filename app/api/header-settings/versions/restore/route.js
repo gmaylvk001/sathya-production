@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import dbConnect from "@/lib/db";
 import { requireAdmin } from "@/lib/adminRequest";
 import HeaderSettingsVersion from "@/models/HeaderSettingsVersion";
@@ -34,6 +35,7 @@ export async function POST(req) {
 
     const restoredConfig = mergeHeaderSettings(targetVersion.settings);
     const saved = await saveHeaderSettingsDoc(restoredConfig);
+    revalidateTag("header-settings");
 
     return NextResponse.json(
       {

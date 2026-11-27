@@ -30,6 +30,7 @@ import HeaderMenuSidebar from "@/components/HeaderMenuSidebar";
 import DealsPdfButton from "@/components/deals-offer/DealsPdfButton";
 import HeaderModern from "@/components/header/HeaderModern";
 import HeaderClassic from "@/components/header/HeaderClassic";
+import "@/components/header/header.css";
 import { DEFAULT_HEADER_SETTINGS, mergeHeaderSettings, buildHeaderCssVars } from "@/lib/headerSettings";
 import { filterAndRankProducts } from '@/lib/searchMatch';
 import { uniqueById } from '@/lib/uniqueById';
@@ -134,7 +135,7 @@ const HEADER_ACTION_BADGE_SM_CLASS =
 
 
 
-const Header = ({ headerStyle: propHeaderStyle, previewSettings = null } = {}) => {
+const Header = ({ headerStyle: propHeaderStyle, initialHeaderSettings = null, previewSettings = null, previewViewport = null } = {}) => {
   const router = useRouter();
   const [category, setCategory] = useState('All Category');
   const [activeSubCategory, setActiveSubCategory] = useState(null);
@@ -927,52 +928,16 @@ const Header = ({ headerStyle: propHeaderStyle, previewSettings = null } = {}) =
     return () => { mounted = false; };
   }, []);
 
-  // Structured Header Builder v2 Settings (cached to prevent FOUC)
-  const [headerConfig, setHeaderConfig] = useState(DEFAULT_HEADER_SETTINGS);
-
-  useEffect(() => {
-    if (previewSettings) return;
-    let mounted = true;
-    const cacheKeyV2 = "sathya_header_settings_v2";
-    try {
-      const cached = JSON.parse(localStorage.getItem(cacheKeyV2) || "null");
-      if (cached && typeof cached === "object") {
-        setHeaderConfig(mergeHeaderSettings(cached));
-      }
-    } catch { }
-
-    fetch("/api/header-settings", { cache: "no-store" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((json) => {
-        if (!mounted || !json?.data) return;
-        const merged = mergeHeaderSettings(json.data);
-        setHeaderConfig(merged);
-        try { localStorage.setItem(cacheKeyV2, JSON.stringify(merged)); } catch { }
-      })
-      .catch(() => { });
-
-    const onSettingsUpdated = () => {
-      try {
-        const cached = JSON.parse(localStorage.getItem(cacheKeyV2) || "null");
-        if (cached && typeof cached === "object") {
-          setHeaderConfig(mergeHeaderSettings(cached));
-        }
-      } catch { }
-    };
-    window.addEventListener("sathya_header_settings_updated", onSettingsUpdated);
-    return () => {
-      mounted = false;
-      window.removeEventListener("sathya_header_settings_updated", onSettingsUpdated);
-    };
-  }, [previewSettings]);
-
+  // Server-seeded Header Builder v2 Settings (zero client fetch / localStorage FOUC)
   const effectiveHeaderConfig = useMemo(() => {
-    const base = previewSettings ? mergeHeaderSettings(previewSettings) : headerConfig;
+    const base = previewSettings
+      ? mergeHeaderSettings(previewSettings)
+      : mergeHeaderSettings(initialHeaderSettings || DEFAULT_HEADER_SETTINGS);
     if (!previewSettings && propHeaderStyle) {
       return { ...base, design: propHeaderStyle === "classic" ? "classic" : "modern" };
     }
     return base;
-  }, [previewSettings, headerConfig, propHeaderStyle]);
+  }, [previewSettings, initialHeaderSettings, propHeaderStyle]);
 
   const headerCssVars = useMemo(() => buildHeaderCssVars(effectiveHeaderConfig), [effectiveHeaderConfig]);
 
@@ -2577,16 +2542,46 @@ const Header = ({ headerStyle: propHeaderStyle, previewSettings = null } = {}) =
 
   const resolvedMenuItems = useMemo(() => {
     const configItems = effectiveHeaderConfig?.menu?.items;
+    const findMatchingCategory = (item) => {
+      if (!Array.isArray(categories) || categories.length === 0) return null;
+      const link = String(item?.link || "").trim();
+      const labelLower = String(item?.label || "").trim().toLowerCase();
+      const slugMatch = link.match(/^\/category\/([^/?#]+)/i);
+      const slug = slugMatch ? slugMatch[1].toLowerCase() : "";
+
+      // 1. Exact slug match
+      if (slug) {
+        const bySlug = categories.find((c) => String(c.category_slug || "").toLowerCase() === slug);
+        if (bySlug) return bySlug;
+      }
+
+      // 2. Exact name match
+      if (labelLower) {
+        const byName = categories.find((c) => String(c.category_name || "").trim().toLowerCase() === labelLower);
+        if (byName) return byName;
+      }
+
+      // 3. Keyword fallback for /category/* links (e.g. /category/television -> Televisions & Audio)
+      if (slug) {
+        const tokens = `${slug} ${labelLower}`
+          .split(/[^a-z0-9]+/)
+          .filter((t) => t.length >= 2 && !["and", "the", "for", "category"].includes(t));
+        const byKeyword = categories.find((c) => {
+          const hay = `${c.category_name || ""} ${c.category_slug || ""}`.toLowerCase();
+          return tokens.some((tok) => hay.includes(tok));
+        });
+        if (byKeyword) return byKeyword;
+      }
+      return null;
+    };
+
     if (Array.isArray(configItems) && configItems.length > 0) {
       return configItems
         .slice()
         .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
         .map((item, idx) => {
           const link = item.link || "/";
-          const slugMatch = link.match(/^\/category\/([^/?#]+)/i);
-          const matchedCat = slugMatch
-            ? categories.find((c) => c.category_slug === slugMatch[1])
-            : null;
+          const matchedCat = findMatchingCategory(item);
           if (matchedCat) {
             return {
               kind: "category",
@@ -2666,11 +2661,11 @@ const Header = ({ headerStyle: propHeaderStyle, previewSettings = null } = {}) =
           aria-label="Search query"
         />
         {searchQuery.trim() === "" && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-2 pointer-events-none z-10">
-            <span className="text-gray-400 text-sm">
+          <div className="absolute left-3 right-2 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none z-10 overflow-hidden whitespace-nowrap">
+            <span className="text-gray-400 text-sm shrink-0">
               {effectiveHeaderConfig?.main?.search_placeholder || "Search for"}
             </span>
-            <span className="text-gray-900 text-sm font-medium">&ldquo;{typedPreview}&rdquo;</span>
+            <span className="text-gray-900 text-sm font-medium truncate min-w-0">&ldquo;{hasMounted ? typedPreview : "Smart TVs"}&rdquo;</span>
           </div>
         )}
         {searchQuery.trim() !== "" && (
@@ -2701,137 +2696,11 @@ const Header = ({ headerStyle: propHeaderStyle, previewSettings = null } = {}) =
         className={`${previewSettings ? "relative" : "sticky top-0"} z-50 w-full bg-white select-none`}
         style={headerCssVars}
       >
-        <style jsx global>{`
-              :root{
-                --search-h:44px;
-                --search-radius:999px;
-                --accent:#ED1C24;
-                --search-border:#e5e7eb;
-                --muted:#6b7280;
-              }
-              .hdr-menu-bar{
-                border-top: none;
-                border-bottom: none;
-                box-shadow: none;
-              }
-              .hdr-menu-link{
-                color: var(--hdr-menu-text, #ffffff);
-              }
-              .hdr-menu-link:hover,
-              .hdr-menu-link-active{
-                color: var(--hdr-menu-hover, #ffe600);
-              }
-              .header-search{
-                display:flex;
-                align-items:center;
-                width:100%;
-                max-width:620px;
-                margin:0 auto;
-                height:var(--search-h);
-                background:#fff;
-                border:1.5px solid var(--search-border);
-                border-radius:var(--search-radius);
-                overflow:hidden;
-                box-shadow:0 1px 2px rgba(15,23,42,0.04);
-                transition:border-color .18s ease, box-shadow .18s ease;
-              }
-              .header-search:focus-within{
-                border-color:var(--accent);
-                box-shadow:0 0 0 3px rgba(215,40,40,0.12);
-              }
-              .header-search-select-wrap{
-                position:relative;
-                flex:0 0 auto;
-                flex-shrink:0;
-                height:100%;
-                border-right:1px solid #eee;
-                background:#fafafa;
-                display:flex;
-                align-items:center;
-              }
-              .header-search-select{
-                height:100%;
-                width:auto;
-                min-width:105px;
-                max-width:145px;
-                padding:0 24px 0 12px;
-                border:0;
-                background:transparent;
-                color:#111;
-                font-size:13px;
-                font-weight:500;
-                cursor:pointer;
-                outline:none;
-                -webkit-appearance:none;
-                appearance:none;
-                flex-shrink:0;
-                white-space:nowrap;
-                text-overflow:ellipsis;
-                overflow:hidden;
-              }
-              .header-search-select-wrap::after{
-                content:'';
-                position:absolute;
-                right:10px;
-                top:50%;
-                transform:translateY(-40%);
-                border-left:4px solid transparent;
-                border-right:4px solid transparent;
-                border-top:5px solid #6b7280;
-                pointer-events:none;
-              }
-              .header-search-field{
-                position:relative;
-                flex:1 1 auto;
-                height:100%;
-                min-width:0;
-              }
-              .header-search-input{
-                width:100%;
-                height:100%;
-                border:0;
-                outline:none;
-                background:transparent;
-                padding:0 12px;
-                font-size:14px;
-                color:#0f172a;
-              }
-              .header-search-input::-webkit-search-cancel-button{
-                -webkit-appearance:none;
-              }
-              .header-search-btn{
-                flex:0 0 auto;
-                height:100%;
-                min-width:48px;
-                padding:0 16px;
-                border:0;
-                background:var(--hdr-search-btn, var(--accent));
-                color:#fff;
-                display:flex;
-                align-items:center;
-                justify-content:center;
-                cursor:pointer;
-                transition:background .15s ease;
-              }
-              .header-search-btn:hover{ background:#C4161D; }
-              .header-search-btn:active{ transform:scale(0.98); }
-              @media (max-width:640px){
-                :root{ --search-h:40px; --search-radius:12px; }
-                .header-search-select{ min-width:85px; max-width:130px; font-size:11px; padding:0 22px 0 8px; }
-                .header-search-btn{ min-width:42px; padding:0 12px; }
-              }
-              @media (min-width:641px) and (max-width:1024px){
-                .header-search-select{ min-width:110px; max-width:185px; font-size:12px; padding:0 26px 0 10px; }
-              }
-              @media (min-width:1025px){
-                .header-search-select{ min-width:110px; max-width:150px; font-size:12.5px; padding:0 24px 0 12px; }
-              }
-            `}</style>
         {/* Main Header */}
         <div className={`${isMobileMenuOpen
           ? "fixed inset-0 mt-0 pt-0 z-50 overflow-y-auto overflow-x-hidden"
-          : `${currentBannerUrl ? "bg-cover bg-center" : "bg-white"
-          } px-3 sm:px-0 py-1 relative z-40 transition-all duration-300`
+          : `${currentBannerUrl ? "bg-cover bg-center" : ""
+          } px-4 sm:px-0 py-1.5 sm:py-0 relative z-40 transition-all duration-300`
           }`}
           style={
             !isMobileMenuOpen && currentBannerUrl
@@ -2842,86 +2711,94 @@ const Header = ({ headerStyle: propHeaderStyle, previewSettings = null } = {}) =
                 backgroundRepeat: "no-repeat",
                 backgroundColor: "transparent",
               }
-              : undefined
+              : (!isMobileMenuOpen ? { background: "var(--hdr-main-bg, #ffffff)" } : undefined)
           }>
           {/* NEW MOBILE TOP ROW — compact & collision-free layout */}
-          <div className="sm:hidden flex items-center justify-between w-full max-w-full min-w-0 relative gap-1">
-            <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0 min-w-0">
-              <Link href="/" aria-label="SATHYA Store Homepage" className={`p-0.5 sm:p-1 rounded-lg flex-shrink-0 ${currentBannerUrl ? "bg-transparent" : "bg-white"}`}>
-                <img src="/uploads/sathya-header-logo.webp" alt="SATHYA Store Logo" width={100} height={57} className="h-8 sm:h-9 w-auto" />
+          <div className={`${previewViewport === "mobile" ? "flex" : "sm:hidden flex"} items-center justify-between w-full max-w-full min-w-0 relative gap-1.5`}>
+            <div className="flex items-center gap-1.5 flex-shrink-0 min-w-0">
+              <Link href="/" aria-label="SATHYA Store Homepage" className={`p-0.5 rounded-lg flex-shrink-0 ${currentBannerUrl ? "bg-transparent" : ""}`}>
+                <img src={effectiveHeaderConfig?.logo?.url || "/uploads/sathya-header-logo.webp"} alt="SATHYA Store Logo" width={100} height={40} className="h-8 w-auto object-contain" />
               </Link>
-              <button
-                type="button"
-                onClick={openRegionModal}
-                aria-label={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'}`}
-                className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 hover:bg-red-100 text-[#d72828] text-[10px] font-bold border border-red-200/80 transition-all flex-shrink-0 max-w-[82px] sm:max-w-[95px]"
-                title={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'}`}
-                suppressHydrationWarning
-              >
-                <FiMapPin size={10} className="text-[#d72828] flex-shrink-0" />
-                <span className="truncate" suppressHydrationWarning>{pincode ? pincode : (selectedRegion?.code || 'TN')}</span>
-                <span className="text-[9px] opacity-70">▾</span>
-              </button>
+              {effectiveHeaderConfig?.main?.show?.deliver_to !== false && (
+                <button
+                  type="button"
+                  onClick={openRegionModal}
+                  aria-label={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'}`}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-50 hover:bg-red-100 text-[#d72828] text-[10px] font-bold border border-red-200/80 transition-all flex-shrink-0 max-w-[82px]"
+                  title={`Deliver to: ${city || 'Chennai'}, ${pincode || '600001'}`}
+                  suppressHydrationWarning
+                >
+                  <FiMapPin size={10} className="text-[#d72828] flex-shrink-0" />
+                  <span className="truncate" suppressHydrationWarning>{pincode ? pincode : (selectedRegion?.code || 'TN')}</span>
+                  <span className="text-[9px] opacity-70">▾</span>
+                </button>
+              )}
               {/* Mobile Deals Button — hidden when offer timer is active for this state */}
-              {showDealsButton && (
+              {effectiveHeaderConfig?.main?.show?.deals !== false && showDealsButton && (
                 <Link
-                  href="/deals-offer"
+                  href={effectiveHeaderConfig?.topbar?.deals_link || "/deals-offer"}
                   aria-label="View Deals & Special Offers"
-                  className="inline-flex items-center justify-center px-2 py-0.5 h-[26px] sm:h-[28px] rounded-md text-[#000000] font-bold text-[10.5px] sm:text-[11px] leading-tight transition-all duration-200 shadow-xs hover:shadow hover:opacity-95 active:scale-95 flex-shrink-0 self-center"
+                  className="inline-flex items-center justify-center px-2 py-0.5 h-[26px] rounded-md text-[#000000] font-bold text-[10.5px] leading-tight transition-all duration-200 shadow-xs hover:shadow hover:opacity-95 active:scale-95 flex-shrink-0 self-center"
                   style={{
                     background: "linear-gradient(135deg, #00b4db 0%, #f44336 55%, #ffc107 100%)",
                   }}
                   title="View Deals & Special Offers"
                 >
-                  Deals
+                  {effectiveHeaderConfig?.topbar?.deals_label || "Deals"}
                 </Link>
               )}
             </div>
-            <div className="flex items-center gap-1 sm:gap-1.5 text-brandRed flex-shrink-0">
-              <Link href="/wishlist" aria-label={`Wishlist (${wishlistCount || 0} items)`} className={`${HEADER_ACTION_LINK_CLASS} relative min-w-[32px] sm:min-w-[36px]`}>
-                <div className={HEADER_ACTION_ICON_WRAP_SM_CLASS}>
-                  <HiOutlineHeart size={15} strokeWidth={1.8} />
-                  <span className={HEADER_ACTION_BADGE_SM_CLASS} suppressHydrationWarning>
-                    {wishlistCount}
-                  </span>
-                </div>
-                <span className={`text-[8px] hidden ${HEADER_ACTION_LABEL_CLASS}`}>Wishlist</span>
-              </Link>
-              <Link href="/cart" aria-label={`Cart (${cartCount || 0} items)`} className={`${HEADER_ACTION_LINK_CLASS} relative min-w-[32px] sm:min-w-[36px]`}>
-                <div className={HEADER_ACTION_ICON_WRAP_SM_CLASS}>
-                  <HiOutlineShoppingBag size={15} strokeWidth={1.8} />
-                  <span className={HEADER_ACTION_BADGE_SM_CLASS} suppressHydrationWarning>
-                    {cartCount}
-                  </span>
-                </div>
-                <span className={`text-[8px] hidden ${HEADER_ACTION_LABEL_CLASS}`}>Cart</span>
-              </Link>
+            <div className="flex items-center gap-1.5 flex-shrink-0" style={{ color: "var(--hdr-icon-color, #ED1C24)" }}>
+              {effectiveHeaderConfig?.main?.show?.wishlist !== false && (
+                <Link href="/wishlist" aria-label={`Wishlist (${(hasMounted ? wishlistCount : 0) || 0} items)`} className={`${HEADER_ACTION_LINK_CLASS} relative min-w-[32px]`}>
+                  <div className={HEADER_ACTION_ICON_WRAP_SM_CLASS}>
+                    <HiOutlineHeart size={15} strokeWidth={1.8} />
+                    <span className={HEADER_ACTION_BADGE_SM_CLASS} style={{ background: "var(--hdr-badge-bg, #ED1C24)" }} suppressHydrationWarning>
+                      {hasMounted ? wishlistCount : 0}
+                    </span>
+                  </div>
+                  <span className={`text-[8px] hidden ${HEADER_ACTION_LABEL_CLASS}`}>Wishlist</span>
+                </Link>
+              )}
+              {effectiveHeaderConfig?.main?.show?.cart !== false && (
+                <Link href="/cart" aria-label={`Cart (${(hasMounted ? cartCount : 0) || 0} items)`} className={`${HEADER_ACTION_LINK_CLASS} relative min-w-[32px]`}>
+                  <div className={HEADER_ACTION_ICON_WRAP_SM_CLASS}>
+                    <HiOutlineShoppingBag size={15} strokeWidth={1.8} />
+                    <span className={HEADER_ACTION_BADGE_SM_CLASS} style={{ background: "var(--hdr-badge-bg, #ED1C24)" }} suppressHydrationWarning>
+                      {hasMounted ? cartCount : 0}
+                    </span>
+                  </div>
+                  <span className={`text-[8px] hidden ${HEADER_ACTION_LABEL_CLASS}`}>Cart</span>
+                </Link>
+              )}
               {/* Mobile Deals Offer PDF Button - Visible ONLY for Authenticated Users */}
-              {Boolean(isLoggedIn && userData) && (
+              {Boolean(hasMounted && isLoggedIn && userData) && (
                 <DealsPdfButton className="scale-90" />
               )}
 
               {/* Mobile Profile / Login Action Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (isAuthenticated) {
-                    setIsMobileMenuOpen(true);
-                  } else {
-                    setShowAuthModal(true);
-                  }
-                }}
-                aria-label={isAuthenticated ? "Account" : "Login"}
-                className={`${HEADER_ACTION_LINK_CLASS} relative min-w-[32px] sm:min-w-[36px]`}
-                title={isAuthenticated ? (userData?.name || "Account") : "Login / Sign In"}
-              >
-                <div className={HEADER_ACTION_ICON_WRAP_SM_CLASS}>
-                  <FiUser size={15} strokeWidth={1.8} />
-                </div>
-                <span className={`text-[8px] hidden ${HEADER_ACTION_LABEL_CLASS}`}>
-                  {isAuthenticated ? userDisplayName : "Login"}
-                </span>
-              </button>
+              {effectiveHeaderConfig?.main?.show?.user !== false && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isAuthenticated) {
+                      setIsMobileMenuOpen(true);
+                    } else {
+                      setShowAuthModal(true);
+                    }
+                  }}
+                  aria-label={hasMounted && isAuthenticated ? "Account" : "Login"}
+                  className={`${HEADER_ACTION_LINK_CLASS} relative min-w-[32px]`}
+                  title={hasMounted && isAuthenticated ? (userData?.name || "Account") : "Login / Sign In"}
+                >
+                  <div className={HEADER_ACTION_ICON_WRAP_SM_CLASS}>
+                    <FiUser size={15} strokeWidth={1.8} />
+                  </div>
+                  <span className={`text-[8px] hidden ${HEADER_ACTION_LABEL_CLASS}`}>
+                    {hasMounted && isAuthenticated ? userDisplayName : "Login"}
+                  </span>
+                </button>
+              )}
               <button
                 type="button"
                 onClick={toggleMobileMenu}
@@ -2933,7 +2810,7 @@ const Header = ({ headerStyle: propHeaderStyle, previewSettings = null } = {}) =
             </div>
           </div>
           {/* MOBILE SEARCH BAR */}
-          <div className="sm:hidden mt-2 w-full max-w-full">
+          <div className={`${previewViewport === "mobile" ? "block" : "sm:hidden"} mt-2 w-full max-w-full`}>
             {effectiveOfferTimer && (
               <div className="flex justify-center w-full mb-2">
                 <HeaderOfferTimer timer={effectiveOfferTimer} isMobile={true} mobileForceDesktopStyle={true} />
@@ -2984,9 +2861,11 @@ const Header = ({ headerStyle: propHeaderStyle, previewSettings = null } = {}) =
                   }}
                 />
                 {searchQuery.trim() === "" && (
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] pointer-events-none z-10 truncate max-w-[calc(100%-12px)]">
-                    <span className="text-gray-400">Search for</span>
-                    <span className="text-gray-900 font-medium">"{typedPreview}"</span>
+                  <div className="absolute left-3 right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[11px] pointer-events-none z-10 overflow-hidden whitespace-nowrap">
+                    <span className="text-gray-400 shrink-0">
+                      {effectiveHeaderConfig?.main?.search_placeholder || "Search for"}
+                    </span>
+                    <span className="text-gray-900 font-medium truncate min-w-0">&ldquo;{hasMounted ? typedPreview : "Smart TVs"}&rdquo;</span>
                   </div>
                 )}
                 {searchQuery.trim() !== "" && (
@@ -3107,9 +2986,9 @@ const Header = ({ headerStyle: propHeaderStyle, previewSettings = null } = {}) =
               </div>
             </div>
           )}
-          {/* Mobile Menu (Hidden on desktop) */}
+          {/* Mobile & Tablet Menu Drawer (Hidden on desktop >= 1024px) */}
           {isMobileMenuOpen && (
-            <div className="sm:hidden bg-white fixed inset-0 z-50 p-4 pt-3 rounded-lg shadow-lg overflow-y-auto transition-all duration-300"
+            <div className="lg:hidden bg-white fixed inset-0 z-50 p-4 pt-3 rounded-lg shadow-lg overflow-y-auto transition-all duration-300"
               style={{ touchAction: 'auto', userSelect: 'auto', WebkitUserSelect: 'auto' }}
             >
               {/* Internal sticky header */}
@@ -3576,20 +3455,22 @@ const Header = ({ headerStyle: propHeaderStyle, previewSettings = null } = {}) =
           )}
         </div>
         {/* Dynamic Desktop Header Layout (HeaderModern vs HeaderClassic) */}
-        {isModern ? (
+        {previewViewport !== "mobile" && (isModern ? (
           <HeaderModern
             settings={effectiveHeaderConfig}
+            previewViewport={previewViewport}
             categories={categories}
             menuItems={resolvedMenuItems}
             renderDesktopSearch={renderDesktopSearch}
+            effectiveOfferTimer={effectiveOfferTimer}
             openRegionModal={openRegionModal}
             city={city}
             district={district}
             pincode={pincode}
             selectedRegion={selectedRegion}
-            isAuthenticated={isAuthenticated}
+            isAuthenticated={hasMounted && isAuthenticated}
             userData={userData}
-            userDisplayName={userDisplayName}
+            userDisplayName={hasMounted && isAuthenticated ? userDisplayName : null}
             isAccountMenuOpen={isAccountMenuOpen}
             setIsAccountMenuOpen={setIsAccountMenuOpen}
             accountMenuRef={accountMenuRef}
@@ -3597,8 +3478,8 @@ const Header = ({ headerStyle: propHeaderStyle, previewSettings = null } = {}) =
             handleMenuMouseLeave={handleMenuMouseLeave}
             renderAccountDropdown={renderAccountDropdown}
             setShowAuthModal={setShowAuthModal}
-            wishlistCount={wishlistCount}
-            cartCount={cartCount}
+            wishlistCount={hasMounted ? wishlistCount : 0}
+            cartCount={hasMounted ? cartCount : 0}
             menuButtonEnabled={menuButtonEnabled}
             showMenu={showMenu}
             setShowMenu={setShowMenu}
@@ -3619,6 +3500,7 @@ const Header = ({ headerStyle: propHeaderStyle, previewSettings = null } = {}) =
         ) : (
           <HeaderClassic
             settings={effectiveHeaderConfig}
+            previewViewport={previewViewport}
             categories={categories}
             menuItems={resolvedMenuItems}
             renderDesktopSearch={renderDesktopSearch}
@@ -3627,18 +3509,18 @@ const Header = ({ headerStyle: propHeaderStyle, previewSettings = null } = {}) =
             city={city}
             pincode={pincode}
             selectedRegion={selectedRegion}
-            isAuthenticated={isAuthenticated}
-            isLoggedIn={isLoggedIn}
+            isAuthenticated={hasMounted && isAuthenticated}
+            isLoggedIn={hasMounted && isLoggedIn}
             userData={userData}
-            userDisplayName={userDisplayName}
+            userDisplayName={hasMounted && isAuthenticated ? userDisplayName : null}
             isAccountMenuOpen={isAccountMenuOpen}
             setIsAccountMenuOpen={setIsAccountMenuOpen}
             accountMenuRef={accountMenuRef}
             handleMenuMouseEnter={handleMenuMouseEnter}
             handleMenuMouseLeave={handleMenuMouseLeave}
             renderAccountDropdown={renderAccountDropdown}
-            wishlistCount={wishlistCount}
-            cartCount={cartCount}
+            wishlistCount={hasMounted ? wishlistCount : 0}
+            cartCount={hasMounted ? cartCount : 0}
             menuButtonEnabled={menuButtonEnabled}
             showMenu={showMenu}
             setShowMenu={setShowMenu}
@@ -3656,7 +3538,7 @@ const Header = ({ headerStyle: propHeaderStyle, previewSettings = null } = {}) =
             hideTimeout={hideTimeout}
             handleCategoryClick={handleCategoryClick}
           />
-        )}
+        ))}
 
         {hoveredCategory && hoveredCategory.subcategories?.length > 0 && (() => {
           const isSingleSub = (hoveredCategory.subcategories || []).length <= 1;
