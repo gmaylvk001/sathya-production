@@ -28,6 +28,7 @@ import {
   getStoreReactKey,
 } from "@/lib/storePickupHelper";
 import { useStorePickupFilter } from "@/hooks/useStorePickupFilter";
+import { applyDiscountToItems as sharedApplyDiscountToItems } from "@/lib/cart/couponMath";
 
 const loadRazorpay = () => {
   return new Promise((resolve) => {
@@ -1334,8 +1335,21 @@ export default function CheckoutPage() {
 
       setCartItems(p.cart.items);
       setOrderSummary({ discount: p.discount || 0, subtotal: p.subtotal || 0, total: p.total || 0 });
-      setAppliedCoupon(p.coupon || null);
+      const fallbackSavedCoupon = (() => {
+        try {
+          const s = localStorage.getItem('appliedCoupon');
+          return s ? JSON.parse(s) : null;
+        } catch {
+          return null;
+        }
+      })();
+      setAppliedCoupon(p.coupon || fallbackSavedCoupon || null);
       skipCartFetch = true;
+    } else {
+      try {
+        const s = localStorage.getItem('appliedCoupon');
+        if (s) setAppliedCoupon(JSON.parse(s));
+      } catch {}
     }
     fetchData(skipCartFetch);
   }, []);
@@ -1554,6 +1568,59 @@ export default function CheckoutPage() {
     deliveryValidation.vendorName ||
     (isKarnataka ? "Unilet" : "Sathya Stores");
 
+  const revalidateCheckoutCoupon = async (items, token, baseTotal) => {
+    let activeCoupon = appliedCoupon;
+    if (!activeCoupon) {
+      try {
+        const saved = localStorage.getItem("appliedCoupon");
+        if (saved) activeCoupon = JSON.parse(saved);
+      } catch {}
+    }
+    if (!activeCoupon?.offer_code || !Array.isArray(items) || !items.length) {
+      return { items, discount: 0, coupon: null, total: baseTotal };
+    }
+    try {
+      const resp = await fetch("/api/offers/offer-products", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ code: activeCoupon.offer_code, items }),
+      });
+      const data = await resp.json().catch(() => null);
+      if (resp.ok && data?.valid && data?.coupon) {
+        const discountedItems = sharedApplyDiscountToItems(data.coupon, items);
+        const discountAmt = discountedItems.reduce((s, it) => s + (Number(it.discount) || 0), 0);
+        setAppliedCoupon(data.coupon);
+        try { localStorage.setItem("appliedCoupon", JSON.stringify(data.coupon)); } catch {}
+        return {
+          items: discountedItems,
+          discount: discountAmt,
+          coupon: data.coupon,
+          total: Math.max(0, baseTotal - discountAmt),
+        };
+      }
+      setAppliedCoupon(null);
+      try { localStorage.removeItem("appliedCoupon"); } catch {}
+      return {
+        items: items.map((it) => ({ ...it, discount: 0 })),
+        discount: 0,
+        coupon: null,
+        total: baseTotal,
+      };
+    } catch {
+      const discountedItems = sharedApplyDiscountToItems(activeCoupon, items);
+      const discountAmt = discountedItems.reduce((s, it) => s + (Number(it.discount) || 0), 0);
+      return {
+        items: discountedItems,
+        discount: discountAmt,
+        coupon: activeCoupon,
+        total: Math.max(0, baseTotal - discountAmt),
+      };
+    }
+  };
+
   const fetchData = async (skipCartFetch = false) => {
     const token = localStorage.getItem('token');
     if (!token) { setShowAuthModal(true); setLoading(false); return; }
@@ -1586,14 +1653,15 @@ export default function CheckoutPage() {
         const cartRes = await fetch('/api/cart', { headers, cache: 'no-store' });
         if (!cartRes.ok) throw new Error('Failed to fetch cart');
         const cartData = await cartRes.json();
-        const items = cartData?.cart?.items || [];
-        setCartItems(items);
-        const sub = items.reduce((s, it) => s + ((it.price || 0) * (it.quantity || 1)), 0);
+        const rawItems = cartData?.cart?.items || [];
+        const sub = rawItems.reduce((s, it) => s + ((it.price || 0) * (it.quantity || 1)), 0);
         const total = cartData?.cart?.totalPrice ?? sub;
+        const reval = await revalidateCheckoutCoupon(rawItems, token, total);
+        setCartItems(reval.items);
         setOrderSummary({
-          discount: 0,
+          discount: reval.discount,
           subtotal: total,
-          total: total,
+          total: reval.total,
         });
       } else {
         // Even when prefilled from checkoutData, verify fresh prices from server
@@ -1607,14 +1675,15 @@ export default function CheckoutPage() {
             const cartData = await cartRes.json();
             if (cartData?.cart?.hasPriceChanges) {
               const freshItems = cartData?.cart?.items || [];
-              setCartItems(freshItems);
               const sub = freshItems.reduce((s, it) => s + ((it.price || 0) * (it.quantity || 1)), 0);
               const total = cartData?.cart?.totalPrice ?? sub;
-              setOrderSummary((prev) => ({
-                ...prev,
+              const reval = await revalidateCheckoutCoupon(freshItems, token, total);
+              setCartItems(reval.items);
+              setOrderSummary({
+                discount: reval.discount,
                 subtotal: total,
-                total: total - (prev.discount || 0),
-              }));
+                total: reval.total,
+              });
               toast.info("Cart prices have been updated to the latest prices.");
             }
           }
@@ -1927,25 +1996,27 @@ export default function CheckoutPage() {
       });
       const nextSubtotal = nextItems.reduce((sum, row) => {
         const itemPrice = row.price > 0 ? row.price : row.actual_price || 0;
-        return sum + (itemPrice * (row.quantity || 1)) + (row.warranty || 0) + (row.extendedWarranty || 0);
+        const lineExchange = Number(row.exchangeOffer?.price || 0) * (row.quantity || 1);
+        return sum + (itemPrice * (row.quantity || 1)) + (row.warranty || 0) + (row.extendedWarranty || 0) - lineExchange;
       }, 0);
-      const nextDiscount = nextItems.reduce((sum, row) => sum + (Number(row.discount) || 0), 0);
+      const reval = await revalidateCheckoutCoupon(nextItems, token, nextSubtotal);
       const nextSummary = {
-        discount: nextDiscount,
+        discount: reval.discount,
         subtotal: nextSubtotal,
-        total: Math.max(0, nextSubtotal - nextDiscount),
+        total: reval.total,
       };
 
-      setCartItems(nextItems);
+      setCartItems(reval.items);
       setOrderSummary(nextSummary);
-      updateCartCount(nextItems.reduce((sum, row) => sum + (row.quantity || 1), 0));
+      updateCartCount(reval.items.reduce((sum, row) => sum + (row.quantity || 1), 0));
 
       try {
         const stored = localStorage.getItem("checkoutData");
         const parsed = stored ? JSON.parse(stored) : {};
         localStorage.setItem("checkoutData", JSON.stringify({
           ...parsed,
-          cart: { ...(parsed.cart || {}), items: nextItems },
+          cart: { ...(parsed.cart || {}), items: reval.items },
+          coupon: reval.coupon,
           discount: nextSummary.discount,
           subtotal: nextSummary.subtotal,
           total: nextSummary.total,
@@ -3021,6 +3092,24 @@ export default function CheckoutPage() {
                   <span>Subtotal</span>
                   <span>₹{orderSummary.subtotal.toLocaleString('en-IN')}</span>
                 </div>
+
+                {/* Applied Coupon Discount */}
+                {(orderSummary.discount > 0 || totalDiscount > 0) && (
+                  <div className="flex justify-between items-center text-sm text-emerald-700 font-medium">
+                    <span className="flex items-center gap-1.5 flex-wrap">
+                      <span>Coupon Discount</span>
+                      {appliedCoupon?.offer_code && (
+                        <span className="text-[10px] font-bold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded uppercase">
+                          {appliedCoupon.offer_code}
+                        </span>
+                      )}
+                    </span>
+                    <span className="font-semibold text-emerald-600">
+                      −₹{(orderSummary.discount || totalDiscount).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                )}
+
                 <div className="flex justify-between text-sm text-gray-700">
                   <span>Delivery</span>
                   {shippingCost === 0

@@ -14,6 +14,8 @@ import {
   resolveRegionalFulfillment,
   resolveRegionVendorContext,
 } from "@/lib/regionalFulfillment";
+import { computeItemDeliveryEstimate } from "@/lib/cart/deliveryEstimate";
+import { resolvePincodeBaseSla } from "@/lib/cart/serverDeliveryResolver";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -112,6 +114,332 @@ async function getQuantity(item_code) {
   if (!item_code) return null;
   const product = await Product.findOne({ item_code }).lean();
   return product?.quantity ?? null;
+}
+
+const CART_PRODUCT_POPULATE_FIELDS =
+  "name price special_price lsp images item_code quantity key_specifications stock_status movement slug category sub_category category_new sub_category_new sub_category_new_name product_type color size star variantGroupId";
+
+function extractLocationContext(req, body = {}) {
+  const cookieLoc = req.cookies.get("sathya_location")?.value;
+  let cookieLocation = null;
+  if (cookieLoc) {
+    try {
+      const decoded = cookieLoc.startsWith("%") ? decodeURIComponent(cookieLoc) : cookieLoc;
+      cookieLocation = JSON.parse(decoded);
+    } catch {}
+  }
+  const urlObj = req?.url ? new URL(req.url) : null;
+  const qPin = urlObj?.searchParams.get("pincode");
+  const qRegion = urlObj?.searchParams.get("region") || urlObj?.searchParams.get("state");
+  const qState = urlObj?.searchParams.get("state");
+
+  const effectivePincode = String(
+    body.pincode || qPin || cookieLocation?.pincode || ""
+  )
+    .replace(/\D/g, "")
+    .trim();
+  const effectiveUserState =
+    body.userState ||
+    body.state ||
+    qState ||
+    cookieLocation?.stateName ||
+    cookieLocation?.state ||
+    "";
+  const effectiveRegion =
+    body.region || qRegion || cookieLocation?.region || "";
+
+  const regionCtx = resolveRegionVendorContext({
+    pincode: effectivePincode,
+    state: effectiveUserState,
+    region: effectiveRegion,
+  });
+
+  return {
+    effectivePincode,
+    effectiveUserState,
+    regionCtx,
+    userRegion: regionCtx.region,
+  };
+}
+
+function findCartEntryIndex(list = [], { productId, itemId, comboId, name } = {}) {
+  const target = String(itemId || productId || "").trim();
+  const targetCombo = String(comboId || "").trim();
+  const targetName = String(name || "").trim().toLowerCase();
+
+  return list.findIndex((item) => {
+    const itemProdId = item.productId?._id
+      ? item.productId._id.toString()
+      : item.productId?.toString();
+    const subDocId = item._id ? item._id.toString() : null;
+    const itemComboId = item.comboId ? item.comboId.toString() : null;
+    const itemName = item.name ? item.name.trim().toLowerCase() : "";
+
+    if (target) {
+      if (subDocId && subDocId === target) return true;
+      if (itemProdId && itemProdId === target) return true;
+      if (itemComboId && itemComboId === target) return true;
+      if (item.item_code && item.item_code === target) return true;
+      if (itemName && itemName === target.toLowerCase()) return true;
+    }
+    if (targetCombo && itemComboId && itemComboId === targetCombo) return true;
+    if (targetName && itemName && itemName === targetName) return true;
+    return false;
+  });
+}
+
+async function enrichCartEntries(
+  entries = [],
+  { regionCtx, effectivePincode, effectiveUserState, userRegion, slaInfo, trackPriceChanges = false }
+) {
+  let modified = false;
+  const priceChanges = [];
+
+  const enriched = await Promise.all(
+    entries.map(async (item) => {
+      let prodDoc =
+        item.productId && typeof item.productId === "object" && item.productId._id
+          ? item.productId
+          : null;
+
+      if (!prodDoc) {
+        if (item.productId) {
+          prodDoc = await Product.findById(item.productId).lean();
+        }
+        if (!prodDoc && (item.item_code || item.itemCode)) {
+          prodDoc = await Product.findOne({ item_code: item.item_code || item.itemCode }).lean();
+        }
+      }
+
+      const prodId = prodDoc
+        ? prodDoc._id.toString()
+        : item.productId?.toString() || (item.comboId ? item.comboId.toString() : null);
+      const itemCode = prodDoc?.item_code || item.item_code || "";
+
+      let available_stock = 10;
+      if (prodDoc?.quantity != null && !isNaN(Number(prodDoc.quantity))) {
+        available_stock = Number(prodDoc.quantity);
+      } else if (itemCode) {
+        const qty = await getQuantity(itemCode);
+        if (qty != null && !isNaN(Number(qty))) available_stock = Number(qty);
+      } else if (item.original_quantity != null) {
+        available_stock = Number(item.original_quantity);
+      }
+      if (isNaN(available_stock) || available_stock < 0) available_stock = 10;
+
+      const prodImg =
+        Array.isArray(prodDoc?.images) && prodDoc.images.length > 0
+          ? prodDoc.images[0]
+          : item.image || "";
+
+      let liveSellingPrice = Number(item.price) || 0;
+      let liveActualPrice = Number(item.actual_price) || Number(prodDoc?.price) || liveSellingPrice;
+
+      let itemVendor = regionCtx.vendorId;
+      let itemAssignedVendor = regionCtx.assignedVendor;
+      let itemRegion = userRegion;
+      let itemIsUniletOnly = Boolean(item.isUnilet);
+      let itemIsDeliverable = true;
+      let itemDeliveryError = null;
+      let ownerDeliveryDays = 2;
+
+      if (prodDoc && !item.isCombo) {
+        const fulfillment = await resolveRegionalFulfillment({
+          pincode: effectivePincode,
+          state: effectiveUserState,
+          region: userRegion,
+          productId: prodDoc._id,
+          itemCode,
+          quantity: item.quantity,
+          product: prodDoc,
+        });
+
+        itemVendor = fulfillment.vendorId;
+        itemAssignedVendor = fulfillment.assignedVendor;
+        itemRegion = fulfillment.region;
+        itemIsUniletOnly = Boolean(fulfillment.isUniletOnlyProduct);
+        itemIsDeliverable = fulfillment.isDeliverable;
+        itemDeliveryError = fulfillment.errorReason || null;
+        available_stock = fulfillment.availableStock;
+
+        if (
+          item.vendor !== itemVendor ||
+          item.store_owner !== itemVendor ||
+          item.assignedVendor !== itemAssignedVendor ||
+          item.region !== itemRegion ||
+          Boolean(item.isUnilet) !== itemIsUniletOnly
+        ) {
+          item.vendor = itemVendor;
+          item.store_owner = itemVendor;
+          item.assignedVendor = itemAssignedVendor;
+          item.region = itemRegion;
+          item.isUnilet = itemIsUniletOnly;
+          modified = true;
+        }
+
+        const priceInfo = resolveProductPrice(prodDoc, fulfillment.ownerProduct, itemRegion);
+        ownerDeliveryDays = Number(priceInfo.deliveryDays || 2);
+        const resolvedSellingPrice = priceInfo.effectivePrice;
+        const resolvedActualPrice = priceInfo.price;
+
+        if (resolvedSellingPrice > 0) {
+          const oldPrice = Number(item.price) || 0;
+          if (trackPriceChanges && oldPrice > 0 && oldPrice !== resolvedSellingPrice) {
+            priceChanges.push({
+              productId: prodId,
+              name: prodDoc.name || item.name,
+              oldPrice,
+              newPrice: resolvedSellingPrice,
+            });
+            item.price = resolvedSellingPrice;
+            modified = true;
+          } else if (item.price !== resolvedSellingPrice) {
+            item.price = resolvedSellingPrice;
+            modified = true;
+          }
+          liveSellingPrice = resolvedSellingPrice;
+        }
+
+        if (resolvedActualPrice > 0) {
+          if (Number(item.actual_price) !== resolvedActualPrice) {
+            item.actual_price = resolvedActualPrice;
+            modified = true;
+          }
+          liveActualPrice = resolvedActualPrice;
+        }
+      }
+
+      const original_quantity = available_stock;
+      let itemVariantValues = item.variantValues || item.selectedVariant || null;
+      let itemColor = item.color || null;
+
+      if (!itemVariantValues && prodDoc?.variantGroupId) {
+        try {
+          const VariantGroup = (await import("@/models/variantGroup")).default;
+          const vg = await VariantGroup.findById(prodDoc.variantGroupId).lean();
+          if (vg?.products?.length) {
+            const match = vg.products.find((p) => String(p.productId) === String(prodDoc._id));
+            if (match?.values && Object.keys(match.values).length > 0) {
+              itemVariantValues = match.values;
+              if (match.values.Color || match.values.color) {
+                itemColor = match.values.Color || match.values.color;
+              }
+            }
+          }
+        } catch (vgErr) {
+          console.warn("Error resolving variant values in cart:", vgErr);
+        }
+      }
+
+      if (!itemVariantValues && (prodDoc?.color || prodDoc?.size || prodDoc?.star)) {
+        itemVariantValues = {};
+        if (prodDoc.color) itemVariantValues.Color = prodDoc.color;
+        if (prodDoc.size) itemVariantValues.Size = prodDoc.size;
+        if (prodDoc.star) itemVariantValues["Star Rating"] = `${prodDoc.star} Star`;
+      }
+      if (!itemColor && (itemVariantValues?.Color || itemVariantValues?.color)) {
+        itemColor = itemVariantValues.Color || itemVariantValues.color;
+      }
+
+      let normalizedWarrantyData = item.warrantyData || null;
+      const hasWarranty =
+        Boolean(Number(item.extendedWarranty || 0) > 0) ||
+        Boolean(Number(item.warranty || 0) > 0) ||
+        Boolean(Number(normalizedWarrantyData?.price || 0) > 0) ||
+        Boolean(Number(normalizedWarrantyData?.year || 0) > 0);
+
+      if (!hasWarranty) {
+        normalizedWarrantyData = null;
+      } else if (!normalizedWarrantyData && (item.extendedWarranty > 0 || item.warranty > 0)) {
+        normalizedWarrantyData = {
+          item_no: null,
+          name: item.warranty > 0 ? `${item.warranty} Year Extended Warranty` : "Extended Warranty",
+          title: item.warranty > 0 ? `${item.warranty} Year Extended Warranty` : "Extended Warranty",
+          year: Number(item.warranty || 0),
+          price: Number(item.extendedWarranty || 0),
+          duration: item.warranty > 0 ? `${item.warranty} Year` : "",
+        };
+      } else if (normalizedWarrantyData && !normalizedWarrantyData.name && !normalizedWarrantyData.title) {
+        normalizedWarrantyData = {
+          ...normalizedWarrantyData,
+          name: normalizedWarrantyData.year ? `${normalizedWarrantyData.year} Year Extended Warranty` : "Extended Warranty",
+          title: normalizedWarrantyData.year ? `${normalizedWarrantyData.year} Year Extended Warranty` : "Extended Warranty",
+        };
+      }
+
+      const rawStockStatus = String(prodDoc?.stock_status || "").trim();
+      const isOutOfStock =
+        available_stock <= 0 ||
+        rawStockStatus.toLowerCase() === "out of stock" ||
+        rawStockStatus.toLowerCase() === "outofstock";
+
+      const slaPayload = {
+        name: prodDoc?.name || item.name,
+        categoryName: prodDoc?.sub_category_new_name || prodDoc?.product_type || "",
+        sub_category_new_name: prodDoc?.sub_category_new_name || "",
+        product_type: prodDoc?.product_type || "",
+        movement: prodDoc?.movement || item.movement || "",
+        region: itemRegion,
+        ownerDeliveryDays,
+        isDeliverable: itemIsDeliverable,
+        deliveryErrorReason: itemDeliveryError,
+      };
+
+      const deliveryEstimate = computeItemDeliveryEstimate({
+        item: slaPayload,
+        baseDays: slaInfo?.baseDays,
+        pincode: effectivePincode,
+        region: itemRegion,
+        isCutoffPassed: slaInfo?.isCutoffPassed,
+      });
+
+      const cartItemId = item._id ? item._id.toString() : prodId;
+      return {
+        id: cartItemId,
+        cart_item_id: cartItemId,
+        available_stock,
+        original_quantity,
+        stock_status: rawStockStatus || (available_stock > 0 ? "In Stock" : "Out of Stock"),
+        isOutOfStock,
+        item_code: itemCode,
+        productId: prodId,
+        name: prodDoc?.name || item.name,
+        price: liveSellingPrice,
+        image: prodImg,
+        quantity: item.quantity,
+        warranty: item.warranty || 0,
+        extendedWarranty: item.extendedWarranty || 0,
+        warrantyData: normalizedWarrantyData,
+        variantValues: itemVariantValues,
+        selectedVariant: itemVariantValues,
+        color: itemColor || prodDoc?.color || null,
+        actual_price: liveActualPrice,
+        specs: prodDoc?.key_specifications?.slice(0, 3) || [],
+        slug: prodDoc?.slug || "",
+        category: prodDoc?.category ? String(prodDoc.category) : item.category || "",
+        sub_category: prodDoc?.sub_category ? String(prodDoc.sub_category) : item.sub_category || "",
+        category_new: prodDoc?.category_new ? String(prodDoc.category_new) : "",
+        sub_category_new: prodDoc?.sub_category_new ? String(prodDoc.sub_category_new) : "",
+        sub_category_new_name: prodDoc?.sub_category_new_name || "",
+        product_type: prodDoc?.product_type || "",
+        movement: prodDoc?.movement || item.movement || "",
+        ownerDeliveryDays,
+        isCombo: Boolean(item.isCombo),
+        comboId: item.comboId ? item.comboId.toString() : null,
+        exchangeOffer: normalizeExchangeOffer(item.exchangeOffer),
+        isUnilet: Boolean(itemIsUniletOnly),
+        vendor: itemVendor,
+        store_owner: itemVendor,
+        assignedVendor: itemAssignedVendor,
+        region: itemRegion,
+        isDeliverable: itemIsDeliverable,
+        deliveryErrorReason: itemDeliveryError,
+        deliveryEstimate,
+      };
+    })
+  );
+
+  return { enriched, modified, priceChanges };
 }
 
 /** POST - Add to Cart **/
@@ -416,251 +744,61 @@ export async function GET(req) {
 
     if (!userId && !guestId) {
       return NextResponse.json(
-        { message: "Cart is empty", cart: { items: [], totalItems: 0, totalPrice: 0 } },
+        {
+          message: "Cart is empty",
+          cart: { items: [], savedItems: [], totalItems: 0, totalPrice: 0 },
+        },
         { status: 200 }
       );
     }
 
     const query = userId ? { userId } : { guestId };
     const cart = await Cart.findOne(query).populate(
-      "items.productId",
-      "name price special_price lsp images item_code quantity key_specifications stock_status movement slug"
+      "items.productId savedItems.productId",
+      CART_PRODUCT_POPULATE_FIELDS
     );
 
-    if (!cart || !cart.items || cart.items.length === 0) {
+    const hasActive = Boolean(cart?.items?.length);
+    const hasSaved = Boolean(cart?.savedItems?.length);
+    if (!cart || (!hasActive && !hasSaved)) {
       return NextResponse.json(
-        { message: "Cart is empty", cart: { items: [], totalItems: 0, totalPrice: 0 } },
+        {
+          message: "Cart is empty",
+          cart: { items: [], savedItems: [], totalItems: 0, totalPrice: 0 },
+        },
         { status: 200 }
       );
     }
 
-    // Determine user region for region-specific pricing (e.g., Unilet / Karnataka)
-    const cookieLoc = req.cookies.get("sathya_location")?.value;
-    let cookieLocation = null;
-    if (cookieLoc) {
-      try {
-        const decoded = cookieLoc.startsWith("%") ? decodeURIComponent(cookieLoc) : cookieLoc;
-        cookieLocation = JSON.parse(decoded);
-      } catch {}
-    }
-    const urlObj = req.url ? new URL(req.url) : null;
-    const qPin = urlObj?.searchParams.get("pincode");
-    const qRegion = urlObj?.searchParams.get("region") || urlObj?.searchParams.get("state");
-    const effectivePincode = String(qPin || cookieLocation?.pincode || "").replace(/\D/g, "").trim();
-    const effectiveUserState = cookieLocation?.stateName || cookieLocation?.state || "";
-    const regionCtx = resolveRegionVendorContext({
+    const { effectivePincode, effectiveUserState, regionCtx, userRegion } =
+      extractLocationContext(req);
+    const slaInfo = await resolvePincodeBaseSla({
       pincode: effectivePincode,
-      state: effectiveUserState,
-      region: qRegion || cookieLocation?.region || "",
+      region: userRegion,
     });
-    const userRegion = regionCtx.region;
 
-    let cartModified = false;
-    const priceChanges = [];
+    const activeResult = await enrichCartEntries(cart.items || [], {
+      regionCtx,
+      effectivePincode,
+      effectiveUserState,
+      userRegion,
+      slaInfo,
+      trackPriceChanges: true,
+    });
 
-    const items = await Promise.all(
-      cart.items.map(async (item) => {
-        let prodDoc =
-          item.productId && typeof item.productId === "object" && item.productId._id
-            ? item.productId
-            : null;
+    const savedResult = await enrichCartEntries(cart.savedItems || [], {
+      regionCtx,
+      effectivePincode,
+      effectiveUserState,
+      userRegion,
+      slaInfo,
+      trackPriceChanges: false,
+    });
 
-        if (!prodDoc) {
-          if (item.productId) {
-            prodDoc = await Product.findById(item.productId).lean();
-          }
-          if (!prodDoc && (item.item_code || item.itemCode)) {
-            prodDoc = await Product.findOne({ item_code: item.item_code || item.itemCode }).lean();
-          }
-        }
-
-        const prodId = prodDoc
-          ? prodDoc._id.toString()
-          : item.productId?.toString() || (item.comboId ? item.comboId.toString() : null);
-        const itemCode = prodDoc?.item_code || item.item_code || "";
-        let available_stock = 10;
-        if (prodDoc?.quantity != null && !isNaN(Number(prodDoc.quantity))) {
-          available_stock = Number(prodDoc.quantity);
-        } else if (itemCode) {
-          const qty = await getQuantity(itemCode);
-          if (qty != null && !isNaN(Number(qty))) available_stock = Number(qty);
-        } else if (item.original_quantity != null) {
-          available_stock = Number(item.original_quantity);
-        }
-        if (isNaN(available_stock) || available_stock < 0) available_stock = 10;
-
-        const prodImg = Array.isArray(prodDoc?.images) && prodDoc.images.length > 0
-          ? prodDoc.images[0]
-          : item.image || "";
-
-        let liveSellingPrice = Number(item.price) || 0;
-        let liveActualPrice = Number(item.actual_price) || Number(prodDoc?.price) || liveSellingPrice;
-
-        let itemVendor = regionCtx.vendorId;
-        let itemAssignedVendor = regionCtx.assignedVendor;
-        let itemRegion = userRegion;
-        let itemIsUniletOnly = Boolean(item.isUnilet);
-        let itemIsDeliverable = true;
-        let itemDeliveryError = null;
-
-        if (prodDoc && !item.isCombo) {
-          const fulfillment = await resolveRegionalFulfillment({
-            pincode: effectivePincode,
-            state: effectiveUserState,
-            region: userRegion,
-            productId: prodDoc._id,
-            itemCode,
-            quantity: item.quantity,
-            product: prodDoc,
-          });
-
-          itemVendor = fulfillment.vendorId;
-          itemAssignedVendor = fulfillment.assignedVendor;
-          itemRegion = fulfillment.region;
-          itemIsUniletOnly = Boolean(fulfillment.isUniletOnlyProduct);
-          itemIsDeliverable = fulfillment.isDeliverable;
-          itemDeliveryError = fulfillment.errorReason || null;
-          available_stock = fulfillment.availableStock;
-
-          if (
-            item.vendor !== itemVendor ||
-            item.store_owner !== itemVendor ||
-            item.assignedVendor !== itemAssignedVendor ||
-            item.region !== itemRegion ||
-            Boolean(item.isUnilet) !== itemIsUniletOnly
-          ) {
-            item.vendor = itemVendor;
-            item.store_owner = itemVendor;
-            item.assignedVendor = itemAssignedVendor;
-            item.region = itemRegion;
-            item.isUnilet = itemIsUniletOnly;
-            cartModified = true;
-          }
-
-          const priceInfo = resolveProductPrice(prodDoc, fulfillment.ownerProduct, itemRegion);
-          const resolvedSellingPrice = priceInfo.effectivePrice;
-          const resolvedActualPrice = priceInfo.price;
-
-          if (resolvedSellingPrice > 0) {
-            const oldPrice = Number(item.price) || 0;
-            if (oldPrice > 0 && oldPrice !== resolvedSellingPrice) {
-              priceChanges.push({
-                productId: prodId,
-                name: prodDoc.name || item.name,
-                oldPrice,
-                newPrice: resolvedSellingPrice,
-              });
-              item.price = resolvedSellingPrice;
-              cartModified = true;
-            } else if (item.price !== resolvedSellingPrice) {
-              item.price = resolvedSellingPrice;
-              cartModified = true;
-            }
-            liveSellingPrice = resolvedSellingPrice;
-          }
-
-          if (resolvedActualPrice > 0) {
-            if (Number(item.actual_price) !== resolvedActualPrice) {
-              item.actual_price = resolvedActualPrice;
-              cartModified = true;
-            }
-            liveActualPrice = resolvedActualPrice;
-          }
-        }
-        const original_quantity = available_stock;
-
-        // Resolve variant attributes if not stored on item
-        let itemVariantValues = item.variantValues || item.selectedVariant || null;
-        let itemColor = item.color || null;
-
-        if (!itemVariantValues && prodDoc?.variantGroupId) {
-          try {
-            const VariantGroup = (await import("@/models/variantGroup")).default;
-            const vg = await VariantGroup.findById(prodDoc.variantGroupId).lean();
-            if (vg?.products?.length) {
-              const match = vg.products.find(p => String(p.productId) === String(prodDoc._id));
-              if (match?.values && Object.keys(match.values).length > 0) {
-                itemVariantValues = match.values;
-                if (match.values.Color || match.values.color) {
-                  itemColor = match.values.Color || match.values.color;
-                }
-              }
-            }
-          } catch (vgErr) {
-            console.warn("Error resolving variant values in GET cart:", vgErr);
-          }
-        }
-
-        if (!itemVariantValues && (prodDoc?.color || prodDoc?.size || prodDoc?.star)) {
-          itemVariantValues = {};
-          if (prodDoc.color) itemVariantValues.Color = prodDoc.color;
-          if (prodDoc.size) itemVariantValues.Size = prodDoc.size;
-          if (prodDoc.star) itemVariantValues["Star Rating"] = `${prodDoc.star} Star`;
-        }
-        if (!itemColor && (itemVariantValues?.Color || itemVariantValues?.color)) {
-          itemColor = itemVariantValues.Color || itemVariantValues.color;
-        }
-
-        let normalizedWarrantyData = item.warrantyData || null;
-        const hasWarranty =
-          Boolean(Number(item.extendedWarranty || 0) > 0) ||
-          Boolean(Number(item.warranty || 0) > 0) ||
-          Boolean(Number(normalizedWarrantyData?.price || 0) > 0) ||
-          Boolean(Number(normalizedWarrantyData?.year || 0) > 0);
-
-        if (!hasWarranty) {
-          normalizedWarrantyData = null;
-        } else if (!normalizedWarrantyData && (item.extendedWarranty > 0 || item.warranty > 0)) {
-          normalizedWarrantyData = {
-            item_no: null,
-            name: item.warranty > 0 ? `${item.warranty} Year Extended Warranty` : "Extended Warranty",
-            title: item.warranty > 0 ? `${item.warranty} Year Extended Warranty` : "Extended Warranty",
-            year: Number(item.warranty || 0),
-            price: Number(item.extendedWarranty || 0),
-            duration: item.warranty > 0 ? `${item.warranty} Year` : "",
-          };
-        } else if (normalizedWarrantyData && !normalizedWarrantyData.name && !normalizedWarrantyData.title) {
-          normalizedWarrantyData = {
-            ...normalizedWarrantyData,
-            name: normalizedWarrantyData.year ? `${normalizedWarrantyData.year} Year Extended Warranty` : "Extended Warranty",
-            title: normalizedWarrantyData.year ? `${normalizedWarrantyData.year} Year Extended Warranty` : "Extended Warranty",
-          };
-        }
-
-        const cartItemId = item._id ? item._id.toString() : prodId;
-        return {
-          id: cartItemId,
-          cart_item_id: cartItemId,
-          available_stock,
-          original_quantity,
-          item_code: itemCode,
-          productId: prodId,
-          name: prodDoc?.name || item.name,
-          price: liveSellingPrice,
-          image: prodImg,
-          quantity: item.quantity,
-          warranty: item.warranty || 0,
-          extendedWarranty: item.extendedWarranty || 0,
-          warrantyData: normalizedWarrantyData,
-          variantValues: itemVariantValues,
-          selectedVariant: itemVariantValues,
-          color: itemColor || prodDoc?.color || null,
-          actual_price: liveActualPrice,
-          specs: prodDoc?.key_specifications?.slice(0, 3) || [],
-          slug: prodDoc?.slug || "",
-          isCombo: Boolean(item.isCombo),
-          comboId: item.comboId ? item.comboId.toString() : null,
-          exchangeOffer: normalizeExchangeOffer(item.exchangeOffer),
-          isUnilet: Boolean(itemIsUniletOnly),
-          vendor: itemVendor,
-          store_owner: itemVendor,
-          assignedVendor: itemAssignedVendor,
-          region: itemRegion,
-          isDeliverable: itemIsDeliverable,
-          deliveryErrorReason: itemDeliveryError,
-        };
-      })
-    );
+    const items = activeResult.enriched;
+    const savedItems = savedResult.enriched;
+    const cartModified = activeResult.modified || savedResult.modified;
+    const priceChanges = activeResult.priceChanges;
 
     const totals = calculateCartTotals(cart.items);
 
@@ -669,6 +807,7 @@ export async function GET(req) {
         cart.totalItems = totals.totalItems;
         cart.totalPrice = totals.totalPrice;
         cart.markModified("items");
+        cart.markModified("savedItems");
         cart.markModified("totalPrice");
         cart.markModified("totalItems");
         await cart.save();
@@ -684,6 +823,7 @@ export async function GET(req) {
           totalItems: totals.totalItems,
           totalPrice: totals.totalPrice,
           items,
+          savedItems,
           priceChanges,
           hasPriceChanges: priceChanges.length > 0,
         },
@@ -731,8 +871,8 @@ export async function PUT(req) {
 
     const query = userId ? { userId } : { guestId };
     const cart = await Cart.findOne(query).populate(
-      "items.productId",
-      "name price special_price lsp images item_code quantity key_specifications stock_status movement"
+      "items.productId savedItems.productId",
+      CART_PRODUCT_POPULATE_FIELDS
     );
 
     if (!cart) {
@@ -897,6 +1037,11 @@ export async function PUT(req) {
         selectedVariant: item.selectedVariant || null,
         color: item.color || null,
         slug: item.slug || item.productId?.slug || "",
+        category: item.productId?.category ? String(item.productId.category) : "",
+        sub_category: item.productId?.sub_category ? String(item.productId.sub_category) : "",
+        sub_category_new_name: item.productId?.sub_category_new_name || "",
+        product_type: item.productId?.product_type || "",
+        movement: item.productId?.movement || "",
         available_stock: stock,
         original_quantity: stock,
         isUnilet: Boolean(item.isUnilet),
@@ -908,13 +1053,37 @@ export async function PUT(req) {
       };
     });
 
+    const slaInfo = await resolvePincodeBaseSla({
+      pincode: effectivePincode,
+      region: userRegion,
+    });
+    const itemsWithDelivery = items.map((entry) => ({
+      ...entry,
+      deliveryEstimate: computeItemDeliveryEstimate({
+        item: entry,
+        baseDays: slaInfo.baseDays,
+        pincode: effectivePincode,
+        region: entry.region || userRegion,
+        isCutoffPassed: slaInfo.isCutoffPassed,
+      }),
+    }));
+    const savedEnriched = await enrichCartEntries(cart.savedItems || [], {
+      regionCtx,
+      effectivePincode,
+      effectiveUserState,
+      userRegion,
+      slaInfo,
+      trackPriceChanges: false,
+    });
+
     return NextResponse.json(
       {
         message: "Cart updated",
         cart: {
           id: cart._id,
           ...totals,
-          items,
+          items: itemsWithDelivery,
+          savedItems: savedEnriched.enriched,
         },
       },
       {
@@ -1012,6 +1181,7 @@ export async function DELETE(req) {
           totalItems: cart.totalItems,
           totalPrice: cart.totalPrice,
           items: cart.items,
+          savedItems: cart.savedItems || [],
         },
       },
       { status: 200 }
@@ -1020,6 +1190,208 @@ export async function DELETE(req) {
     console.error("Remove from cart error:", error);
     return NextResponse.json(
       { error: error.message || "Failed to update cart" },
+      { status: 500 }
+    );
+  }
+}
+
+/** PATCH - Save for Later / Move to Cart / Remove Saved Item **/
+export async function PATCH(req) {
+  try {
+    await connectDB();
+    const body = await req.json().catch(() => ({}));
+    const { action, productId, itemId, comboId, name } = body;
+
+    if (!["save_for_later", "move_to_cart", "remove_saved"].includes(action)) {
+      return NextResponse.json({ error: "Invalid cart action" }, { status: 400 });
+    }
+
+    const { userId, guestId } = getCartIdentifier(req, body);
+    if (!userId && !guestId) {
+      return NextResponse.json({ error: "Cart not found" }, { status: 404 });
+    }
+
+    const query = userId ? { userId } : { guestId };
+    const cart = await Cart.findOne(query);
+    if (!cart) {
+      return NextResponse.json({ error: "Cart not found" }, { status: 404 });
+    }
+
+    if (!Array.isArray(cart.savedItems)) {
+      cart.savedItems = [];
+    }
+
+    const { effectivePincode, effectiveUserState, regionCtx, userRegion } =
+      extractLocationContext(req, body);
+
+    if (action === "save_for_later") {
+      const idx = findCartEntryIndex(cart.items, { productId, itemId, comboId, name });
+      if (idx === -1) {
+        return NextResponse.json({ error: "Item not found in cart" }, { status: 404 });
+      }
+      const [movedEntry] = cart.items.splice(idx, 1);
+      const plainEntry = movedEntry?.toObject ? movedEntry.toObject() : { ...movedEntry };
+
+      const existingSavedIdx = findCartEntryIndex(cart.savedItems, {
+        productId: plainEntry.productId,
+        comboId: plainEntry.comboId,
+        itemId: plainEntry.item_code || plainEntry.name,
+        name: plainEntry.name,
+      });
+
+      if (existingSavedIdx >= 0) {
+        cart.savedItems[existingSavedIdx] = plainEntry;
+      } else {
+        cart.savedItems.unshift(plainEntry);
+      }
+    } else if (action === "move_to_cart") {
+      const idx = findCartEntryIndex(cart.savedItems, { productId, itemId, comboId, name });
+      if (idx === -1) {
+        return NextResponse.json({ error: "Saved item not found" }, { status: 404 });
+      }
+
+      const savedEntry = cart.savedItems[idx];
+      const plainEntry = savedEntry?.toObject ? savedEntry.toObject() : { ...savedEntry };
+      const prodDoc =
+        plainEntry.productId && !plainEntry.isCombo
+          ? await Product.findById(plainEntry.productId).lean()
+          : null;
+
+      const existingActiveIdx = findCartEntryIndex(cart.items, {
+        productId: plainEntry.productId,
+        comboId: plainEntry.comboId,
+        itemId: plainEntry.item_code || plainEntry.name,
+        name: plainEntry.name,
+      });
+
+      const moveQty = Math.max(1, Number(plainEntry.quantity) || 1);
+      const nextTotalQty =
+        existingActiveIdx >= 0
+          ? Number(cart.items[existingActiveIdx].quantity || 0) + moveQty
+          : moveQty;
+
+      if (prodDoc && !plainEntry.isCombo) {
+        const fulfillment = await resolveRegionalFulfillment({
+          pincode: effectivePincode,
+          state: effectiveUserState,
+          region: userRegion,
+          productId: prodDoc._id,
+          itemCode: prodDoc.item_code || plainEntry.item_code,
+          quantity: nextTotalQty,
+          product: prodDoc,
+        });
+
+        if (!fulfillment.isDeliverable) {
+          return NextResponse.json(
+            {
+              error:
+                fulfillment.availableStock <= 0
+                  ? "This product is currently unavailable online."
+                  : fulfillment.errorReason || "Requested quantity exceeds available stock.",
+            },
+            { status: 400 }
+          );
+        }
+
+        if (
+          !regionCtx.isKarnataka &&
+          !fulfillment.isUniletOnlyProduct &&
+          fulfillment.availableStock < 10 &&
+          !isMovementAllowed(prodDoc.movement)
+        ) {
+          return NextResponse.json(
+            { error: "This product is currently unavailable online." },
+            { status: 400 }
+          );
+        }
+
+        const priceInfo = resolveProductPrice(prodDoc, fulfillment.ownerProduct, fulfillment.region);
+        if (priceInfo.effectivePrice > 0) plainEntry.price = priceInfo.effectivePrice;
+        if (priceInfo.price > 0) plainEntry.actual_price = priceInfo.price;
+        plainEntry.isUnilet = Boolean(fulfillment.isUniletOnlyProduct);
+        plainEntry.vendor = fulfillment.vendorId;
+        plainEntry.store_owner = fulfillment.vendorId;
+        plainEntry.assignedVendor = fulfillment.assignedVendor;
+        plainEntry.region = fulfillment.region;
+      }
+
+      cart.savedItems.splice(idx, 1);
+      if (existingActiveIdx >= 0) {
+        cart.items[existingActiveIdx].quantity = nextTotalQty;
+        cart.items[existingActiveIdx].price = plainEntry.price;
+        cart.items[existingActiveIdx].actual_price = plainEntry.actual_price;
+      } else {
+        cart.items.push(plainEntry);
+      }
+    } else if (action === "remove_saved") {
+      const idx = findCartEntryIndex(cart.savedItems, { productId, itemId, comboId, name });
+      if (idx !== -1) {
+        cart.savedItems.splice(idx, 1);
+      }
+    }
+
+    const totals = calculateCartTotals(cart.items);
+    cart.totalItems = totals.totalItems;
+    cart.totalPrice = totals.totalPrice;
+    cart.markModified("items");
+    cart.markModified("savedItems");
+    await cart.save();
+
+    const populated = await Cart.findById(cart._id).populate(
+      "items.productId savedItems.productId",
+      CART_PRODUCT_POPULATE_FIELDS
+    );
+    const slaInfo = await resolvePincodeBaseSla({
+      pincode: effectivePincode,
+      region: userRegion,
+    });
+
+    const [activeRes, savedRes] = await Promise.all([
+      enrichCartEntries(populated?.items || [], {
+        regionCtx,
+        effectivePincode,
+        effectiveUserState,
+        userRegion,
+        slaInfo,
+        trackPriceChanges: false,
+      }),
+      enrichCartEntries(populated?.savedItems || [], {
+        regionCtx,
+        effectivePincode,
+        effectiveUserState,
+        userRegion,
+        slaInfo,
+        trackPriceChanges: false,
+      }),
+    ]);
+
+    return NextResponse.json(
+      {
+        message:
+          action === "save_for_later"
+            ? "Item saved for later"
+            : action === "move_to_cart"
+              ? "Item moved to cart"
+              : "Saved item removed",
+        cart: {
+          id: cart._id,
+          totalItems: totals.totalItems,
+          totalPrice: totals.totalPrice,
+          items: activeRes.enriched,
+          savedItems: savedRes.enriched,
+        },
+      },
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      }
+    );
+  } catch (error) {
+    console.error("PATCH cart error:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to update saved items" },
       { status: 500 }
     );
   }

@@ -13,6 +13,9 @@ import { useWishlist } from '@/context/WishlistContext';
 import ProductAddtoCart from "@/components/ProductAddtoCart";
 import CartItemRow, { getItemId } from "@/components/cart/CartItemRow";
 import CartRecommendations from "@/components/cart/CartRecommendations";
+import SavedForLaterSection from "@/components/cart/SavedForLaterSection";
+import ApplyCouponCard from "@/components/cart/ApplyCouponCard";
+import { applyDiscountToItems as sharedApplyDiscountToItems } from "@/lib/cart/couponMath";
 import { getDiscountInfo } from "@/lib/discountHelper";
 
 
@@ -458,6 +461,8 @@ export default function CartComponent() {
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [updatingQuantityId, setUpdatingQuantityId] = useState(null);
+  const [savedItems, setSavedItems] = useState([]);
+  const [savedActionId, setSavedActionId] = useState(null);
 
   // Coupon states
   const [couponCode, setCouponCode] = useState("");
@@ -471,12 +476,15 @@ export default function CartComponent() {
   const [priceNotice, setPriceNotice] = useState(null);
   const completeScrollRef = useRef(null);
 
-  // Restore initial cached cartData and completeYourPurchase safely on client mount (prevents hydration mismatch)
+  // Restore initial cached cartData, savedItems, and completeYourPurchase safely on client mount
   useEffect(() => {
     try {
       const savedCart = localStorage.getItem("cartData");
       if (savedCart) {
         const parsed = JSON.parse(savedCart);
+        if (parsed && Array.isArray(parsed.savedItems)) {
+          setSavedItems(parsed.savedItems);
+        }
         if (parsed && Array.isArray(parsed.items) && parsed.items.length > 0) {
           setCartData(parsed);
           setLoading(false);
@@ -619,15 +627,18 @@ export default function CartComponent() {
       const json = await resp.json().catch(() => null);
       const offers = Array.isArray(json?.offers)
         ? json.offers.map(o => ({
-            // preserve date fields for client-side validity checks
+            // preserve date fields and min order / notes for coupon UI
             code: o.code || o.offer_code || o.offerCode || "",
             percentage: Number(o.percentage || 0) || 0,
             fixed_price: Number(o.fixed_price || 0) || 0,
+            minOrderAmount: Number(o.minOrderAmount || o.cart_value || 0) || 0,
+            notes: o.notes || "",
+            offer_type: o.offer_type || "",
             from_date: o.from_date ?? o.fromDate ?? o.valid_from ?? null,
             to_date: o.to_date ?? o.toDate ?? o.valid_to ?? null,
           })).filter(o => o.code)
         : Array.isArray(json?.codes)
-          ? json.codes.map(c => ({ code: c, percentage: 0, fixed_price: 0, from_date: null, to_date: null }))
+          ? json.codes.map(c => ({ code: c, percentage: 0, fixed_price: 0, minOrderAmount: 0, notes: "", from_date: null, to_date: null }))
           : [];
 
       // Update state only if changed to avoid flicker
@@ -741,6 +752,50 @@ export default function CartComponent() {
     return () => window.removeEventListener("focus", onFocus);
   }, []);
 
+  const revalidateCouponWithServer = useCallback(async (items, couponObj) => {
+    const cleanItems = Array.isArray(items) ? items.map((i) => ({ ...i, discount: 0 })) : [];
+    if (!couponObj?.offer_code) {
+      return { finalItems: cleanItems, validCoupon: null, warning: "" };
+    }
+    if (!cleanItems.length) {
+      try { localStorage.removeItem("appliedCoupon"); } catch {}
+      setAppliedCoupon(null);
+      setCouponSuccess("");
+      return { finalItems: [], validCoupon: null, warning: "" };
+    }
+
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const resp = await fetch("/api/offers/offer-products", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ code: couponObj.offer_code, items: cleanItems }),
+      });
+      const result = await resp.json().catch(() => null);
+      if (resp.ok && result?.valid && result?.coupon) {
+        const discountedItems = sharedApplyDiscountToItems(result.coupon, cleanItems);
+        setAppliedCoupon(result.coupon);
+        try { localStorage.setItem("appliedCoupon", JSON.stringify(result.coupon)); } catch {}
+        setCouponError("");
+        setCouponSuccess(result.message || `${result.coupon.offer_code} applied`);
+        return { finalItems: discountedItems, validCoupon: result.coupon, warning: "" };
+      }
+
+      const reason = result?.error || "Coupon is no longer eligible for your cart.";
+      try { localStorage.removeItem("appliedCoupon"); } catch {}
+      setAppliedCoupon(null);
+      setCouponSuccess("");
+      setCouponError(`Coupon ${couponObj.offer_code} removed: ${reason}`);
+      return { finalItems: cleanItems, validCoupon: null, warning: reason };
+    } catch {
+      const discountedItems = sharedApplyDiscountToItems(couponObj, cleanItems);
+      return { finalItems: discountedItems, validCoupon: couponObj, warning: "" };
+    }
+  }, []);
+
   const fetchCartData = useCallback(async (opts = { silent: false }) => {
     try {
       if (!opts.silent) setLoading(true);
@@ -752,12 +807,20 @@ export default function CartComponent() {
         localStorage.setItem("guestCartId", guestCartId);
       }
 
+      const effectivePin = String(pincode || userLocation?.pincode || "").replace(/\D/g, "").trim();
+      const effectiveState = userLocation?.stateName || userLocation?.state || "";
+      const params = new URLSearchParams();
+      if (effectivePin) params.set("pincode", effectivePin);
+      if (region) params.set("region", region);
+      if (effectiveState) params.set("state", effectiveState);
+      const qs = params.toString();
+
       const headers = {
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
         ...(guestCartId ? { 'guestCartId': guestCartId } : {}),
       };
 
-      response = await fetch('/api/cart', {
+      response = await fetch(`/api/cart${qs ? `?${qs}` : ""}`, {
         headers,
         method: "GET",
         cache: "no-store",
@@ -790,8 +853,9 @@ export default function CartComponent() {
 
         // If cart is not found (404), fallback to empty cart state gracefully
         if (response.status === 404) {
-          const emptyCart = { items: [], totalItems: 0, totalPrice: 0 };
+          const emptyCart = { items: [], savedItems: [], totalItems: 0, totalPrice: 0 };
           setCartData(emptyCart);
+          setSavedItems([]);
           saveCartState(emptyCart);
           return;
         }
@@ -800,21 +864,26 @@ export default function CartComponent() {
       }
 
       if (!data || !data.cart) {
-        const emptyCart = { items: [], totalItems: 0, totalPrice: 0 };
+        const emptyCart = { items: [], savedItems: [], totalItems: 0, totalPrice: 0 };
         setCartData(emptyCart);
+        setSavedItems([]);
         saveCartState(emptyCart);
         return;
       }
 
       const rawItems = data?.cart?.items || [];
+      const rawSaved = Array.isArray(data?.cart?.savedItems) ? data.cart.savedItems : [];
       const itemsWithDiscount = rawItems.map(item => ({
         ...item,
         discount: 0
       }));
 
+      setSavedItems(rawSaved);
+
       // Persist and set state
-      const nextCart = { ...data.cart, items: itemsWithDiscount };
+      let nextCart = { ...data.cart, items: itemsWithDiscount, savedItems: rawSaved };
       setCartData(nextCart);
+      updateCartCount(nextCart.totalItems ?? itemsWithDiscount.reduce((s, i) => s + (i.quantity || 1), 0));
       saveCartState(nextCart);
 
       // If price changes occurred, invalidate stale checkout data and notify user
@@ -825,14 +894,13 @@ export default function CartComponent() {
         setPriceNotice(data.cart.priceChanges);
       }
 
-      // Apply saved coupon if present and persist
-      const savedCoupon = typeof window !== "undefined" ? localStorage.getItem('appliedCoupon') : null;
-      if (savedCoupon) {
+      // Re-validate saved coupon against live cart items
+      const savedCouponStr = typeof window !== "undefined" ? localStorage.getItem('appliedCoupon') : null;
+      if (savedCouponStr) {
         try {
-          const coupon = JSON.parse(savedCoupon);
-          setAppliedCoupon(coupon);
-          const discountedItems = applyDiscountToItems(coupon, nextCart.items);
-          const discountedCart = { ...nextCart, items: discountedItems };
+          const parsedCoupon = JSON.parse(savedCouponStr);
+          const { finalItems } = await revalidateCouponWithServer(nextCart.items, parsedCoupon);
+          const discountedCart = { ...nextCart, items: finalItems };
           setCartData(discountedCart);
           saveCartState(discountedCart);
         } catch {}
@@ -842,13 +910,13 @@ export default function CartComponent() {
     } finally {
       if (!opts.silent) setLoading(false);
     }
-  }, []);
+  }, [pincode, region, userLocation?.pincode, userLocation?.stateName, userLocation?.state, revalidateCouponWithServer, updateCartCount]);
 
-  // Load cart after the header pincode is known, and again when it changes.
+  // Load cart after header pincode/region is initialized, and refresh live when header pincode changes (no page reload).
   useEffect(() => {
     if (!isInitialized) return;
-    fetchCartData({ silent: Boolean(cartData?.items?.length) });
-  }, [fetchCartData, isInitialized, region]);
+    fetchCartData({ silent: Boolean(cartData?.items?.length || savedItems.length) });
+  }, [fetchCartData, isInitialized, region, pincode]);
 
   // Window focus & tab visibility change listener to auto-refresh latest prices
   useEffect(() => {
@@ -928,68 +996,8 @@ export default function CartComponent() {
   }, [cartData?.items]);
 
 
-  const applyDiscountToItems = (coupon, items) => {
-    if (!coupon || !items) return items;
-
-    // Determine eligible items: if offer_product provided, restrict to those; else all items
-    const eligibleItems = Array.isArray(coupon.offer_product) && coupon.offer_product.length
-      ? items.filter(i => coupon.offer_product.includes(i.productId))
-      : items;
-
-    if (!eligibleItems.length) {
-      // No eligible items; clear discounts
-      return items.map(i => ({ ...i, discount: 0, coupondetails: [] }));
-    }
-
-    const lineTotal = (i) => (Number(i.price) || 0) * (Number(i.quantity) || 0);
-    const eligibleSubtotal = eligibleItems.reduce((sum, i) => sum + lineTotal(i), 0);
-
-    // Compute cart-level discount according to rules
-    let totalDiscount = 0;
-    if (coupon.offer_type === "percentage" && Number(coupon.percentage) > 0) {
-      totalDiscount = eligibleSubtotal * (Number(coupon.percentage) / 100);
-    } else if (coupon.offer_type === "fixed_price" && Number(coupon.fixed_price) > 0) {
-      totalDiscount = Number(coupon.fixed_price);
-    }
-
-    // Cap discount so it never exceeds the eligible subtotal
-    totalDiscount = Math.min(totalDiscount, eligibleSubtotal);
-    totalDiscount = Number(totalDiscount.toFixed(2));
-
-    // Distribute proportionally across eligible items
-    const isEligible = (pid) => eligibleItems.some(e => e.productId === pid);
-    let distributed = 0;
-    const distributedItems = items.map((item, idx, arr) => {
-      if (!isEligible(item.productId) || eligibleSubtotal === 0 || totalDiscount === 0) {
-        return { ...item, discount: 0, coupondetails: [] };
-      }
-      const base = lineTotal(item);
-      // Proportional share
-      let share = (base / eligibleSubtotal) * totalDiscount;
-      let discount = Number(share.toFixed(2));
-      distributed += discount;
-      return {
-        ...item,
-        discount,
-        coupondetails: discount > 0 ? [coupon] : []
-      };
-    });
-
-    // Fix rounding drift on the last eligible item to match totalDiscount exactly
-    const eligibleIndexes = distributedItems
-      .map((it, idx) => (isEligible(it.productId) ? idx : -1))
-      .filter(idx => idx !== -1);
-    const drift = Number((totalDiscount - distributed).toFixed(2));
-    if (eligibleIndexes.length && Math.abs(drift) >= 0.01) {
-      const lastIdx = eligibleIndexes[eligibleIndexes.length - 1];
-      distributedItems[lastIdx] = {
-        ...distributedItems[lastIdx],
-        discount: Number((distributedItems[lastIdx].discount + drift).toFixed(2))
-      };
-    }
-
-    return distributedItems;
-  };
+  const applyDiscountToItems = (coupon, items) =>
+    sharedApplyDiscountToItems(coupon, items);
 
   // Normalize offer object to client coupon shape (decide type from non-zero values)
   const normalizeOfferToCoupon = (offer) => {
@@ -1044,7 +1052,13 @@ export default function CartComponent() {
     try {
       let response = '';
       const token = typeof window !== "undefined" ? localStorage.getItem('token') : null;
-      const payload = { productId, quantity: newQuantity };
+      const payload = {
+        productId,
+        quantity: newQuantity,
+        pincode: String(pincode || userLocation?.pincode || "").replace(/\D/g, "").trim(),
+        region,
+        state: userLocation?.stateName || userLocation?.state || "",
+      };
 
       if (token) {
         response = await fetch('/api/cart', {
@@ -1100,12 +1114,27 @@ export default function CartComponent() {
         };
       });
 
-      // Reapply coupon if exists
+      // Re-validate coupon if exists
       let finalItems = itemsMerged;
-      if (appliedCoupon) {
-        finalItems = applyDiscountToItems(appliedCoupon, itemsMerged);
+      const activeCoupon = appliedCoupon || (() => {
+        try {
+          const s = localStorage.getItem("appliedCoupon");
+          return s ? JSON.parse(s) : null;
+        } catch {
+          return null;
+        }
+      })();
+      if (activeCoupon) {
+        const reval = await revalidateCouponWithServer(itemsMerged, activeCoupon);
+        finalItems = reval.finalItems;
       }
-      const finalCart = { ...updatedCart.cart, items: finalItems };
+      const nextSaved = Array.isArray(updatedCart.cart.savedItems)
+        ? updatedCart.cart.savedItems
+        : savedItems;
+      if (Array.isArray(updatedCart.cart.savedItems)) {
+        setSavedItems(updatedCart.cart.savedItems);
+      }
+      const finalCart = { ...updatedCart.cart, items: finalItems, savedItems: nextSaved };
       setCartData(finalCart);
       updateCartCount(finalCart.totalItems);
       saveCartState(finalCart);
@@ -1202,25 +1231,40 @@ let nextCartObj = { ...updatedCart.cart, items: finalItems };
         };
       }
 
-      // Re-fetch cart fresh from API to avoid stale data
+      // Re-fetch cart fresh from API with current pincode/region to avoid stale data
       const token3 = typeof window !== "undefined" ? localStorage.getItem('token') : null;
       const guestId3 = typeof window !== "undefined" ? localStorage.getItem("guestCartId") : null;
+      const effectivePin3 = String(pincode || userLocation?.pincode || "").replace(/\D/g, "").trim();
+      const effectiveState3 = userLocation?.stateName || userLocation?.state || "";
+      const params3 = new URLSearchParams();
+      if (effectivePin3) params3.set("pincode", effectivePin3);
+      if (region) params3.set("region", region);
+      if (effectiveState3) params3.set("state", effectiveState3);
+      const qs3 = params3.toString();
       const freshHeaders = token3
         ? { Authorization: `Bearer ${token3}` }
         : (guestId3 ? { guestCartId: guestId3 } : {});
-      const freshRes = await fetch('/api/cart', {
+      const freshRes = await fetch(`/api/cart${qs3 ? `?${qs3}` : ""}`, {
         headers: freshHeaders,
         method: 'GET',
         cache: 'no-store',
       });
       if (freshRes.ok) {
         const freshData = await freshRes.json();
-        const freshItems = freshData.cart.items.map(item => ({ ...item, discount: 0 }));
+        const freshItems = (freshData.cart?.items || []).map(item => ({ ...item, discount: 0 }));
         let freshFinal = freshItems;
         if (appliedCoupon) {
-          freshFinal = applyDiscountToItems(appliedCoupon, freshItems);
+          const reval = await revalidateCouponWithServer(freshItems, appliedCoupon);
+          freshFinal = reval.finalItems;
         }
-        nextCartObj = { ...freshData.cart, items: freshFinal };
+        const freshSaved = Array.isArray(freshData.cart?.savedItems)
+          ? freshData.cart.savedItems
+          : savedItems;
+        setSavedItems(freshSaved);
+        nextCartObj = { ...freshData.cart, items: freshFinal, savedItems: freshSaved };
+      } else if (appliedCoupon) {
+        const reval = await revalidateCouponWithServer(finalItems, appliedCoupon);
+        nextCartObj = { ...nextCartObj, items: reval.finalItems, savedItems };
       }
 
       setCartData(nextCartObj);
@@ -1237,100 +1281,158 @@ let nextCartObj = { ...updatedCart.cart, items: finalItems };
       setProductToDelete(null);
     }
   };
-const validateCoupon = async () => {
+
+const applyCouponCode = async (overrideCode) => {
   if (!couponFeatureEnabled) {
     setCouponError("Coupons are currently disabled");
     setCouponSuccess("");
     return;
   }
 
-  const code = couponCode.trim();
+  const rawInput = typeof overrideCode === "string" ? overrideCode : couponCode;
+  const code = String(rawInput || "").trim().toUpperCase();
   if (!code) {
     setCouponError("Please enter a coupon code");
     setCouponSuccess("");
     return;
   }
 
+  setCouponCode(code);
   setIsValidatingCoupon(true);
   setCouponError("");
   setCouponSuccess("");
 
-
-  let dbCouponValid = false;
-
   try {
-    const token = localStorage.getItem("token");
-    const params = new URLSearchParams({ code });
-
-    const resp = await fetch(`/api/offers/offer-products?${params.toString()}`, {
-      method: "GET",
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const resp = await fetch("/api/offers/offer-products", {
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
+      body: JSON.stringify({
+        code,
+        items: cartData?.items || [],
+      }),
     });
 
-    const data = await resp.json();
+    const data = await resp.json().catch(() => null);
 
-    if (resp.ok && data?.coupon) {
-      const normalized = normalizeOfferToCoupon(data.coupon);
+    if (resp.ok && data?.valid && data?.coupon) {
+      const itemsWithDiscount = sharedApplyDiscountToItems(data.coupon, cartData?.items || []);
+      const newCart = { ...cartData, items: itemsWithDiscount, savedItems };
 
-      // Active check
-      const isActive = (normalized.status || "").toLowerCase() === "active";
-      // Discount value check
-      const hasDiscount = (normalized.percentage ?? 0) > 0 || (normalized.fixed_price ?? 0) > 0;
-      // Cart product check
-      const cartProductIds = cartData?.items?.map((i) => i.productId) || [];
-      const isApplicable =
-        !Array.isArray(normalized.offer_product) ||
-        normalized.offer_product.length === 0 ||
-        normalized.offer_product.some((id) => cartProductIds.includes(id));
+      setAppliedCoupon(data.coupon);
+      localStorage.setItem("appliedCoupon", JSON.stringify(data.coupon));
+      setCartData(newCart);
+      saveCartState(newCart);
 
-      if (isActive && hasDiscount && isApplicable) {
-        // ✅ DB coupon valid — existing flow exactly same
-        const itemsWithDiscount = applyDiscountToItems(normalized, cartData.items);
-        const newCart = { ...cartData, items: itemsWithDiscount };
-
-        setAppliedCoupon(normalized);
-        localStorage.setItem("appliedCoupon", JSON.stringify(normalized));
-        setCartData(newCart);
-        saveCartState(newCart);
-
-        setCouponSuccess(`${normalized.offer_code} is applied`);
-        setCouponError("");
-        dbCouponValid = true;
-      }
+      setCouponSuccess(data.message || `${data.coupon.offer_code} applied!`);
+      setCouponError("");
+    } else {
+      setCouponError(data?.error || "The coupon code entered is not valid.");
+      setCouponSuccess("");
     }
-  } catch (_) {
-
-  }
-
-  if (dbCouponValid) {
+  } catch {
+    setCouponError("Unable to validate coupon right now. Please try again.");
+    setCouponSuccess("");
+  } finally {
     setIsValidatingCoupon(false);
-    return;
   }
-
-  setCouponError("The coupon code entered is not valid.");
-  setCouponSuccess("");
-  setIsValidatingCoupon(false);
 };
 
+const validateCoupon = applyCouponCode;
 
-  const removeCoupon = () => {
-    const newCart = {
-      ...cartData,
-      items: cartData.items.map((item) => ({ ...item, discount: 0 })),
-    };
-    setCartData(newCart);
-    saveCartState(newCart);
-
-    setAppliedCoupon(null);
-    localStorage.removeItem("appliedCoupon");
-    setCouponSuccess("");
-    setSuccessMessage("Coupon removed successfully");
-    setCouponCode("");
-    setShowSuccessModal(true);
+const removeCoupon = () => {
+  const newCart = {
+    ...cartData,
+    items: (cartData?.items || []).map((item) => ({ ...item, discount: 0, coupondetails: [] })),
+    savedItems,
   };
+  setCartData(newCart);
+  saveCartState(newCart);
+
+  setAppliedCoupon(null);
+  localStorage.removeItem("appliedCoupon");
+  setCouponError("");
+  setCouponSuccess("");
+  setCouponCode("");
+};
+
+const mutateSavedCartAction = async (action, item) => {
+  const itemId = getItemId(item);
+  if (!itemId) return;
+  setSavedActionId(itemId);
+  try {
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const guestCartId = typeof window !== "undefined" ? (localStorage.getItem("guestCartId") || uuidv4()) : null;
+    if (guestCartId && typeof window !== "undefined") {
+      localStorage.setItem("guestCartId", guestCartId);
+    }
+
+    const effectivePin = String(pincode || userLocation?.pincode || "").replace(/\D/g, "").trim();
+    const effectiveState = userLocation?.stateName || userLocation?.state || "";
+
+    const resp = await fetch("/api/cart", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(guestCartId ? { guestCartId } : {}),
+      },
+      body: JSON.stringify({
+        action,
+        itemId,
+        productId: item.productId || itemId,
+        comboId: item.comboId || undefined,
+        name: item.name || undefined,
+        pincode: effectivePin,
+        region,
+        state: effectiveState,
+      }),
+    });
+
+    const data = await resp.json().catch(() => ({}));
+    if (!resp.ok || !data?.cart) {
+      throw new Error(data?.error || "Failed to update saved items");
+    }
+
+    const rawNextItems = (data.cart.items || []).map((it) => ({ ...it, discount: 0 }));
+    const nextSaved = Array.isArray(data.cart.savedItems) ? data.cart.savedItems : [];
+    setSavedItems(nextSaved);
+
+    let finalItems = rawNextItems;
+    const currentCoupon = appliedCoupon || (() => {
+      try {
+        const s = localStorage.getItem("appliedCoupon");
+        return s ? JSON.parse(s) : null;
+      } catch {
+        return null;
+      }
+    })();
+
+    if (action !== "remove_saved" && currentCoupon) {
+      const reval = await revalidateCouponWithServer(rawNextItems, currentCoupon);
+      finalItems = reval.finalItems;
+    }
+
+    const nextCart = { ...data.cart, items: finalItems, savedItems: nextSaved };
+    setCartData(nextCart);
+    updateCartCount(nextCart.totalItems ?? finalItems.reduce((s, i) => s + (i.quantity || 1), 0));
+    saveCartState(nextCart);
+
+    try { localStorage.removeItem("checkoutData"); } catch {}
+  } catch (err) {
+    setErrorMessage(err.message || "Unable to update saved items");
+    setShowErrorModal(true);
+  } finally {
+    setSavedActionId(null);
+  }
+};
+
+const handleSaveForLater = (item) => mutateSavedCartAction("save_for_later", item);
+const handleMoveToCart = (item) => mutateSavedCartAction("move_to_cart", item);
+const handleRemoveSaved = (item) => mutateSavedCartAction("remove_saved", item);
 
  const moveToWishlist = async (productId) => {
   try {
@@ -1376,10 +1478,14 @@ updateWishlist(wishlistData.items, wishlistData.count);
 
     let finalItems = itemsMerged;
     if (appliedCoupon) {
-      finalItems = applyDiscountToItems(appliedCoupon, itemsMerged);
+      const reval = await revalidateCouponWithServer(itemsMerged, appliedCoupon);
+      finalItems = reval.finalItems;
     }
 
-    const nextCart = { ...updatedCart.cart, items: finalItems };
+    const nextSaved = Array.isArray(updatedCart.cart.savedItems)
+      ? updatedCart.cart.savedItems
+      : savedItems;
+    const nextCart = { ...updatedCart.cart, items: finalItems, savedItems: nextSaved };
     setCartData(nextCart);
     updateCartCount(nextCart.totalItems);
     saveCartState(nextCart);
@@ -1538,39 +1644,7 @@ const calculateTotalExchange = () => {
 };
 
 
-  useEffect(() => {
-    // Fetch active offer codes from DB (fest_offer_status2 and fest_offer_status are "active")
-    const fetchActiveCodes = async () => {
-      try {
-        const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-        const resp = await fetch("/api/offers/offer-products?listActiveCodes=1", {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        });
-        const json = await resp.json().catch(() => null);
-        // Prefer detailed offers; fallback to codes-only
-        const offers = Array.isArray(json?.offers)
-          ? json.offers.map(o => ({
-              code: o.code || o.offer_code || o.offerCode || "",
-              percentage: Number(o.percentage || 0) || 0,
-              fixed_price: Number(o.fixed_price || 0) || 0,
-              from_date: o.from_date ?? o.fromDate ?? o.valid_from ?? null,
-              to_date: o.to_date ?? o.toDate ?? o.valid_to ?? null,
-            })).filter(o => o.code)
-          : Array.isArray(json?.codes)
-            ? json.codes.map(c => ({ code: c, percentage: 0, fixed_price: 0, from_date: null, to_date: null }))
-            : [];
-        // console.log(offers);
-        setActiveOfferCodes(offers);
-      } catch {
-        setActiveOfferCodes([]);
-      }
-    };
-    fetchActiveCodes();
-  }, []);
+  // Live coupon code stream + polling below handle fetching active codes
 
   // REPLACE old "fetch active codes" effect with live updates (SSE + polling + focus/visibility + BroadcastChannel)
   useEffect(() => {
@@ -1593,10 +1667,12 @@ const calculateTotalExchange = () => {
                     code: o.code || o.offer_code || o.offerCode || "",
                     percentage: Number(o.percentage || 0) || 0,
                     fixed_price: Number(o.fixed_price || 0) || 0,
+                    minOrderAmount: Number(o.minOrderAmount || o.cart_value || 0) || 0,
+                    notes: o.notes || "",
                     from_date: o.from_date ?? o.fromDate ?? o.valid_from ?? null,
                     to_date: o.to_date ?? o.toDate ?? o.valid_to ?? null,
                   })).filter(o => o.code)
-                : data.codes.map(c => ({ code: c, percentage: 0, fixed_price: 0, from_date: null, to_date: null }));
+                : data.codes.map(c => ({ code: c, percentage: 0, fixed_price: 0, minOrderAmount: 0, notes: "", from_date: null, to_date: null }));
               if (!isSameOffers(activeOfferCodes, offers)) {
                 setActiveOfferCodes(offers);
               }
@@ -1708,7 +1784,7 @@ const calculateTotalExchange = () => {
       </div>
     );
   }
-  if (!cartData || cartData.items.length === 0) {
+  if ((!cartData || cartData.items.length === 0) && savedItems.length === 0) {
     return (
       <div className="min-h-[75vh] w-full flex flex-col items-center justify-center p-4 sm:p-6 bg-gray-50/30">
         <div className="w-full max-w-2xl mx-auto p-8 sm:p-12 lg:p-14 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-red-50/60 via-white to-white rounded-[28px] border border-gray-100 shadow-2xs flex flex-col items-center justify-center text-center">
@@ -1842,104 +1918,91 @@ return (
           )}
 
           {/* Cart Item Cards List */}
-          <div className="bg-white rounded-xl border border-gray-200/80 divide-y divide-gray-100 shadow-2xs overflow-hidden">
-            {cartData.items.map((item) => {
-              const uniqueKey = item.id || item.cart_item_id || getItemId(item);
-              return (
-                <CartItemRow
-                  key={uniqueKey}
-                  item={item}
-                  onQuantityChange={handleQuantityChange}
-                  onMoveToWishlist={moveToWishlist}
-                  onRemoveItem={confirmRemoveItem}
-                  onProceedToCheckout={proceedToCheckout}
-                  isItemUpdating={updatingQuantityId === uniqueKey || updatingQuantityId === getItemId(item)}
-                />
-              );
-            })}
-          </div>
+          {cartData?.items?.length > 0 ? (
+            <div className="bg-white rounded-xl border border-gray-200/80 divide-y divide-gray-100 shadow-2xs overflow-hidden">
+              {cartData.items.map((item) => {
+                const uniqueKey = item.id || item.cart_item_id || getItemId(item);
+                return (
+                  <CartItemRow
+                    key={uniqueKey}
+                    item={item}
+                    pincode={pincode || userLocation?.pincode || ""}
+                    region={region}
+                    onQuantityChange={handleQuantityChange}
+                    onMoveToWishlist={moveToWishlist}
+                    onSaveForLater={handleSaveForLater}
+                    onRemoveItem={confirmRemoveItem}
+                    onProceedToCheckout={proceedToCheckout}
+                    isItemUpdating={updatingQuantityId === uniqueKey || updatingQuantityId === getItemId(item)}
+                  />
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-gray-200/80 p-6 sm:p-8 text-center shadow-2xs">
+              <p className="text-sm sm:text-base font-bold text-gray-800">
+                Your shopping bag is currently empty
+              </p>
+              <p className="text-xs sm:text-sm text-gray-500 mt-1 mb-4">
+                Move items from Saved for Later below or explore more products.
+              </p>
+              <button
+                type="button"
+                onClick={() => router.push('/')}
+                className="inline-flex items-center justify-center gap-1.5 bg-[#d72828] hover:bg-[#b91c1c] text-white text-xs sm:text-sm font-bold px-5 py-2.5 rounded-lg transition-colors cursor-pointer"
+              >
+                Continue Shopping →
+              </button>
+            </div>
+          )}
 
-          {/* Cart-based Recommended Products */}
-          <CartRecommendations
-            cartItems={cartData.items}
+          {/* Saved for Later Section */}
+          <SavedForLaterSection
+            savedItems={savedItems}
+            pincode={pincode || userLocation?.pincode || ""}
             region={region}
-            pincode={pincode}
-            userLocation={userLocation}
-            onAddedToCart={() => fetchCartData({ silent: true })}
-            onError={(msg) => {
-              setErrorMessage(msg);
-              setShowErrorModal(true);
-            }}
+            actionLoadingId={savedActionId}
+            onMoveToCart={handleMoveToCart}
+            onRemoveSaved={handleRemoveSaved}
           />
 
-          {/* Active Offers & Coupons Banner (Hidden/Commented Out) */}
-          {/*
-          {couponFeatureEnabled && validActiveOfferCodes.length > 0 && (
-            <div className="bg-white rounded-xl border border-gray-200/80 p-4 shadow-2xs">
-              <h3 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                <svg className="w-4 h-4 text-[#d72828]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
-                Available Offers & Coupons
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {validActiveOfferCodes.map((off) => (
-                  <button
-                    key={off.code}
-                    onClick={() => handleCopyCoupon(off.code)}
-                    className="inline-flex items-center gap-1.5 bg-red-50/70 border border-red-200 hover:bg-red-100/60 text-[#d72828] text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer"
-                  >
-                    <span>{off.code}</span>
-                    <span className="text-[10px] text-gray-500 font-normal">
-                      {off.percentage > 0 ? `(${off.percentage}% OFF)` : off.fixed_price > 0 ? `(₹${off.fixed_price} OFF)` : ''}
-                    </span>
-                    {copiedCode === off.code ? <span className="text-emerald-600">✓</span> : <span className="text-xs text-red-400">📋</span>}
-                  </button>
-                ))}
-              </div>
-            </div>
+          {/* Cart-based Recommended Products */}
+          {cartData?.items?.length > 0 && (
+            <CartRecommendations
+              cartItems={cartData.items}
+              region={region}
+              pincode={pincode}
+              userLocation={userLocation}
+              onAddedToCart={() => fetchCartData({ silent: true })}
+              onError={(msg) => {
+                setErrorMessage(msg);
+                setShowErrorModal(true);
+              }}
+            />
           )}
-          */}
         </div>
 
-        {/* RIGHT COLUMN: Price Details Card */}
-        <div className="flex flex-col gap-4 sticky top-4">
-          {/* Coupon Input Box (Hidden/Commented Out) */}
-          {/*
+        {/* RIGHT COLUMN: Coupon & Price Details Card */}
+        <div className="flex flex-col gap-4 lg:sticky lg:top-4">
+          {/* Apply Coupon Card */}
           {couponFeatureEnabled && (
-            <div className="bg-white rounded-xl border border-gray-200/80 p-4 shadow-2xs">
-              <h3 className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-2.5">
-                Apply Promo Code
-              </h3>
-              <div className="flex gap-2">
-                <input
-                  id="coupon_input"
-                  type="text"
-                  placeholder="Enter Coupon Code"
-                  value={couponCode}
-                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                  className="flex-1 bg-gray-50 border border-gray-300/80 rounded-lg px-3 py-2 text-xs sm:text-sm font-semibold uppercase tracking-wider text-gray-900 focus:outline-none focus:border-[#d72828]"
-                />
-                {appliedCoupon ? (
-                  <button
-                    onClick={removeCoupon}
-                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold px-4 py-2 rounded-lg text-xs transition cursor-pointer"
-                  >
-                    Remove
-                  </button>
-                ) : (
-                  <button
-                    onClick={validateCoupon}
-                    disabled={isValidatingCoupon}
-                    className="bg-[#d72828] hover:bg-[#b91c1c] text-white font-bold px-4 py-2 rounded-lg text-xs transition cursor-pointer disabled:opacity-50"
-                  >
-                    {isValidatingCoupon ? 'Validating...' : 'Apply'}
-                  </button>
-                )}
-              </div>
-              {couponError && <p className="text-red-600 text-xs font-medium mt-2">{couponError}</p>}
-              {couponSuccess && <p className="text-emerald-600 text-xs font-medium mt-2">{couponSuccess}</p>}
-            </div>
+            <ApplyCouponCard
+              couponCode={couponCode}
+              onCouponCodeChange={(val) => {
+                setCouponCode(val);
+                if (couponError) setCouponError("");
+                if (couponSuccess) setCouponSuccess("");
+              }}
+              onApplyCoupon={applyCouponCode}
+              onRemoveCoupon={removeCoupon}
+              appliedCoupon={appliedCoupon}
+              couponDiscount={calculateDiscount()}
+              couponError={couponError}
+              couponSuccess={couponSuccess}
+              isValidating={isValidatingCoupon}
+              availableCoupons={validActiveOfferCodes}
+            />
           )}
-          */}
 
           {/* Price Details Card */}
           <div className="bg-white rounded-xl border border-gray-200/80 p-5 shadow-2xs">
@@ -1963,9 +2026,25 @@ return (
               <div className="flex justify-between items-center">
                 <span className="text-gray-600">Bag Savings & Discounts</span>
                 <span className="font-semibold text-emerald-600">
-                  -₹{Number(calculateTotalDiscounts()).toLocaleString("en-IN")}
+                  -₹{Number(calculateItemDiscount()).toLocaleString("en-IN")}
                 </span>
               </div>
+
+              {calculateDiscount() > 0 && (
+                <div className="flex justify-between items-center text-emerald-700 font-medium">
+                  <span className="flex items-center gap-1.5 flex-wrap">
+                    <span>Coupon Discount</span>
+                    {appliedCoupon?.offer_code && (
+                      <span className="text-[10px] font-bold bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded uppercase">
+                        {appliedCoupon.offer_code}
+                      </span>
+                    )}
+                  </span>
+                  <span className="font-semibold text-emerald-600 shrink-0">
+                    -₹{Number(calculateDiscount()).toLocaleString("en-IN")}
+                  </span>
+                </div>
+              )}
 
               {calculateTotalWarranty() > 0 && (
                 <div className="flex justify-between items-center text-amber-800 font-medium">
@@ -2007,7 +2086,8 @@ return (
             {/* Sticky/Prominent Place Order CTA Button */}
             <button
               onClick={proceedToCheckout}
-              className="w-full bg-[#d72828] hover:bg-[#b91c1c] text-white font-extrabold py-3.5 rounded-lg uppercase tracking-wider shadow-md hover:shadow-lg transition-all duration-200 text-sm text-center block cursor-pointer active:scale-[0.99]"
+              disabled={!cartData?.items?.length}
+              className="w-full bg-[#d72828] hover:bg-[#b91c1c] text-white font-extrabold py-3.5 rounded-lg uppercase tracking-wider shadow-md hover:shadow-lg transition-all duration-200 text-sm text-center block cursor-pointer active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Proceed to Checkout →
             </button>

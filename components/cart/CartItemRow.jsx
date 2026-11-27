@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { getDiscountInfo } from "@/lib/discountHelper";
+import { computeItemDeliveryEstimate } from "@/lib/cart/deliveryEstimate";
 
 // Helper to extract warranty info from cart item
 export const getItemWarranty = (item) => {
@@ -99,8 +100,11 @@ export const getItemId = (item) => {
  */
 const CartItemRow = React.memo(function CartItemRow({
   item,
+  pincode = "",
+  region = "",
   onQuantityChange,
   onMoveToWishlist,
+  onSaveForLater,
   onRemoveItem,
   onProceedToCheckout,
   isItemUpdating = false,
@@ -191,6 +195,22 @@ const CartItemRow = React.memo(function CartItemRow({
         ? item.image
         : `/uploads/products/${item.image}`)
     : "/uploads/sathyalogo.webp";
+
+  const cleanPincode = String(pincode || "").replace(/\D/g, "").trim();
+  const deliveryEstimate = useMemo(() => {
+    if (
+      item?.deliveryEstimate &&
+      item.deliveryEstimate.label &&
+      (!cleanPincode || item.deliveryEstimate.pincode === cleanPincode)
+    ) {
+      return item.deliveryEstimate;
+    }
+    return computeItemDeliveryEstimate({
+      item,
+      pincode: cleanPincode,
+      region,
+    });
+  }, [item, cleanPincode, region]);
 
   return (
     <div className="p-4 sm:p-6 flex flex-col gap-4 group transition-colors hover:bg-gray-50/40">
@@ -357,18 +377,35 @@ const CartItemRow = React.memo(function CartItemRow({
             </div>
           </div>
 
-          <p className="text-xs text-gray-500 font-medium mt-0.5 flex items-center gap-1">
-            <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Standard Delivery in 2 - 4 Days
-          </p>
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-medium">
+            {deliveryEstimate.available === false ? (
+              <span className="inline-flex items-center gap-1 text-red-600 font-semibold">
+                <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{deliveryEstimate.label}</span>
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-gray-700 font-semibold">
+                <svg className="w-3.5 h-3.5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+                <span>{deliveryEstimate.label}</span>
+                {deliveryEstimate.isHeavyAppliance && (
+                  <span className="text-[10px] font-bold text-gray-500 bg-gray-100 border border-gray-200 px-1.5 py-0.5 rounded">
+                    Scheduled Delivery
+                  </span>
+                )}
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Bottom Action Bar */}
-      <div className="border-t border-gray-100 pt-3 flex items-center gap-4 sm:gap-6 text-xs font-bold text-gray-700">
+      <div className="border-t border-gray-100 pt-3 flex flex-wrap items-center gap-x-4 gap-y-2.5 sm:gap-x-6 text-xs font-bold text-gray-700">
         <button
+          type="button"
           onClick={() => onMoveToWishlist && onMoveToWishlist(itemId)}
           className="hover:text-[#d72828] text-gray-600 transition-colors cursor-pointer uppercase tracking-wider flex items-center gap-1.5"
         >
@@ -377,7 +414,21 @@ const CartItemRow = React.memo(function CartItemRow({
           </svg>
           <span>Move to Wishlist</span>
         </button>
+        {onSaveForLater && (
+          <button
+            type="button"
+            onClick={() => onSaveForLater(item)}
+            disabled={isUpdating}
+            className="hover:text-[#d72828] text-gray-600 transition-colors cursor-pointer uppercase tracking-wider flex items-center gap-1.5 disabled:opacity-50"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+            <span>Save for Later</span>
+          </button>
+        )}
         <button
+          type="button"
           onClick={() => onRemoveItem && onRemoveItem(itemId)}
           className="hover:text-red-600 text-gray-500 transition-colors cursor-pointer uppercase tracking-wider flex items-center gap-1"
         >
@@ -388,6 +439,7 @@ const CartItemRow = React.memo(function CartItemRow({
           <span>Remove</span>
         </button>
         <button
+          type="button"
           onClick={() => onProceedToCheckout && onProceedToCheckout()}
           className="hover:text-[#b91c1c] transition-colors cursor-pointer uppercase tracking-wider text-[#d72828] ml-auto font-extrabold flex items-center gap-1"
         >
