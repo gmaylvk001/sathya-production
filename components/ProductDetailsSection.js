@@ -84,66 +84,345 @@ function DynamicTabs({ tabs, activeName, onTabChange, reviewsRef }) {
   );
 }
 
-function ReviewsTab({ reviewForm, setReviewForm, handleReviewSubmit, submitting, tabData, formatReviewDate }) {
+function ReviewsTab({ productId, reviewForm, setReviewForm, handleReviewSubmit, submitting, tabData, formatReviewDate }) {
+  const [qaItems, setQaItems] = useState([]);
+  const [qaLoading, setQaLoading] = useState(false);
+  const [qaSearch, setQaSearch] = useState("");
+  const [qaQuestion, setQaQuestion] = useState("");
+  const [qaName, setQaName] = useState("");
+  const [qaSubmitting, setQaSubmitting] = useState(false);
+
+  useEffect(() => {
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      if (!token) return;
+      const payload = JSON.parse(atob(token.split(".")[1] || ""));
+      const userName = payload?.name || payload?.username || "";
+      if (userName) setQaName((prev) => prev || userName);
+    } catch {
+      // Ignore invalid token
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!productId) return;
+    let cancelled = false;
+    setQaLoading(true);
+    fetch(`/api/products/qa?productId=${encodeURIComponent(productId)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.success) {
+          setQaItems(Array.isArray(data.items) ? data.items : []);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setQaLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [productId]);
+
+  const handleQaSubmit = async (e) => {
+    e.preventDefault();
+    if (qaSubmitting) return;
+    const trimmed = qaQuestion.trim();
+    if (trimmed.length < 5) {
+      toast.error("Please enter a question (at least 5 characters).");
+      return;
+    }
+
+    setQaSubmitting(true);
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+      const res = await fetch("/api/products/qa", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          productId,
+          question: trimmed,
+          userName: qaName.trim() || "Customer",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) {
+        toast.error(data?.message || "Failed to post question.");
+      } else {
+        toast.success("Question posted!");
+        setQaQuestion("");
+        if (data.item) {
+          setQaItems((prev) => [data.item, ...prev]);
+        }
+      }
+    } catch {
+      toast.error("Unable to post question right now.");
+    } finally {
+      setQaSubmitting(false);
+    }
+  };
+
+  const reviewsList = tabData?.reviews?.items || [];
+  const totalReviews = tabData?.reviews?.count ?? reviewsList.length ?? 0;
+  const avgRating = Number(tabData?.reviews?.rating || 0);
+
+  const ratingCounts = [5, 4, 3, 2, 1].map((star) => {
+    const count = reviewsList.filter((r) => Math.round(Number(r.rating)) === star).length;
+    const pct = totalReviews > 0 ? Math.round((count / totalReviews) * 100) : 0;
+    return { star, count, pct };
+  });
+
+  const filteredQa = useMemo(() => {
+    const q = qaSearch.trim().toLowerCase();
+    if (!q) return qaItems;
+    return qaItems.filter(
+      (item) =>
+        String(item.question || "").toLowerCase().includes(q) ||
+        String(item.answer || "").toLowerCase().includes(q)
+    );
+  }, [qaItems, qaSearch]);
+
+  const onValidatedReviewSubmit = (e) => {
+    e.preventDefault();
+    if (submitting) return;
+    if (!reviewForm.rating || Number(reviewForm.rating) < 1) {
+      toast.error("Please select a star rating.");
+      return;
+    }
+    if (!String(reviewForm.title || "").trim() || !String(reviewForm.comment || "").trim()) {
+      toast.error("Please enter both a review title and your comments.");
+      return;
+    }
+    handleReviewSubmit(e);
+  };
+
   return (
-    <div>
-      <form onSubmit={handleReviewSubmit} className="bg-white p-4 rounded-md shadow mt-3 max-w-2xl">
-        <h3 className="font-semibold text-left mb-2">Write a Review</h3>
-        <input
-          type="text"
-          placeholder="Review Title"
-          value={reviewForm.title}
-          onChange={(e) => setReviewForm(prev => ({ ...prev, title: e.target.value }))}
-          required
-          className="w-full border rounded p-2 mb-2 text-sm"
-        />
-        <StarRating value={reviewForm.rating} onChange={(rating) => setReviewForm(prev => ({ ...prev, rating }))} />
-        <textarea
-          placeholder="Write your comments..."
-          value={reviewForm.comment}
-          onChange={(e) => setReviewForm(prev => ({ ...prev, comment: e.target.value }))}
-          className="w-full border rounded p-2 mb-2 text-sm"
-          rows="3"
-        />
-        <button
-          type="submit"
-          disabled={submitting}
-          className="bg-[#d32f2f] text-white px-4 py-2 rounded text-sm font-semibold hover:bg-[#b71c1c] transition-colors"
-        >
-          {submitting ? "Submitting..." : "Submit Review"}
-        </button>
-      </form>
-
-      <h2 className="text-sm font-bold text-left mt-6">Customer Reviews</h2>
-      <div className="flex items-center mt-2">
-        {[...Array(5)].map((_, i) => (
-          <span key={i} className={`text-2xl ${i < Math.floor(tabData.reviews.rating) ? 'text-yellow-400' : 'text-gray-300'}`}>★</span>
-        ))}
-        <span className="text-gray-700 ml-2 text-sm">
-          {tabData.reviews.rating.toFixed(1)} ({tabData.reviews.count} Reviews)
-        </span>
-      </div>
-
-      {tabData.reviews.items.length > 0 ? (
-        <div className="mt-4 space-y-3 max-w-3xl">
-          {tabData.reviews.items.map((review, index) => (
-            <div key={index} className={`border-b border-gray-200 pb-3 ${index === 0 ? "border-t pt-3" : ""}`}>
-              <div className="flex text-lg items-baseline mt-1">
+    <div className="space-y-8">
+      {/* Top Grid: Rating Overview + Write a Review */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Rating Overview Card */}
+        <div className="lg:col-span-5 bg-gray-50 border border-gray-200 rounded-xl p-5">
+          <h3 className="text-sm font-bold text-gray-900 mb-3">Customer Ratings</h3>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="text-3xl font-extrabold text-gray-900">
+              {avgRating.toFixed(1)}
+            </div>
+            <div>
+              <div className="flex items-center">
                 {[...Array(5)].map((_, i) => (
-                  <span className="text-yellow-400 text-sm" key={i}>{i < review.rating ? '★' : '☆'}</span>
+                  <span
+                    key={i}
+                    className={`text-lg ${i < Math.floor(avgRating) ? "text-yellow-400" : "text-gray-300"}`}
+                  >
+                    ★
+                  </span>
                 ))}
-                <p className="text-gray-800 font-semibold text-sm ml-2">{review.title}</p>
               </div>
-              <p className="text-gray-700 text-left mt-1.5 text-sm">{review.comment}</p>
-              <p className="text-gray-400 text-left text-xs mt-1">
-                Reviewed By {review.userName} on {formatReviewDate(review.date)}
+              <p className="text-xs text-gray-500 mt-0.5">
+                Based on {totalReviews} {totalReviews === 1 ? "review" : "reviews"}
               </p>
             </div>
-          ))}
+          </div>
+
+          <div className="space-y-2">
+            {ratingCounts.map(({ star, count, pct }) => (
+              <div key={star} className="flex items-center gap-2 text-xs">
+                <span className="w-8 font-medium text-gray-700">{star}★</span>
+                <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-yellow-400 rounded-full transition-all"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <span className="w-8 text-right text-gray-500">{count}</span>
+              </div>
+            ))}
+          </div>
         </div>
-      ) : (
-        <p className="text-gray-500 mt-4 text-sm">No reviews yet. Be the first to review this product!</p>
-      )}
+
+        {/* Write a Review Form */}
+        <form
+          onSubmit={onValidatedReviewSubmit}
+          className="lg:col-span-7 bg-white border border-gray-200 p-5 rounded-xl shadow-2xs"
+        >
+          <h3 className="font-bold text-gray-900 text-sm text-left mb-3">Write a Review</h3>
+          <input
+            type="text"
+            placeholder="Review Title"
+            value={reviewForm.title}
+            onChange={(e) => setReviewForm((prev) => ({ ...prev, title: e.target.value }))}
+            required
+            className="w-full border border-gray-300 rounded-lg p-2.5 mb-2.5 text-sm focus:outline-none focus:border-[#d32f2f]"
+          />
+          <StarRating
+            value={reviewForm.rating}
+            onChange={(rating) => setReviewForm((prev) => ({ ...prev, rating }))}
+          />
+          <textarea
+            placeholder="Write your comments..."
+            value={reviewForm.comment}
+            onChange={(e) => setReviewForm((prev) => ({ ...prev, comment: e.target.value }))}
+            required
+            className="w-full border border-gray-300 rounded-lg p-2.5 mb-3 text-sm focus:outline-none focus:border-[#d32f2f]"
+            rows="3"
+          />
+          <button
+            type="submit"
+            disabled={submitting}
+            className="bg-[#d32f2f] text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-[#b71c1c] transition-colors disabled:opacity-60 cursor-pointer"
+          >
+            {submitting ? "Submitting..." : "Submit Review"}
+          </button>
+        </form>
+      </div>
+
+      {/* Customer Reviews List / Empty State */}
+      <div>
+        <h3 className="text-base font-bold text-gray-900 mb-3">Customer Reviews</h3>
+        {reviewsList.length > 0 ? (
+          <div className="space-y-3 max-w-4xl">
+            {reviewsList.map((review, index) => (
+              <div
+                key={review._id || index}
+                className="border border-gray-200 rounded-xl p-4 bg-white"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center">
+                      {[...Array(5)].map((_, i) => (
+                        <span className="text-yellow-400 text-sm" key={i}>
+                          {i < review.rating ? "★" : "☆"}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-gray-900 font-semibold text-sm">{review.title}</p>
+                  </div>
+                  {(review.verifiedBuyer || review.isVerified) && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+                      <FiCheckCircle className="w-3 h-3" />
+                      Verified Buyer
+                    </span>
+                  )}
+                </div>
+                <p className="text-gray-700 text-left mt-2 text-sm leading-relaxed">
+                  {review.comment}
+                </p>
+                <p className="text-gray-400 text-left text-xs mt-2">
+                  Reviewed by {review.userName || "Customer"} on {formatReviewDate(review.date)}
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="border border-dashed border-gray-300 rounded-xl p-6 bg-gray-50/70 text-center max-w-4xl">
+            <h4 className="text-sm font-bold text-gray-800">No reviews so far</h4>
+            <p className="text-xs text-gray-500 mt-1">
+              No reviews so far. Share your experience with this product!
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Customer Questions & Answers (Q&A) */}
+      <div className="pt-6 border-t border-gray-200 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h3 className="text-base font-bold text-gray-900">
+              Customer Questions &amp; Answers ({qaItems.length})
+            </h3>
+            <p className="text-xs text-gray-500">
+              Have a question about specs, installation, or compatibility? Ask Sathya Store.
+            </p>
+          </div>
+          {qaItems.length > 0 && (
+            <input
+              type="text"
+              value={qaSearch}
+              onChange={(e) => setQaSearch(e.target.value)}
+              placeholder="Search questions & answers..."
+              className="w-full sm:w-64 text-xs px-3 py-2 rounded-lg border border-gray-300 focus:outline-none focus:border-[#d32f2f]"
+            />
+          )}
+        </div>
+
+        {/* Ask a Question Box */}
+        <form
+          onSubmit={handleQaSubmit}
+          className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3 max-w-4xl"
+        >
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+            <input
+              type="text"
+              value={qaQuestion}
+              onChange={(e) => setQaQuestion(e.target.value)}
+              placeholder="Have a question about this product? Ask here..."
+              className="sm:col-span-7 text-xs px-3 py-2.5 rounded-lg border border-gray-300 bg-white focus:outline-none focus:border-[#d32f2f]"
+            />
+            <input
+              type="text"
+              value={qaName}
+              onChange={(e) => setQaName(e.target.value)}
+              placeholder="Your Name (optional)"
+              className="sm:col-span-3 text-xs px-3 py-2.5 rounded-lg border border-gray-300 bg-white focus:outline-none focus:border-[#d32f2f]"
+            />
+            <button
+              type="submit"
+              disabled={qaSubmitting}
+              className="sm:col-span-2 bg-[#d32f2f] hover:bg-[#b71c1c] text-white text-xs font-semibold px-4 py-2.5 rounded-lg transition-colors disabled:opacity-60 cursor-pointer whitespace-nowrap"
+            >
+              {qaSubmitting ? "Posting..." : "Post Question"}
+            </button>
+          </div>
+        </form>
+
+        {/* Q&A List / Empty State */}
+        {qaLoading ? (
+          <p className="text-xs text-gray-500">Loading questions...</p>
+        ) : qaItems.length === 0 ? (
+          <div className="border border-dashed border-gray-300 rounded-xl p-6 bg-gray-50/70 text-center max-w-4xl">
+            <h4 className="text-sm font-bold text-gray-800">No questions so far</h4>
+            <p className="text-xs text-gray-500 mt-1">
+              Be the first to ask a question about this product.
+            </p>
+          </div>
+        ) : filteredQa.length === 0 ? (
+          <p className="text-xs text-gray-500">No matching questions found.</p>
+        ) : (
+          <div className="space-y-3 max-w-4xl">
+            {filteredQa.map((qa) => (
+              <div
+                key={qa._id}
+                className="border border-gray-200 rounded-xl p-4 bg-white space-y-2"
+              >
+                <div className="flex items-start gap-2">
+                  <span className="text-xs font-extrabold text-[#d32f2f] mt-0.5">Q:</span>
+                  <p className="text-sm font-semibold text-gray-900">{qa.question}</p>
+                </div>
+                {qa.answer ? (
+                  <div className="flex items-start gap-2 pl-0.5">
+                    <span className="text-xs font-extrabold text-emerald-700 mt-0.5">A:</span>
+                    <div className="space-y-1">
+                      <p className="text-xs text-gray-700 leading-relaxed">{qa.answer}</p>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">
+                        Answered by {qa.answeredBy || "Sathya Store"}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="pl-5">
+                    <span className="inline-block text-[10px] font-medium bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                      Awaiting answer from Sathya Store
+                    </span>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1055,9 +1334,10 @@ export default function ProductDetailsSection({
       },
       {
         name: "reviews",
-        label: `REVIEWS(${tabData.reviews.count ?? reviewCount ?? 0})`,
+        label: `REVIEWS (${tabData.reviews.count ?? reviewCount ?? 0}) & Q&A`,
         content: (
           <ReviewsTab
+            productId={productId}
             reviewForm={reviewForm}
             setReviewForm={setReviewForm}
             handleReviewSubmit={handleReviewSubmit}
