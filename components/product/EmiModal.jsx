@@ -296,7 +296,7 @@ export default function EmiModal({ isOpen, onClose, price, productName = '' }) {
         </div>
 
         {/* Modal Footer / Legal Notice */}
-        <div className="px-5 py-3 bg-gray-50 border-t border-gray-200 text-[11px] text-gray-500 leading-normal">
+        <div className="px-5 py-3 bg-gray-50 border-t border-gray-200 text-[11px] text-gray-500 leading-normal flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-start gap-1.5">
             <span className="text-blue-500 font-bold shrink-0">ℹ</span>
             <p>
@@ -304,6 +304,23 @@ export default function EmiModal({ isOpen, onClose, price, productName = '' }) {
               and applicable taxes will be displayed on the Razorpay payment gateway screen at checkout.
             </p>
           </div>
+          {Number(price) >= 3000 && (
+            <button
+              type="button"
+              onClick={() => {
+                try {
+                  localStorage.setItem('preferredPaymentMethod', 'emi');
+                } catch {}
+                onClose?.();
+                if (typeof window !== 'undefined') {
+                  window.location.href = '/checkout?payment=emi';
+                }
+              }}
+              className="shrink-0 bg-[#d72828] hover:bg-[#b71c1c] text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer"
+            >
+              Buy with EMI
+            </button>
+          )}
         </div>
       </div>
     </div>

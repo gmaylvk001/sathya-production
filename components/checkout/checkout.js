@@ -29,6 +29,7 @@ import {
 } from "@/lib/storePickupHelper";
 import { useStorePickupFilter } from "@/hooks/useStorePickupFilter";
 import { applyDiscountToItems as sharedApplyDiscountToItems } from "@/lib/cart/couponMath";
+import { getStartingEmi } from "@/lib/emiCalculator";
 import {
   computeItemDeliveryEstimate,
   isHeavyInstallationProduct,
@@ -1174,6 +1175,20 @@ export default function CheckoutPage() {
   const [addressModalType, setAddressModalType] = useState('shipping');
   const [editAddressId, setEditAddressId] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('online');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const pref = params.get('payment') || localStorage.getItem('preferredPaymentMethod');
+      if (pref === 'emi') {
+        setPaymentMethod('emi');
+        localStorage.removeItem('preferredPaymentMethod');
+      }
+    } catch {
+      // Ignore storage errors
+    }
+  }, []);
   const [error, setError] = useState('');
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [cartItems, setCartItems] = useState([]);
@@ -2998,6 +3013,32 @@ export default function CheckoutPage() {
                         </button>
                       ))}
                     </div>
+                    {paymentMethod === 'emi' && (
+                      <div className="mt-3 rounded-xl border border-red-200 bg-red-50/60 px-4 py-3 text-xs text-gray-800 space-y-1.5">
+                        {finalTotal >= 3000 ? (
+                          <>
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="font-bold text-gray-900">
+                                EMI starting from{' '}
+                                <span className="text-[#d72828]">
+                                  ₹{getStartingEmi(finalTotal).toLocaleString('en-IN')}/month
+                                </span>
+                              </span>
+                              <span className="text-[10px] font-semibold bg-white border border-red-200 text-red-700 px-2 py-0.5 rounded-full">
+                                Powered by Razorpay
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-gray-600">
+                              Supported on major Credit &amp; Debit Cards (HDFC, ICICI, SBI, Axis, RBL, Kotak). Choose your bank &amp; tenure on the Razorpay payment screen.
+                            </p>
+                          </>
+                        ) : (
+                          <p className="text-[11px] font-medium text-amber-800">
+                            EMI is available on orders of ₹3,000 and above. Please choose Online payment for this order.
+                          </p>
+                        )}
+                      </div>
+                    )}
                     {paymentMethod === 'emi' && !isKarnataka && IS_RAZORPAY_TEST_MODE && (
                       <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900 leading-relaxed">
                         <p className="font-semibold mb-1">Razorpay test mode — EMI testing</p>
