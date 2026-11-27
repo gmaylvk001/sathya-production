@@ -629,6 +629,7 @@ export default function ProductDetailsSection({
   flixInstanceActive = true,
   flixInpageAvailable = null,
 }) {
+  const resolvedProductId = String(product?._id || product?.id || "").trim();
   const [brand, setBrand] = useState([]);
   const [activeTab, setActiveTab] = useState("manufacturer");
   const { updateHeaderdetails, setIsLoggedIn, setUserData, setIsAdmin } = useHeaderdetails();
@@ -1337,7 +1338,7 @@ export default function ProductDetailsSection({
         label: `REVIEWS (${tabData.reviews.count ?? reviewCount ?? 0}) & Q&A`,
         content: (
           <ReviewsTab
-            productId={productId}
+            productId={resolvedProductId}
             reviewForm={reviewForm}
             setReviewForm={setReviewForm}
             handleReviewSubmit={handleReviewSubmit}
@@ -1358,6 +1359,7 @@ export default function ProductDetailsSection({
       whatsIncludedContent,
       returnPolicyContent,
       reviewCount,
+      resolvedProductId,
     ]
   );
 
