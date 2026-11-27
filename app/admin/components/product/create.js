@@ -35,6 +35,9 @@ export default function AddProductPage({ mode = "add", productData = null, produ
     quantity: "",
     brand: "",
     brand_code: "", // added to keep input controlled and consistent
+    ean: "",
+    indoor_ean: "",
+    outdoor_ean: "",
     category: "",
     stock_status: "In Stock",
     description: "",
@@ -377,6 +380,9 @@ export default function AddProductPage({ mode = "add", productData = null, produ
       setProduct(prevProduct => ({
         ...productData,
         brand_code: productData.brand_code || "",
+        ean: productData.ean || "",
+        indoor_ean: productData.indoor_ean || "",
+        outdoor_ean: productData.outdoor_ean || "",
         product_highlights: Array.isArray(productData.product_highlights)
           ? productData.product_highlights
           : [],
@@ -426,6 +432,9 @@ export default function AddProductPage({ mode = "add", productData = null, produ
       setProduct({
         ...initialProductData,
         brand_code: initialProductData.brand_code || "", // ensure brand_code defaults to empty string
+        ean: initialProductData.ean || "",
+        indoor_ean: initialProductData.indoor_ean || "",
+        outdoor_ean: initialProductData.outdoor_ean || "",
         returnPolicy: initialProductData.returnPolicy || "",
         // Ensure product_highlights is an array, even if it's null/undefined from backend
         product_highlights: initialProductData.product_highlights || [],
@@ -1442,6 +1451,9 @@ export default function AddProductPage({ mode = "add", productData = null, produ
       const cleanedProduct = {
         ...restProduct,
         ...(trimmedBrandCode ? { brand_code: trimmedBrandCode } : {}),
+        ean: (product.ean ?? "").toString().trim(),
+        indoor_ean: (product.indoor_ean ?? "").toString().trim(),
+        outdoor_ean: (product.outdoor_ean ?? "").toString().trim(),
         slug: (product.slug || "").trim() || slugifyName(product.name),
         extend_warranty: validWarranties.length > 0 ? validWarranties : [],
         filters: (product.filters || []).map(f => f.value),
@@ -1598,6 +1610,9 @@ export default function AddProductPage({ mode = "add", productData = null, produ
       quantity: "",
       brand: "",
       brand_code: "",
+      ean: "",
+      indoor_ean: "",
+      outdoor_ean: "",
       category: "",
       stock_status: "In Stock",
       description: "",
@@ -1947,6 +1962,42 @@ export default function AddProductPage({ mode = "add", productData = null, produ
                   value={product.brand_code || ""} // optional and controlled
                   onChange={handleChange}
                   className="w-full border p-2 rounded"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">EAN</label>
+                <input
+                  type="text"
+                  name="ean"
+                  value={product.ean || ""}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded"
+                  placeholder="Enter EAN"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Indoor EAN</label>
+                <input
+                  type="text"
+                  name="indoor_ean"
+                  value={product.indoor_ean || ""}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded"
+                  placeholder="Enter indoor EAN"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Outdoor EAN</label>
+                <input
+                  type="text"
+                  name="outdoor_ean"
+                  value={product.outdoor_ean || ""}
+                  onChange={handleChange}
+                  className="w-full border p-2 rounded"
+                  placeholder="Enter outdoor EAN"
                 />
               </div>
             </div>

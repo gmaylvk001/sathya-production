@@ -256,6 +256,9 @@ const updatePayload = {
       model_number: productData.model_number || "",
       movement: productData.movement || "",
       size: productData.size || "",
+      ean: String(productData.ean ?? "").trim(),
+      indoor_ean: String(productData.indoor_ean ?? "").trim(),
+      outdoor_ean: String(productData.outdoor_ean ?? "").trim(),
       ...(Object.prototype.hasOwnProperty.call(productData, "returnPolicy")
         ? { returnPolicy: String(productData.returnPolicy ?? "").trim() }
         : {}),
