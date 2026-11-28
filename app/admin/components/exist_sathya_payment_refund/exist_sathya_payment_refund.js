@@ -29,6 +29,8 @@ function formatDateTime(value) {
 
 export default function ExistSathyaPaymentRefundComponent() {
   const [rows, setRows] = useState([]);
+  const [movedCount, setMovedCount] = useState(0);
+  const [collectionTotal, setCollectionTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -51,7 +53,11 @@ export default function ExistSathyaPaymentRefundComponent() {
     setIsLoading(true);
     try {
       const response = await axios.get("/api/exist_sathya_payment_refund/get");
-      setRows(Array.isArray(response.data) ? response.data : []);
+      const payload = response.data;
+      const data = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : [];
+      setRows(data);
+      setMovedCount(Number(payload?.movedCount) || 0);
+      setCollectionTotal(Number(payload?.total) || data.length);
     } catch (error) {
       console.error("Error fetching exist payment refunds:", error);
     } finally {
@@ -163,9 +169,9 @@ export default function ExistSathyaPaymentRefundComponent() {
   };
 
   const handleDeleteAll = async () => {
-    if (!rows.length) return;
+    if (!collectionTotal) return;
     const confirmed = window.confirm(
-      `Delete ALL ${rows.length} imported Exist Payment Refunds? Live refunds are not deleted.`
+      `Delete ALL ${collectionTotal} imported Exist Payment Refunds? Live refunds are not deleted.`
     );
     if (!confirmed) return;
 
@@ -194,7 +200,12 @@ export default function ExistSathyaPaymentRefundComponent() {
   return (
     <div className="container mx-auto">
       <div className="flex justify-between items-center mb-5 mt-5">
-        <h2 className="text-2xl font-bold">Sathya Exist Payment Refund</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-2xl font-bold">Sathya Exist Payment Refund</h2>
+          <span className="px-2.5 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+            Moved {movedCount}
+          </span>
+        </div>
       </div>
 
       {isLoading ? (
@@ -228,10 +239,10 @@ export default function ExistSathyaPaymentRefundComponent() {
               </button>
               <button
                 onClick={handleDeleteAll}
-                disabled={isBulkDeleting || rows.length === 0}
+                disabled={isBulkDeleting || collectionTotal === 0}
                 className="p-2 bg-red-500 hover:bg-red-600 text-white rounded-md transition disabled:opacity-50"
               >
-                {isBulkDeleting ? "Deleting..." : `Delete all (${rows.length})`}
+                {isBulkDeleting ? "Deleting..." : `Delete all (${collectionTotal})`}
               </button>
             </div>
           </div>
