@@ -70,6 +70,8 @@ UserSchema.index(
   }
 );
 
+UserSchema.index({ exist_id: 1 }, { name: "exist_id_1" });
+
 UserSchema.index(
   { mobile: 1 },
   {

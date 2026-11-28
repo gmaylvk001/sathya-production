@@ -3,7 +3,6 @@ import dbConnect from "@/lib/db";
 import {
   buildListFilter,
   findRangeMovableIds,
-  getLiveSets,
   parseListParams,
 } from "@/lib/existSathyaUsersList";
 
@@ -36,11 +35,9 @@ export async function GET(req) {
     }
 
     const filter = buildListFilter({ q, role, start, end });
-    const sets = await getLiveSets();
     const ids = await findRangeMovableIds({
       filter,
       move,
-      sets,
       fromRow: (fromPage - 1) * limit,
       rowCount: (toPage - fromPage + 1) * limit,
     });

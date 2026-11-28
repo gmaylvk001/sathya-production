@@ -6,7 +6,6 @@ import {
   ensureExistUsersIndexesOnce,
   findListPage,
   findMoveFilteredPage,
-  getLiveSets,
   parseListParams,
 } from "@/lib/existSathyaUsersList";
 
@@ -26,28 +25,17 @@ export async function GET(req) {
 
     const { page, limit, move, q, role, start, end } = parseListParams(req.nextUrl.searchParams);
     const filter = buildListFilter({ q, role, start, end });
-    const sets = await getLiveSets();
-
-    let total;
-    let rows;
-
-    if (move) {
-      const result = await findMoveFilteredPage({ filter, move, sets, page, limit });
-      total = result.total;
-      rows = result.rows;
-    } else {
-      const result = await findListPage({ filter, sets, page, limit });
-      total = result.total;
-      rows = result.rows;
-    }
+    const result = move
+      ? await findMoveFilteredPage({ filter, move, page, limit })
+      : await findListPage({ filter, page, limit });
 
     return NextResponse.json(
       {
-        data: rows.map((row) => annotateRow(row, sets)),
-        total,
+        data: result.rows.map((row) => annotateRow(row, result.sets)),
+        total: result.total,
         page,
         limit,
-        totalPages: Math.max(1, Math.ceil(total / limit)),
+        totalPages: Math.max(1, Math.ceil(result.total / limit)),
       },
       { status: 200, headers: NO_STORE_HEADERS }
     );
