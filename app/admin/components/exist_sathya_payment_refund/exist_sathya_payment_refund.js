@@ -30,7 +30,9 @@ function formatDateTime(value) {
 export default function ExistSathyaPaymentRefundComponent() {
   const [rows, setRows] = useState([]);
   const [movedCount, setMovedCount] = useState(0);
+  const [unmovedCount, setUnmovedCount] = useState(0);
   const [collectionTotal, setCollectionTotal] = useState(0);
+  const [moveFilter, setMoveFilter] = useState("unmoved");
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -57,6 +59,7 @@ export default function ExistSathyaPaymentRefundComponent() {
       const data = Array.isArray(payload?.data) ? payload.data : Array.isArray(payload) ? payload : [];
       setRows(data);
       setMovedCount(Number(payload?.movedCount) || 0);
+      setUnmovedCount(Number(payload?.unmovedCount) || 0);
       setCollectionTotal(Number(payload?.total) || data.length);
     } catch (error) {
       console.error("Error fetching exist payment refunds:", error);
@@ -120,11 +123,14 @@ export default function ExistSathyaPaymentRefundComponent() {
   };
 
   const filtered = rows.filter((row) => {
+    if (moveFilter === "moved" && !row.is_moved) return false;
+    if (moveFilter === "unmoved" && row.is_moved) return false;
     const q = searchQuery.toLowerCase();
     if (!q) return true;
     return [row.exist_id, row.user_id, row.order_number, row.refund_id, row.payment_id]
       .some((value) => value && String(value).toLowerCase().includes(q));
   });
+  const filterDeleteCount = moveFilter === "moved" ? movedCount : moveFilter === "unmoved" ? unmovedCount : 0;
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -156,6 +162,35 @@ export default function ExistSathyaPaymentRefundComponent() {
     try {
       const response = await axios.delete("/api/exist_sathya_payment_refund/delete", {
         data: { refundIds: selectedIds },
+      });
+      showMessage(`✅ ${response.data.message || "Payment refunds deleted successfully!"}`);
+      setSelectedIds([]);
+      setCurrentPage(1);
+      fetchRows();
+    } catch (error) {
+      showMessage(error.response?.data?.error || "❌ Error deleting payment refunds");
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const handleDeleteByFilter = async () => {
+    if (moveFilter !== "moved" && moveFilter !== "unmoved") {
+      showMessage("❌ Select Moved or Unmoved first");
+      return;
+    }
+    if (!filterDeleteCount) return;
+
+    const label = moveFilter === "moved" ? "moved" : "unmoved";
+    const confirmed = window.confirm(
+      `Delete ${filterDeleteCount} ${label} payment refund(s)? Live refunds are not deleted.`
+    );
+    if (!confirmed) return;
+
+    setIsBulkDeleting(true);
+    try {
+      const response = await axios.delete("/api/exist_sathya_payment_refund/delete", {
+        data: { move_status: moveFilter },
       });
       showMessage(`✅ ${response.data.message || "Payment refunds deleted successfully!"}`);
       setSelectedIds([]);
@@ -212,7 +247,7 @@ export default function ExistSathyaPaymentRefundComponent() {
         <p>Loading...</p>
       ) : (
         <div className="bg-white shadow-md rounded-lg p-5 mb-5 overflow-x-auto border border-gray-200">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end mb-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
               <input
@@ -226,6 +261,22 @@ export default function ExistSathyaPaymentRefundComponent() {
                 className="w-full p-2 border border-gray-300 rounded-md"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Move status</label>
+              <select
+                value={moveFilter}
+                onChange={(e) => {
+                  setMoveFilter(e.target.value);
+                  setSelectedIds([]);
+                  setCurrentPage(1);
+                }}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              >
+                <option value="">All</option>
+                <option value="moved">Moved</option>
+                <option value="unmoved">Unmoved</option>
+              </select>
+            </div>
             <div className="flex flex-wrap justify-end gap-2">
               <button
                 onClick={() => {
@@ -236,6 +287,13 @@ export default function ExistSathyaPaymentRefundComponent() {
                 className="p-2 border border-red-500 text-red-500 hover:bg-red-50 rounded-md transition"
               >
                 Import Excel/CSV/JSON
+              </button>
+              <button
+                onClick={handleDeleteByFilter}
+                disabled={isBulkDeleting || filterDeleteCount === 0}
+                className="p-2 border border-red-500 text-red-500 hover:bg-red-50 rounded-md transition disabled:opacity-50"
+              >
+                {isBulkDeleting ? "Deleting..." : `Delete ${moveFilter === "moved" ? "moved" : moveFilter === "unmoved" ? "unmoved" : "filter"} (${filterDeleteCount})`}
               </button>
               <button
                 onClick={handleDeleteAll}
@@ -280,6 +338,7 @@ export default function ExistSathyaPaymentRefundComponent() {
                   <input type="checkbox" checked={allCurrentSelected} onChange={toggleSelectCurrentPage} />
                 </th>
                 <th className="p-2">Exist ID</th>
+                <th className="p-2">Move</th>
                 <th className="p-2">Order Number</th>
                 <th className="p-2">Refund ID</th>
                 <th className="p-2">Refund Amount</th>
@@ -301,6 +360,13 @@ export default function ExistSathyaPaymentRefundComponent() {
                       />
                     </td>
                     <td className="p-2">{row.exist_id || "-"}</td>
+                    <td className="p-2">
+                      {row.is_moved ? (
+                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">Moved</span>
+                      ) : (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-medium">Unmoved</span>
+                      )}
+                    </td>
                     <td className="p-2">{row.order_number || "-"}</td>
                     <td className="p-2 font-bold">{row.refund_id || "-"}</td>
                     <td className="p-2">{row.refund_amount || "-"}</td>
@@ -329,7 +395,7 @@ export default function ExistSathyaPaymentRefundComponent() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="9" className="p-2 text-center text-gray-500">No payment refunds found.</td>
+                  <td colSpan="10" className="p-2 text-center text-gray-500">No payment refunds found.</td>
                 </tr>
               )}
             </tbody>

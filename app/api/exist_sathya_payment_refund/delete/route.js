@@ -2,8 +2,30 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import dbConnect from "@/lib/db";
 import ExistPaymentRefund from "@/models/exist_payment_refund";
+import { splitExistRefundsByMove } from "@/lib/existPaymentRefundMoved";
 
 const IMPORTED = { exist_id: { $type: "string" } };
+
+async function deleteMovedStatus(moveStatus) {
+  const rows = await ExistPaymentRefund.find(IMPORTED)
+    .select("_id order_number refund_id payment_id")
+    .lean();
+  const { marked } = await splitExistRefundsByMove(rows);
+  const ids = marked
+    .filter((row) => (moveStatus === "moved" ? row.is_moved : !row.is_moved))
+    .map((row) => row._id);
+
+  let deletedCount = 0;
+  const chunkSize = 2000;
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const result = await ExistPaymentRefund.deleteMany({
+      _id: { $in: ids.slice(i, i + chunkSize) },
+      ...IMPORTED,
+    });
+    deletedCount += result.deletedCount || 0;
+  }
+  return deletedCount;
+}
 
 export async function DELETE(req) {
   await dbConnect();
@@ -17,6 +39,18 @@ export async function DELETE(req) {
         success: true,
         message: `${result.deletedCount} payment refunds deleted successfully`,
         deletedCount: result.deletedCount,
+      });
+    }
+
+    const moveStatus = String(body.move_status || "").trim();
+    if ((moveStatus === "moved" || moveStatus === "unmoved") && !body.refundId && !body.refundIds) {
+      const deletedCount = await deleteMovedStatus(moveStatus);
+      const label = moveStatus === "moved" ? "moved" : "unmoved";
+      return NextResponse.json({
+        success: true,
+        message: `${deletedCount} ${label} payment refunds deleted successfully`,
+        deletedCount,
+        move_status: moveStatus,
       });
     }
 
