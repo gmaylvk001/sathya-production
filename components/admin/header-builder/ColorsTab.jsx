@@ -14,6 +14,7 @@ const DIRECTIONS = [
   { label: "Right to Left", value: "270deg" },
   { label: "Top to Bottom", value: "180deg" },
   { label: "Diagonal", value: "135deg" },
+  { label: "Radial (Circle)", value: "radial" },
 ];
 
 export default function ColorsTab({ settings, onChange }) {

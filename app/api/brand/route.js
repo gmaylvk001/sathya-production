@@ -9,13 +9,16 @@ export async function GET(req) {
     await dbConnect();
     const { searchParams } = new URL(req.url);
     const includeAll = searchParams.get("all") === "true" || searchParams.get("admin") === "true";
+    const includeZero = searchParams.get("includeZero") === "true";
 
     const filter = includeAll
       ? {}
-      : {
-        status: { $regex: /^active$/i },
-        product_count: { $gt: 0 },
-      };
+      : includeZero
+        ? { status: { $regex: /^active$/i } }
+        : {
+          status: { $regex: /^active$/i },
+          product_count: { $gt: 0 },
+        };
 
     const brands = await ecom_brand_info.find(filter).sort({ position: 1, brand_name: 1 }).lean();
     return NextResponse.json({ success: true, data: brands || [] }, { status: 200 });

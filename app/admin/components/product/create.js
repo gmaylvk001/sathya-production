@@ -197,7 +197,7 @@ export default function AddProductPage({ mode = "add", productData = null, produ
 
   const fetchBrand = async () => {
     try {
-      const response = await fetch("/api/brand");
+      const response = await fetch("/api/brand?includeZero=true");
       const result = await response.json();
       if (result.error) {
         toast.error(result.error);
@@ -1692,9 +1692,8 @@ export default function AddProductPage({ mode = "add", productData = null, produ
           <button
             type="submit"
             disabled={isSubmitting}
-            className={`text-white px-5 py-2 rounded flex items-center gap-2 font-medium transition-colors ${
-              isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
-            }`}
+            className={`text-white px-5 py-2 rounded flex items-center gap-2 font-medium transition-colors ${isSubmitting ? "bg-gray-400 cursor-not-allowed" : "bg-green-600 hover:bg-green-700"
+              }`}
           >
             {isSubmitting ? (
               <>
