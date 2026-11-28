@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
-import ExistSathyaUser from "@/models/ExistSathyaUser";
 import {
   annotateRow,
   buildListFilter,
   ensureExistUsersIndexesOnce,
+  findListPage,
   findMoveFilteredPage,
   getLiveSets,
-  LIST_PROJECTION,
-  LIST_SORT,
   parseListParams,
 } from "@/lib/existSathyaUsersList";
 
@@ -38,15 +36,9 @@ export async function GET(req) {
       total = result.total;
       rows = result.rows;
     } else {
-      [total, rows] = await Promise.all([
-        ExistSathyaUser.countDocuments(filter),
-        ExistSathyaUser.find(filter)
-          .select(LIST_PROJECTION)
-          .sort(LIST_SORT)
-          .skip((page - 1) * limit)
-          .limit(limit)
-          .lean(),
-      ]);
+      const result = await findListPage({ filter, sets, page, limit });
+      total = result.total;
+      rows = result.rows;
     }
 
     return NextResponse.json(
