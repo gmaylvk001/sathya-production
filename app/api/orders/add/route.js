@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import Notification from "@/models/Notification.js";
 import { sendOrderData } from "@/lib/sendOrderData";
 import { sendOrderConfirmationSms } from "@/lib/orderConfirmSms";
+import { sendOrderConfirmationWhatsapp } from "@/lib/orderConfirmWhatsapp";
 import { getAuthUserId } from "@/lib/authRequest";
 import { isInvenzoServiceEnabled } from "@/lib/invenzo";
 import { orderPlacedToStoreInvenzo } from "@/lib/invenzoOrderPlace";
@@ -790,6 +791,9 @@ export async function POST(req) {
             await sendOrderConfirmationSms(fresh).catch((err) =>
               console.error("Order confirm SMS error:", err)
             );
+            await sendOrderConfirmationWhatsapp(fresh).catch((err) =>
+              console.error("Order confirm WhatsApp error:", err)
+            );
           }
         } catch (err) {
           console.error("Auto sendOrderData error:", err);
@@ -797,16 +801,21 @@ export async function POST(req) {
       }
     } else if (primaryOrder && sharedFields.delivery_type === "home" && canSendConfirmSms) {
       // Exist home: COD/EMI after create; online after payment success
+      const fresh = {
+        ...(primaryOrder.toObject?.() ? primaryOrder.toObject() : primaryOrder),
+        order_username: sharedFields.order_username,
+        order_phonenumber: sharedFields.order_phonenumber,
+        order_number: primaryOrder.order_number,
+      };
       try {
-        const fresh = {
-          ...(primaryOrder.toObject?.() ? primaryOrder.toObject() : primaryOrder),
-          order_username: sharedFields.order_username,
-          order_phonenumber: sharedFields.order_phonenumber,
-          order_number: primaryOrder.order_number,
-        };
         await sendOrderConfirmationSms(fresh);
       } catch (err) {
         console.error("Order confirm SMS error:", err);
+      }
+      try {
+        await sendOrderConfirmationWhatsapp(fresh);
+      } catch (err) {
+        console.error("Order confirm WhatsApp error:", err);
       }
     }
 
