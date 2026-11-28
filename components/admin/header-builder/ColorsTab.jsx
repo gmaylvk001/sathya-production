@@ -1,11 +1,9 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { FiAlertTriangle } from "react-icons/fi";
 import ColorField from "./ColorField";
 import {
   READY_THEMES,
-  checkMenuContrast,
   buildMenuBackgroundCss,
 } from "@/lib/headerSettings";
 
@@ -30,7 +28,6 @@ export default function ColorsTab({ settings, onChange }) {
         : "gradient2"
       : "single");
 
-  const contrast = useMemo(() => checkMenuContrast({ ...menu, bg_mode: bgMode }), [menu, bgMode]);
   const liveMenuSwatch = useMemo(
     () => buildMenuBackgroundCss({ ...menu, bg_mode: bgMode }),
     [menu, bgMode]
@@ -179,8 +176,8 @@ export default function ColorsTab({ settings, onChange }) {
                 type="button"
                 onClick={() => setBgMode(opt.id)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors cursor-pointer ${bgMode === opt.id
-                    ? "bg-white text-gray-900 shadow-xs"
-                    : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white text-gray-900 shadow-xs"
+                  : "text-gray-600 hover:text-gray-900"
                   }`}
               >
                 {opt.label}
@@ -188,28 +185,6 @@ export default function ColorsTab({ settings, onChange }) {
             ))}
           </div>
         </div>
-
-        {/* Contrast Warning + One-click Fix */}
-        {!contrast.passes && (
-          <div className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs">
-            <div className="flex items-start gap-2.5 min-w-0">
-              <FiAlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold">Text may be hard to read on part of this background</span>{" "}
-                <span>
-                  ({contrast.minRatio}:1 on {contrast.failedStops.join(", ")}). {contrast.suggestion}
-                </span>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => updateMenu({ text_color: contrast.suggestedTextColor })}
-              className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shrink-0 transition-colors cursor-pointer"
-            >
-              Fix text color
-            </button>
-          </div>
-        )}
 
         {bgMode === "single" ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

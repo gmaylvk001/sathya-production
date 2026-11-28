@@ -1,11 +1,15 @@
 /* Static Header Stylesheet — bundled into main CSS for zero-FOUC first paint */
 
 :root {
-  --search-h: 44px;
+  --search-h: clamp(38px, 3.2vw, 44px);
   --search-radius: 999px;
   --accent: #ED1C24;
   --search-border: #e5e7eb;
   --muted: #6b7280;
+  --hdr-topbar-h: clamp(30px, 2.4vw, 36px);
+  --hdr-main-h: clamp(58px, 5vw, 72px);
+  --hdr-menu-h: clamp(36px, 3vw, 42px);
+  --hdr-menu-classic-h: clamp(40px, 3.4vw, 48px);
 }
 
 /* Shared site-wide container matching homepage sections (w-full px-4 sm:px-6) */
@@ -31,13 +35,26 @@
 
 .hdr-topbar {
   width: 100%;
+  min-height: var(--hdr-topbar-h);
+}
+
+.hdr-main-row {
+  height: var(--hdr-main-h);
 }
 
 .hdr-menu-bar {
-  min-height: 40px;
+  min-height: var(--hdr-menu-h);
   border-top: none;
   border-bottom: none;
   box-shadow: none;
+}
+
+.hdr-menu-row {
+  height: var(--hdr-menu-h);
+}
+
+.hdr-menu-row-classic {
+  height: var(--hdr-menu-classic-h);
 }
 
 .hdr-menu-link {

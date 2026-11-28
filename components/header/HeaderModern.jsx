@@ -77,7 +77,7 @@ export default function HeaderModern({
             color: "var(--hdr-topbar-text)",
           }}
         >
-          <div className="site-container hdr-inner justify-between text-xs py-2 gap-4">
+          <div className="site-container hdr-inner justify-between text-xs py-1.5 gap-4 min-h-[var(--hdr-topbar-h)]">
             {/* Left: Flash Sale Badge + Message + Deals pill */}
             <div className="flex items-center gap-2.5 overflow-hidden min-w-0">
               <span className="text-amber-400 text-sm font-bold shrink-0">⚡</span>
@@ -173,7 +173,7 @@ export default function HeaderModern({
         className="w-full relative z-40"
         style={{ background: "var(--hdr-main-bg)" }}
       >
-        <div className="hidden sm:flex site-container hdr-inner gap-3 lg:gap-5 h-[70px]">
+        <div className="hidden sm:flex site-container hdr-inner hdr-main-row gap-3 lg:gap-5">
           {/* Tablet/Mobile Nav Menu Toggle (< 768px) */}
           <button
             type="button"
@@ -212,7 +212,7 @@ export default function HeaderModern({
               <div className="flex flex-col leading-none pr-1 min-w-0">
                 <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap">Deliver to</span>
                 <div className="flex items-center gap-1 mt-0.5 min-w-0">
-                  <span className="text-xs font-bold text-gray-900 whitespace-nowrap truncate capitalize" suppressHydrationWarning>
+                  <span className="text-[11px] font-bold text-gray-900 whitespace-nowrap truncate capitalize" suppressHydrationWarning>
                     {pincode ? `${pincode} ` : ""}{district || city || "Chennai"}
                   </span>
                   <FiChevronDown className="w-3 h-3 text-gray-400 group-hover:text-gray-700 transition-colors shrink-0" />
@@ -310,7 +310,7 @@ export default function HeaderModern({
           className="hidden md:flex relative w-full items-center select-none z-30 hdr-menu-bar"
           style={{ background: "var(--hdr-menu-bg)" }}
         >
-          <div className="site-container hdr-inner h-[40px] relative">
+          <div className="site-container hdr-inner hdr-menu-row relative">
             {(menuButtonEnabled !== false) && (
               <div
                 className="relative flex-shrink-0 h-full w-[180px]"

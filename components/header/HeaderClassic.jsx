@@ -73,7 +73,7 @@ export default function HeaderClassic({
         className="w-full relative z-40"
         style={{ background: "var(--hdr-main-bg)" }}
       >
-        <div className="hidden sm:flex site-container hdr-inner gap-3 lg:gap-5 h-[70px]">
+        <div className="hidden sm:flex site-container hdr-inner hdr-main-row gap-3 lg:gap-5">
           {/* Tablet/Mobile Nav Menu Toggle (< 768px) */}
           <button
             type="button"
@@ -266,7 +266,7 @@ export default function HeaderClassic({
           className="hidden md:flex relative w-full items-center select-none z-30 hdr-menu-bar"
           style={{ background: "var(--hdr-menu-bg)" }}
         >
-          <div className="site-container hdr-inner h-[48px] relative">
+          <div className="site-container hdr-inner hdr-menu-row-classic relative">
             {(menuButtonEnabled !== false) && (
               <div
                 className="relative flex-shrink-0 h-full"
